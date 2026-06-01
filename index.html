@@ -408,7 +408,7 @@ function Inicio({recetas,lista,consumo,quemadas,limites,transacciones,metas,inve
     if(neto>ref*0.05+50) estado={t:"Superávit",c:C.red}; else if(neto<-(ref*0.05+50)) estado={t:"Déficit",c:C.green}; else estado={t:"Mantenimiento",c:C.blue}; }
 
   return <div>
-    <div style={{position:"relative",minHeight:340,overflow:"hidden",backgroundColor:"#11264a",backgroundImage:"linear-gradient(180deg, rgba(12,22,44,.30) 0%, rgba(12,18,34,.20) 38%, rgba(14,12,8,.86) 100%), url('./asta.jpg'), linear-gradient(160deg,#3f86c9 0%,#1d3f74 55%,#11203f 100%)",backgroundSize:"cover, cover, cover",backgroundPosition:"center, top center, center",backgroundRepeat:"no-repeat"}}>
+    <div style={{position:"relative",minHeight:340,overflow:"hidden",backgroundColor:"#11264a",backgroundImage:"linear-gradient(180deg, rgba(12,22,44,.30) 0%, rgba(12,18,34,.20) 38%, rgba(14,12,8,.86) 100%), url('./asta.jpeg'), linear-gradient(160deg,#3f86c9 0%,#1d3f74 55%,#11203f 100%)",backgroundSize:"cover, cover, cover",backgroundPosition:"center, top center, center",backgroundRepeat:"no-repeat"}}>
       <button onClick={abrirAjustes} style={{position:"absolute",top:18,right:16,background:"rgba(0,0,0,.35)",border:"1px solid rgba(255,255,255,.25)",width:38,height:38,borderRadius:"50%",color:C.gold,fontSize:18,cursor:"pointer",lineHeight:1,zIndex:2,backdropFilter:"blur(2px)"}}>⚙</button>
       <div style={{position:"relative",zIndex:1,padding:"22px 22px 26px"}}>
         <p style={{margin:0,fontSize:11,letterSpacing:4,color:C.gold,fontFamily:SANS,textTransform:"uppercase",fontWeight:700,textShadow:"0 1px 6px rgba(0,0,0,.6)"}}>✦ Mi Vida en Orden</p>
@@ -1238,8 +1238,9 @@ function Calendario({horario,setHorario}){
   const [edit,setEdit]=useState(null);
   const [avisoMsg,setAvisoMsg]=useState("");
   const bloques=(horario[dia]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
-  const guardar=b=>{ setHorario(p=>{ const arr=(p[dia]||[]).some(x=>x.id===b.id)?(p[dia]||[]).map(x=>x.id===b.id?b:x):[...(p[dia]||[]),b]; return {...p,[dia]:arr}; }); setEdit(null); };
-  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar bloque",texto:"Se borrará este bloque del día."})){ setHorario(p=>({...p,[dia]:(p[dia]||[]).filter(x=>x.id!==id)})); setEdit(null);} };
+  const diasDe=gid=>gid?DIAS_SEM.filter(d=>(horario[d]||[]).some(x=>x.gid===gid)):[];
+  const guardar=(b,dias)=>{ const gid=b.gid||uid(); const{_nuevo,...limpio}=b; setHorario(p=>{ const next={...p}; DIAS_SEM.forEach(d=>{ let arr=(next[d]||[]).filter(x=>!(x.gid&&x.gid===gid)&&x.id!==b.id); if(dias.includes(d)) arr=[...arr,{...limpio,id:uid(),gid}]; next[d]=arr; }); return next; }); setEdit(null); };
+  const eliminar=async(b)=>{ const dias=b.gid?diasDe(b.gid):[dia]; const multi=dias.length>1; if(await pedirConfirm({titulo:"Eliminar bloque",texto:multi?("Se borrará este bloque en sus "+dias.length+" días."):"Se borrará este bloque del día."})){ setHorario(p=>{ const next={...p}; DIAS_SEM.forEach(d=>{ next[d]=(next[d]||[]).filter(x=>!(b.gid&&x.gid===b.gid)&&x.id!==b.id); }); return next; }); setEdit(null);} };
   const nuevo=()=>{ const ult=bloques[bloques.length-1]; setEdit({id:uid(),desde:ult?ult.hasta:"08:00",hasta:ult?minToHHMM(Math.min(22*60,hhmmToMin(ult.hasta)+60)):"09:00",act:"",color:0,_nuevo:true}); };
 
   const activarAvisos=async()=>{
@@ -1265,15 +1266,15 @@ function Calendario({horario,setHorario}){
 
     {vista==="dia"?<div>
       <button onClick={nuevo} style={{width:"100%",padding:"11px 0",marginBottom:12,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Bloque en {dia}</button>
-      {bloques.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:14}}>Sin bloques para {dia}. Añade uno (ej. 5:30–6:30 Gym).</p>:bloques.map(b=>{const c=PALETA_BLOQUES[b.color%PALETA_BLOQUES.length];return <div key={b.id} onClick={()=>setEdit(b)} style={{display:"flex",alignItems:"stretch",gap:0,marginBottom:8,borderRadius:12,overflow:"hidden",border:"1.5px solid "+C.border,cursor:"pointer",background:C.card}}>
+      {bloques.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:14}}>Sin bloques para {dia}. Añade uno (ej. 5:30–6:30 Gym).</p>:bloques.map(b=>{const c=PALETA_BLOQUES[b.color%PALETA_BLOQUES.length];const nd=b.gid?diasDe(b.gid).length:1;return <div key={b.id} onClick={()=>setEdit(b)} style={{display:"flex",alignItems:"stretch",gap:0,marginBottom:8,borderRadius:12,overflow:"hidden",border:"1.5px solid "+C.border,cursor:"pointer",background:C.card}}>
         <div style={{width:6,background:c.fg}}/>
         <div style={{flex:1,padding:"12px 14px",background:c.bg}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SERIF,fontSize:16,color:c.fg}}>{b.act||"(sin nombre)"}</span><span style={{fontFamily:SANS,fontSize:12.5,color:c.fg,fontWeight:600}}>{b.desde}–{b.hasta}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SERIF,fontSize:16,color:c.fg}}>{b.act||"(sin nombre)"}{nd>1&&<span style={{marginLeft:7,fontFamily:SANS,fontSize:10.5,fontWeight:700,background:c.fg,color:c.bg,padding:"2px 7px",borderRadius:10,verticalAlign:"middle"}}>×{nd} días</span>}</span><span style={{fontFamily:SANS,fontSize:12.5,color:c.fg,fontWeight:600}}>{b.desde}–{b.hasta}</span></div>
         </div>
       </div>;})}
     </div>:<GridSemana horario={horario}/>}
 
-    <Sheet open={!!edit} onClose={()=>setEdit(null)} title={edit?._nuevo?"Nuevo bloque · "+dia:"Editar bloque · "+dia}>{edit&&<FormBloque bloque={edit} onGuardar={guardar} onEliminar={edit._nuevo?null:()=>eliminar(edit.id)}/>}</Sheet>
+    <Sheet open={!!edit} onClose={()=>setEdit(null)} title={edit?._nuevo?"Nuevo bloque · "+dia:"Editar bloque"}>{edit&&<FormBloque bloque={edit} diaActual={dia} diasGrupo={edit.gid?diasDe(edit.gid):null} onGuardar={guardar} onEliminar={edit._nuevo?null:()=>eliminar(edit)}/>}</Sheet>
   </div>;
 }
 
@@ -1291,19 +1292,29 @@ function GridSemana({horario}){
   </div>;
 }
 
-function FormBloque({bloque,onGuardar,onEliminar}){
+function FormBloque({bloque,diaActual,diasGrupo,onGuardar,onEliminar}){
   const [b,setB]=useState(bloque); const set=(k,v)=>setB(p=>({...p,[k]:v}));
-  const ok=b.act.trim()&&hhmmToMin(b.hasta)>hhmmToMin(b.desde);
+  const [dias,setDias]=useState(()=>(diasGrupo&&diasGrupo.length?diasGrupo:[diaActual]));
+  const toggleDia=d=>setDias(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);
+  const ok=b.act.trim()&&hhmmToMin(b.hasta)>hhmmToMin(b.desde)&&dias.length>0;
   return <div>
     <Field label="Actividad"><input style={inputStyle} placeholder="Ej. Estudio · Trabajo · Gym" value={b.act} onChange={e=>set("act",e.target.value)} autoFocus/></Field>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
       <Field label="Desde"><input style={inputStyle} type="time" value={b.desde} onChange={e=>set("desde",e.target.value)}/></Field>
       <Field label="Hasta"><input style={inputStyle} type="time" value={b.hasta} onChange={e=>set("hasta",e.target.value)}/></Field>
     </div>
+    <p style={labelStyle}>Días</p>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>{DIAS_SEM.map(d=>{const a=dias.includes(d);return <button key={d} onClick={()=>toggleDia(d)} style={{padding:"7px 11px",borderRadius:9,border:"1.5px solid "+(a?C.gold:C.border),background:a?C.gold:"transparent",color:a?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:a?700:500,cursor:"pointer"}}>{d.slice(0,3)}</button>;})}</div>
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      <button onClick={()=>setDias([...DIAS_SEM])} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1.5px solid "+C.border,background:"transparent",color:C.muted,fontSize:12,fontFamily:SANS,cursor:"pointer"}}>Todos</button>
+      <button onClick={()=>setDias(DIAS_SEM.slice(0,5))} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1.5px solid "+C.border,background:"transparent",color:C.muted,fontSize:12,fontFamily:SANS,cursor:"pointer"}}>Lun–Vie</button>
+      <button onClick={()=>setDias(DIAS_SEM.slice(5))} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1.5px solid "+C.border,background:"transparent",color:C.muted,fontSize:12,fontFamily:SANS,cursor:"pointer"}}>Fin de sem.</button>
+    </div>
     <p style={labelStyle}>Color</p>
     <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>{PALETA_BLOQUES.map((c,i)=><button key={i} onClick={()=>set("color",i)} style={{width:34,height:34,borderRadius:9,background:c.bg,border:b.color===i?"3px solid "+c.fg:"1.5px solid "+C.border,cursor:"pointer"}}/>)}</div>
-    {!ok&&b.act.trim()&&<p style={{fontFamily:SANS,fontSize:12,color:C.red,margin:"0 0 10px"}}>La hora "hasta" debe ser mayor que "desde".</p>}
-    <button disabled={!ok} onClick={()=>onGuardar(b)} style={btnP(ok)}>Guardar bloque</button>{onEliminar&&btnDel(onEliminar)}
+    {!ok&&b.act.trim()&&dias.length>0&&<p style={{fontFamily:SANS,fontSize:12,color:C.red,margin:"0 0 10px"}}>La hora "hasta" debe ser mayor que "desde".</p>}
+    {dias.length>1&&<p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 10px"}}>Se guardará en {dias.length} días.</p>}
+    <button disabled={!ok} onClick={()=>onGuardar(b,dias)} style={btnP(ok)}>Guardar bloque</button>{onEliminar&&btnDel(onEliminar)}
   </div>;
 }
 
