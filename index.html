@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2c2415">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Orden">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Mi Vida en Orden</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#faf7f2}
+  #root{min-height:100%}
+  *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+  input,select,textarea,button{font-family:inherit}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
+  @keyframes pop{0%{transform:scale(.9)}100%{transform:scale(1)}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+/* ───── PALETA ───── */
+const C = {
+  bg:"#faf7f2", card:"#ffffff", espresso:"#2c2415",
+  gold:"#c8a96e", goldSoft:"#e8dcc2", border:"#e8dece", borderSoft:"#f0ebe0",
+  muted:"#a08c72", text:"#2c2415",
+  green:"#3a6b35", greenSoft:"#e3eddf", red:"#a8493a", redSoft:"#f2e1dd",
+  blue:"#3f5e78", blueSoft:"#dde7ef", purple:"#6b5a78", purpleSoft:"#e5dfec",
+};
+const SERIF = "Georgia,'Times New Roman',serif";
+const SANS = "system-ui,-apple-system,sans-serif";
+
+/* ───── HELPERS ───── */
+const uid = () => Math.random().toString(36).slice(2,10);
+const num = n => Number(n)||0;
+const money = n => num(n)===0 ? "$0" : "$"+num(n).toLocaleString("es-CO",{maximumFractionDigits:0});
+const moneyShort = n => { const v=num(n); const s=v<0?"-":""; const a=Math.abs(v);
+  if(a>=1e6) return s+"$"+(a/1e6).toFixed(1).replace(/\.0$/,"")+"M";
+  if(a>=1e3) return s+"$"+Math.round(a/1e3)+"k"; return money(v); };
+function fechaLocal(d=new Date()){ const o=d.getTimezoneOffset(); return new Date(d.getTime()-o*6e4).toISOString().slice(0,10); }
+const HOY = fechaLocal();
+const mesDe = f => f.slice(0,7);
+const MES_ACTUAL = mesDe(HOY);
+const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const nombreMes = ym => { const[y,m]=ym.split("-"); return MESES[+m-1]+" "+y; };
+function mesAdj(ym,d){ const[y,m]=ym.split("-").map(Number); const x=new Date(y,m-1+d,1); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0"); }
+function mesesHasta(f){ const a=new Date(HOY),b=new Date(f); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
+function ultimos7(){ const a=[]; for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(fechaLocal(d));} return a; }
+const DIA_CORTO = f => ["Do","Lu","Ma","Mi","Ju","Vi","Sa"][new Date(f+"T12:00").getDay()];
+function fechaBonita(){ let s=new Date().toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"}); return s.charAt(0).toUpperCase()+s.slice(1); }
+
+/* ───── STORAGE (Claude o local) ───── */
+const CLAUDE = typeof window!=="undefined" && window.storage && typeof window.storage.get==="function";
+async function load(key, fb){
+  try{
+    if(CLAUDE){ const r=await window.storage.get(key); return r?JSON.parse(r.value):fb; }
+    const v=window.localStorage.getItem("mvo_"+key); return v!=null?JSON.parse(v):fb;
+  }catch(e){ return fb; }
+}
+async function save(key,v){
+  try{
+    if(CLAUDE){ await window.storage.set(key,JSON.stringify(v)); }
+    else{ window.localStorage.setItem("mvo_"+key,JSON.stringify(v)); }
+  }catch(e){ console.error(e); }
+}
+
+/* ───── NOTIFICACIONES / AUDIO / TIEMPO ───── */
+const NOTI_OK = typeof window!=="undefined" && "Notification" in window;
+const tieneTriggers = NOTI_OK && ("showTrigger" in window.Notification.prototype);
+async function pedirNoti(){
+  if(!NOTI_OK) return "unsupported";
+  if(Notification.permission==="granted") return "granted";
+  try{ return await Notification.requestPermission(); }catch(e){ return Notification.permission; }
+}
+async function swReg(){ try{ return ("serviceWorker" in navigator)?await navigator.serviceWorker.ready:null; }catch(e){ return null; } }
+async function notiAhora(titulo, body, tag){
+  if(!NOTI_OK || Notification.permission!=="granted") return false;
+  const reg=await swReg();
+  const opts={body, tag, icon:"./icon-192.png", badge:"./icon-192.png", vibrate:[120,60,120], renotify:!!tag};
+  try{ if(reg) await reg.showNotification(titulo,opts); else new Notification(titulo,opts); return true; }catch(e){ try{ new Notification(titulo,opts); }catch(_){} return false; }
+}
+async function notiProgramar(titulo, body, cuando, tag){
+  if(!NOTI_OK || Notification.permission!=="granted" || !tieneTriggers) return false;
+  if(cuando<=Date.now()+1500) return false;
+  const reg=await swReg(); if(!reg) return false;
+  try{ await reg.showNotification(titulo,{body, tag, icon:"./icon-192.png", badge:"./icon-192.png", vibrate:[120,60,120], showTrigger:new TimestampTrigger(cuando)}); return true; }catch(e){ return false; }
+}
+async function notiCancelar(prefix){
+  const reg=await swReg(); if(!reg||!reg.getNotifications) return;
+  try{ const ns=await reg.getNotifications({includeTriggered:true}); ns.forEach(n=>{ if(!prefix||(n.tag||"").startsWith(prefix)) n.close(); }); }catch(e){}
+}
+let _ac=null;
+function beep(veces=1){
+  try{
+    _ac=_ac||new (window.AudioContext||window.webkitAudioContext)(); if(_ac.state==="suspended") _ac.resume();
+    let t=_ac.currentTime;
+    for(let i=0;i<veces;i++){ const o=_ac.createOscillator(), g=_ac.createGain(); o.type="sine"; o.frequency.value=880; o.connect(g); g.connect(_ac.destination); g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.32,t+.02); g.gain.exponentialRampToValueAtTime(.0001,t+.34); o.start(t); o.stop(t+.36); t+=.48; }
+  }catch(e){}
+}
+const fmtMMSS = s => { s=Math.max(0,Math.round(s)); const m=Math.floor(s/60), x=s%60; return m+":"+String(x).padStart(2,"0"); };
+const hhmmToMin = h => { if(!h) return 0; const p=String(h).split(":").map(Number); return (p[0]||0)*60+(p[1]||0); };
+const minToHHMM = m => String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const minNow = () => { const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+const HORAS_DIA = (()=>{ const a=[]; for(let h=5;h<=22;h++){ a.push(String(h).padStart(2,"0")+":00"); if(h<22) a.push(String(h).padStart(2,"0")+":30"); } return a; })();
+
+/* ───── CONSTANTES ───── */
+const CAT_LISTA=["🥦 Frutas y Verduras","🧀 Lácteos y Huevos","🍖 Carnes y Fríos","🌾 Despensa","🫙 Aceites y Salsas","🌿 Especias","🥫 Enlatados","🍽️ De recetas","📦 Otros"];
+const TIPOS_RECETA=["Desayuno","Almuerzo","Cena","Postre","Ensalada","Salsa","Aderezo","Pan","Snack","Otro"];
+const MEDIDAS=["g","kg","ml","L","unidad","taza","cda","cdta","oz","lb","pizca","al gusto"];
+const FRASES=["Mi magia es nunca rendirme.","Supera tus límites… ¡ahora mismo!","No me rendiré. Ese es mi único camino.","El que se cae siete veces, se levanta ocho.","Los límites están para romperlos.","Voy a ser el Rey Mago.","La determinación nunca se rinde.","El sudor de hoy es la fuerza de mañana."];
+const DIAS_SEM=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const diaHoyNombre=()=>DIAS_SEM[(new Date().getDay()+6)%7];
+const PALETA_BLOQUES=[{bg:"#e8dcc2",fg:"#7a5e2e"},{bg:"#cfe0f0",fg:"#2f4d6b"},{bg:"#e5dfec",fg:"#574668"},{bg:"#dcebd6",fg:"#3a6b35"},{bg:"#f2e1dd",fg:"#a8493a"},{bg:"#fde6c9",fg:"#8a6d2f"},{bg:"#d7e6e3",fg:"#356b63"}];
+const POMO_DEFAULT={trabajo:25,descanso:5,largo:15,ciclos:4};
+const CAT_GUIA=["Marinados","Carnes","Almacenamiento","Técnicas","Tips","Otro"];
+const CAT_GASTO=["🍽️ Alimentación","🛒 Mercado","🏠 Vivienda","🚗 Transporte","🎓 Educación","🎉 Ocio","💊 Salud","💡 Servicios","💳 Deudas","🛍️ Compras","📦 Otros"];
+const CAT_INGRESO=["💼 Salario","💵 Freelance","🎁 Extra","📈 Rendimientos","📦 Otros"];
+
+const SEED_LISTA=[["Papa criolla","🥦 Frutas y Verduras"],["Zanahoria","🥦 Frutas y Verduras"],["Lechuga","🥦 Frutas y Verduras"],["Tomate cherry","🥦 Frutas y Verduras"],["Cebolla blanca","🥦 Frutas y Verduras"],["Champiñones","🥦 Frutas y Verduras"],["Limones","🥦 Frutas y Verduras"],["Ajo","🥦 Frutas y Verduras"],["Huevos","🧀 Lácteos y Huevos"],["Queso crema","🧀 Lácteos y Huevos"],["Crema de leche","🧀 Lácteos y Huevos"],["Mantequilla","🧀 Lácteos y Huevos"],["Parmesano en bloque","🧀 Lácteos y Huevos"],["Pechuga de pollo","🍖 Carnes y Fríos"],["Carne de res molida","🍖 Carnes y Fríos"],["Pepperoni","🍖 Carnes y Fríos"],["Harina de trigo","🌾 Despensa"],["Levadura seca","🌾 Despensa"],["Arroz blanco","🌾 Despensa"],["Pasta","🌾 Despensa"],["Granola","🌾 Despensa"],["Gelatina sin sabor","🌾 Despensa"],["Leche condensada","🌾 Despensa"],["Aceite de oliva","🫙 Aceites y Salsas"],["Salsa de soya","🫙 Aceites y Salsas"],["Mostaza Dijon","🫙 Aceites y Salsas"],["Mayonesa","🫙 Aceites y Salsas"],["Orégano","🌿 Especias"],["Pimentón ahumado","🌿 Especias"],["Comino","🌿 Especias"],["Tomate triturado","🥫 Enlatados"],["Caldo de pollo","🥫 Enlatados"]].map(([nombre,categoria],i)=>({id:"seed-"+i,nombre,categoria,comprado:false,precio:"",tienda:""}));
+
+/* ───── GYM: investigación PPL x2 (hipertrofia) ───── */
+const MUSCULOS=["Pecho","Espalda","Hombros","Bíceps","Tríceps","Cuádriceps","Isquios","Glúteos","Gemelos","Abdomen","Otro"];
+// Volumen semanal recomendado (series) por músculo — Schoenfeld / RP MEV→MAV
+const VOL_MUSCULO=[
+  {m:"Pecho",min:14,max:18},{m:"Espalda",min:16,max:20},{m:"Hombros",min:12,max:18},
+  {m:"Bíceps",min:12,max:16},{m:"Tríceps",min:12,max:16},{m:"Cuádriceps",min:14,max:18},
+  {m:"Isquios",min:12,max:16},{m:"Glúteos",min:10,max:14},{m:"Gemelos",min:12,max:16},{m:"Abdomen",min:8,max:12},
+];
+// Plantillas de sesión del split PPL x2 (énfasis en posición estirada)
+const PLANTILLAS={
+  "Push":[
+    {nombre:"Press de banca",musculo:"Pecho",sets:4,reps:"6–10",nota:"Mayor activación pectoral"},
+    {nombre:"Press inclinado mancuerna",musculo:"Pecho",sets:3,reps:"8–12",nota:"Pecho superior + estiramiento"},
+    {nombre:"Aperturas (mancuerna/polea)",musculo:"Pecho",sets:3,reps:"12–15",nota:"Estiramiento profundo abajo"},
+    {nombre:"Press militar",musculo:"Hombros",sets:3,reps:"6–10",nota:"Deltoides anterior"},
+    {nombre:"Elevaciones laterales",musculo:"Hombros",sets:4,reps:"12–20",nota:"Clave para la anchura"},
+    {nombre:"Extensión tríceps overhead",musculo:"Tríceps",sets:3,reps:"10–15",nota:"Cabeza larga estirada (superior)"},
+    {nombre:"Pushdown en polea",musculo:"Tríceps",sets:3,reps:"12–20",nota:"Carga + bombeo"},
+  ],
+  "Pull":[
+    {nombre:"Dominadas / Jalón al pecho",musculo:"Espalda",sets:4,reps:"6–12",nota:"Dorsales, estiramiento arriba"},
+    {nombre:"Remo con barra",musculo:"Espalda",sets:4,reps:"8–12",nota:"Grosor de espalda"},
+    {nombre:"Pullover / Jalón brazos rectos",musculo:"Espalda",sets:3,reps:"12–15",nota:"Estiramiento del dorsal"},
+    {nombre:"Face pull / Aperturas posteriores",musculo:"Hombros",sets:3,reps:"15–20",nota:"Deltoides posterior + salud del hombro"},
+    {nombre:"Curl inclinado",musculo:"Bíceps",sets:3,reps:"10–15",nota:"Posición alargada (porción proximal)"},
+    {nombre:"Curl predicador",musculo:"Bíceps",sets:3,reps:"10–15",nota:"Crecimiento distal"},
+    {nombre:"Curl martillo",musculo:"Bíceps",sets:2,reps:"10–15",nota:"Braquial / braquiorradial"},
+  ],
+  "Legs A":[
+    {nombre:"Sentadilla profunda",musculo:"Cuádriceps",sets:4,reps:"5–8",nota:"Recluta vastos y glúteos"},
+    {nombre:"Prensa / Hack squat",musculo:"Cuádriceps",sets:3,reps:"8–12",nota:"Volumen de cuádriceps"},
+    {nombre:"Extensión de cuádriceps",musculo:"Cuádriceps",sets:3,reps:"12–20",nota:"Buena tensión en estiramiento"},
+    {nombre:"Sentadilla búlgara",musculo:"Cuádriceps",sets:3,reps:"8–12",nota:"Unilateral, recto femoral"},
+    {nombre:"Gemelo de pie",musculo:"Gemelos",sets:4,reps:"8–15",nota:"Parciales en posición larga"},
+    {nombre:"Crunch en polea",musculo:"Abdomen",sets:3,reps:"12–20",nota:"Carga progresiva"},
+  ],
+  "Legs B":[
+    {nombre:"Peso muerto rumano",musculo:"Isquios",sets:4,reps:"8–12",nota:"Cadera, estiramiento"},
+    {nombre:"Curl femoral sentado",musculo:"Isquios",sets:4,reps:"10–15",nota:"Superior al tumbado (posición larga)"},
+    {nombre:"Hip thrust",musculo:"Glúteos",sets:4,reps:"8–12",nota:"Hipertrofia glútea"},
+    {nombre:"Curl femoral tumbado",musculo:"Isquios",sets:2,reps:"12–15",nota:"Complemento"},
+    {nombre:"Gemelo sentado",musculo:"Gemelos",sets:4,reps:"12–20",nota:"Sóleo"},
+    {nombre:"Elevación de piernas colgado",musculo:"Abdomen",sets:3,reps:"12–20",nota:"Abdomen inferior"},
+  ],
+};
+const DIAS_ENTRENO=["Push","Pull","Legs A","Legs B","Otro"];
+// Calendario semanal recomendado
+const CALENDARIO=[
+  {d:"Lun",s:"Push",x:"Pecho · Hombros · Tríceps"},
+  {d:"Mar",s:"Pull",x:"Espalda · Bíceps"},
+  {d:"Mié",s:"Legs A",x:"Cuádriceps + cardio (noche)"},
+  {d:"Jue",s:"Push",x:"Pecho · Hombros · Tríceps"},
+  {d:"Vie",s:"Pull",x:"Espalda · Bíceps"},
+  {d:"Sáb",s:"Legs B",x:"Isquios · Glúteos"},
+  {d:"Dom",s:"Carrera",x:"15 km zona 2 (solo cardio)"},
+];
+// Inferir músculo a partir del nombre escrito a mano
+const _MAP_MUS=[["press banca","Pecho"],["banca","Pecho"],["pecho","Pecho"],["apertura","Pecho"],["pec deck","Pecho"],["press inclinad","Pecho"],
+  ["dominada","Espalda"],["jalon","Espalda"],["jalón","Espalda"],["remo","Espalda"],["pullover","Espalda"],["espalda","Espalda"],["dorsal","Espalda"],
+  ["press militar","Hombros"],["militar","Hombros"],["lateral","Hombros"],["face pull","Hombros"],["posterior","Hombros"],["hombro","Hombros"],["deltoid","Hombros"],
+  ["curl inclinad","Bíceps"],["predicador","Bíceps"],["martillo","Bíceps"],["curl biceps","Bíceps"],["bicep","Bíceps"],["bícep","Bíceps"],
+  ["overhead","Tríceps"],["pushdown","Tríceps"],["tricep","Tríceps"],["trícep","Tríceps"],["fondos","Tríceps"],["press cerrad","Tríceps"],
+  ["sentadilla","Cuádriceps"],["prensa","Cuádriceps"],["hack","Cuádriceps"],["extension cuad","Cuádriceps"],["extensión cuad","Cuádriceps"],["bulgara","Cuádriceps"],["búlgara","Cuádriceps"],["zancada","Cuádriceps"],["cuadricep","Cuádriceps"],
+  ["rumano","Isquios"],["femoral","Isquios"],["isquio","Isquios"],["peso muerto","Isquios"],
+  ["hip thrust","Glúteos"],["gluteo","Glúteos"],["glúteo","Glúteos"],["patada","Glúteos"],
+  ["gemelo","Gemelos"],["soleo","Gemelos"],["sóleo","Gemelos"],["pantorrilla","Gemelos"],
+  ["crunch","Abdomen"],["abdomen","Abdomen"],["plancha","Abdomen"],["elevacion de pierna","Abdomen"],["elevación de pierna","Abdomen"],["pallof","Abdomen"]];
+function inferMusculo(nombre){ const n=(nombre||"").toLowerCase(); for(const[k,m]of _MAP_MUS){ if(n.includes(k)) return m; } return "Otro"; }
+function musculoDe(ej){ return ej.musculo&&ej.musculo!=="Otro"?ej.musculo:inferMusculo(ej.nombre); }
+// 1RM estimado (Epley) para seguir progresión
+function e1rm(reps,peso){ const r=num(reps),p=num(peso); if(!p) return 0; return Math.round(p*(1+r/30)); }
+
+/* ───── NUTRICIÓN: presets de fase (datos del usuario: 73 kg, 174 cm, 12% BF, avanzado) ───── */
+const PRESETS_NUTRI={
+  mantenimiento:{titulo:"Mantenimiento",sub:"Semanas 1–4 (post-cut)",kcal:2800,proteina:150,carbos:355,grasa:75,quemadaDiaria:2800,
+    desc:"Recupera el metabolismo tras el cut. ~2,0 g/kg de proteína. Arranca el split en MEV."},
+  bulk:{titulo:"Lean Bulk",sub:"Semanas 5–16+",kcal:3050,proteina:150,carbos:420,grasa:85,quemadaDiaria:2800,
+    desc:"Superávit de +250 kcal. Meta de ganancia ~180–360 g/semana. Carbos altos para la carrera."},
+};
+
+/* ───── UI BÁSICA ───── */
+const inputStyle={width:"100%",padding:"11px 13px",borderRadius:10,border:"1.5px solid "+C.border,background:C.card,fontSize:15,fontFamily:SANS,color:C.text,outline:"none"};
+const labelStyle={display:"block",fontSize:12,fontFamily:SANS,color:C.muted,marginBottom:5,letterSpacing:.3,textTransform:"uppercase"};
+function Field({label,children}){ return <div style={{marginBottom:14}}><label style={labelStyle}>{label}</label>{children}</div>; }
+function Header({titulo,sub}){ return <div style={{background:C.espresso,color:C.bg,padding:"30px 22px 22px"}}><h1 style={{margin:0,fontFamily:SERIF,fontSize:26,fontWeight:"normal"}}>{titulo}</h1>{sub&&<p style={{margin:"5px 0 0",fontSize:13,color:C.gold,fontFamily:SANS}}>{sub}</p>}</div>; }
+function Card({children,onClick,pad=18,bd=C.border}){ return <div onClick={onClick} style={{background:C.card,borderRadius:16,padding:pad,border:"1.5px solid "+bd,cursor:onClick?"pointer":"default",boxShadow:"0 2px 10px rgba(44,36,21,.04)"}}>{children}</div>; }
+function Bar({pct,color,track=C.borderSoft,h=8}){ return <div style={{background:track,borderRadius:6,height:h,overflow:"hidden"}}><div style={{height:h,width:Math.min(100,Math.max(0,pct))+"%",background:color,borderRadius:6,transition:"width .4s ease"}}/></div>; }
+function Chip({children,bg=C.goldSoft,col=C.espresso}){ return <span style={{background:bg,color:col,fontSize:12,padding:"4px 10px",borderRadius:20,fontFamily:SANS,fontWeight:600}}>{children}</span>; }
+function btnP(active=true){ return {width:"100%",padding:"14px 0",marginTop:6,background:active?C.espresso:C.border,color:active?C.bg:C.muted,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:active?"pointer":"default"}; }
+function btnDel(onClick){ return <button onClick={onClick} style={{width:"100%",marginTop:10,padding:"10px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar</button>; }
+function Segmented({value,onChange,options}){ return <div style={{display:"flex",gap:6,padding:"14px 18px 4px",background:C.bg,flexWrap:"wrap"}}>{options.map(o=>{const a=value===o.id;return <button key={o.id} onClick={()=>onChange(o.id)} style={{flex:"1 1 0",minWidth:60,padding:"9px 4px",borderRadius:10,border:"1.5px solid "+(a?C.espresso:C.border),background:a?C.espresso:"transparent",color:a?C.bg:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:a?600:400,cursor:"pointer"}}>{o.label}</button>;})}</div>; }
+function Sheet({open,onClose,title,children}){ if(!open) return null; return <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:100,background:"rgba(44,36,21,.45)",display:"flex",alignItems:"flex-end",justifyContent:"center",animation:"fadeIn .2s ease"}}><div onClick={e=>e.stopPropagation()} style={{background:C.bg,width:"100%",maxWidth:520,borderTopLeftRadius:22,borderTopRightRadius:22,maxHeight:"90vh",overflowY:"auto",animation:"slideUp .28s cubic-bezier(.2,.8,.2,1)",boxShadow:"0 -8px 40px rgba(0,0,0,.25)"}}><div style={{position:"sticky",top:0,background:C.bg,zIndex:2,padding:"16px 20px 12px",borderBottom:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2 style={{margin:0,fontFamily:SERIF,fontSize:20,fontWeight:"normal"}}>{title}</h2><button onClick={onClose} style={{border:"none",background:C.borderSoft,width:32,height:32,borderRadius:"50%",fontSize:18,color:C.muted,cursor:"pointer",lineHeight:1}}>×</button></div><div style={{padding:20}}>{children}</div></div></div>; }
+function Toast({children}){ return <div style={{position:"fixed",bottom:92,left:"50%",transform:"translateX(-50%)",zIndex:200,background:C.green,color:"#fff",padding:"11px 20px",borderRadius:30,fontSize:14,fontFamily:SANS,boxShadow:"0 4px 16px rgba(0,0,0,.25)",animation:"pop .25s ease",whiteSpace:"nowrap"}}>{children}</div>; }
+function Mini({icon,label}){ return <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16}}>{icon}</span><span style={{fontSize:11,color:C.muted,fontFamily:SANS,textTransform:"uppercase",letterSpacing:.4}}>{label}</span></div>; }
+
+/* confirmación global de borrado */
+let _confirmFn=null;
+function pedirConfirm(opts){ return new Promise(res=>{ if(_confirmFn) _confirmFn(opts,res); else res(true); }); }
+function ConfirmHost(){
+  const [st,setSt]=useState(null);
+  useEffect(()=>{ _confirmFn=(opts,res)=>setSt({...opts,res}); return ()=>{_confirmFn=null;}; },[]);
+  if(!st) return null;
+  const cerrar=v=>{ st.res(v); setSt(null); };
+  return <div onClick={()=>cerrar(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(44,36,21,.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn .15s ease"}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:C.bg,borderRadius:18,padding:22,width:"100%",maxWidth:340,boxShadow:"0 10px 40px rgba(0,0,0,.3)",animation:"pop .2s ease"}}>
+      <h3 style={{margin:"0 0 6px",fontFamily:SERIF,fontSize:19,fontWeight:"normal"}}>{st.titulo||"¿Eliminar?"}</h3>
+      {st.texto&&<p style={{margin:"0 0 16px",fontFamily:SANS,fontSize:14,color:C.muted,lineHeight:1.5}}>{st.texto}</p>}
+      <div style={{display:"flex",gap:10,marginTop:6}}>
+        <button onClick={()=>cerrar(false)} style={{flex:1,padding:"12px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:11,fontSize:14,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
+        <button onClick={()=>cerrar(true)} style={{flex:1,padding:"12px 0",background:C.red,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>{st.ok||"Eliminar"}</button>
+      </div>
+    </div>
+  </div>;
+}
+const stepBtn={width:42,height:42,borderRadius:"50%",border:"1.5px solid "+C.gold,background:C.card,color:C.espresso,fontSize:22,cursor:"pointer",lineHeight:1};
+const navMesBtn={width:38,height:38,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:20,cursor:"pointer",lineHeight:1};
+
+/* helpers nutricion */
+function totDia(consumo,f){ return consumo.filter(c=>c.fecha===f).reduce((a,c)=>({kcal:a.kcal+num(c.kcal),proteina:a.proteina+num(c.proteina),carbos:a.carbos+num(c.carbos),grasa:a.grasa+num(c.grasa)}),{kcal:0,proteina:0,carbos:0,grasa:0}); }
+function quemadoDia(quemadas,f,fija){ return num(fija)+quemadas.filter(q=>q.fecha===f).reduce((a,q)=>a+num(q.kcal),0); }
+
+/* ═══════════ APP ═══════════ */
+function App(){
+  const [tab,setTab]=useState("inicio");
+  const [recetas,setRecetas]=useState([]);
+  const [lista,setLista]=useState([]);
+  const [consumo,setConsumo]=useState([]);
+  const [quemadas,setQuemadas]=useState([]);
+  const [limites,setLimites]=useState({kcal:"",proteina:"",carbos:"",grasa:"",quemadaDiaria:""});
+  const [guias,setGuias]=useState([]);
+  const [transacciones,setTransacciones]=useState([]);
+  const [fijos,setFijos]=useState([]);
+  const [inversiones,setInversiones]=useState([]);
+  const [metas,setMetas]=useState([]);
+  const [entrenos,setEntrenos]=useState([]);
+  const [lotes,setLotes]=useState([]);
+  const [horario,setHorario]=useState({});
+  const [sprints,setSprints]=useState([]);
+  const [notas,setNotas]=useState([]);
+  const [pomoCfg,setPomoCfg]=useState(POMO_DEFAULT);
+  const [ready,setReady]=useState(false);
+  const [ajustes,setAjustes]=useState(false);
+
+  useEffect(()=>{(async()=>{
+    setRecetas(await load("recetas",[]));
+    const l=await load("lista",null); if(l===null){setLista(SEED_LISTA);await save("lista",SEED_LISTA);} else setLista(l);
+    setConsumo(await load("consumo",[]));
+    setQuemadas(await load("quemadas",[]));
+    setLimites(await load("limites",{kcal:"",proteina:"",carbos:"",grasa:"",quemadaDiaria:""}));
+    setGuias(await load("guias",[]));
+    setTransacciones(await load("transacciones",[]));
+    setFijos(await load("fijos",[]));
+    setInversiones(await load("inversiones",[]));
+    setMetas(await load("metas",[]));
+    setEntrenos(await load("entrenos",[]));
+    setLotes(await load("lotes",[]));
+    setHorario(await load("horario",{}));
+    setSprints(await load("sprints",[]));
+    setNotas(await load("notas",[]));
+    setPomoCfg(await load("pomoCfg",POMO_DEFAULT));
+    setReady(true);
+  })();},[]);
+
+  useEffect(()=>{if(ready)save("recetas",recetas)},[recetas,ready]);
+  useEffect(()=>{if(ready)save("lista",lista)},[lista,ready]);
+  useEffect(()=>{if(ready)save("consumo",consumo)},[consumo,ready]);
+  useEffect(()=>{if(ready)save("quemadas",quemadas)},[quemadas,ready]);
+  useEffect(()=>{if(ready)save("limites",limites)},[limites,ready]);
+  useEffect(()=>{if(ready)save("guias",guias)},[guias,ready]);
+  useEffect(()=>{if(ready)save("transacciones",transacciones)},[transacciones,ready]);
+  useEffect(()=>{if(ready)save("fijos",fijos)},[fijos,ready]);
+  useEffect(()=>{if(ready)save("inversiones",inversiones)},[inversiones,ready]);
+  useEffect(()=>{if(ready)save("metas",metas)},[metas,ready]);
+  useEffect(()=>{if(ready)save("entrenos",entrenos)},[entrenos,ready]);
+  useEffect(()=>{if(ready)save("lotes",lotes)},[lotes,ready]);
+  useEffect(()=>{if(ready)save("horario",horario)},[horario,ready]);
+  useEffect(()=>{if(ready)save("sprints",sprints)},[sprints,ready]);
+  useEffect(()=>{if(ready)save("notas",notas)},[notas,ready]);
+  useEffect(()=>{if(ready)save("pomoCfg",pomoCfg)},[pomoCfg,ready]);
+
+  if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
+
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg};
+
+  return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
+    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,horario,sprints,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
+    {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes}}/>}
+    {tab==="lista"&&<ListaCompras {...{lista,setLista}}/>}
+    {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas}}/>}
+    {tab==="gym"&&<Gym {...{entrenos,setEntrenos}}/>}
+    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg}}/>}
+    <Nav tab={tab} setTab={setTab}/>
+    <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters}/>
+    <ConfirmHost/>
+  </div>;
+}
+
+/* ═══════════ AJUSTES / RESPALDO ═══════════ */
+function Ajustes({open,onClose,datos,setters}){
+  const [msg,setMsg]=useState("");
+  const exportar=()=>{
+    const payload={_app:"Mi Vida en Orden",_v:1,_fecha:new Date().toISOString(),datos};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="mi-vida-en-orden-"+HOY+".json";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    setMsg("Respaldo descargado ✓"); setTimeout(()=>setMsg(""),2600);
+  };
+  const importar=ev=>{
+    const file=ev.target.files&&ev.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=async()=>{
+      try{
+        const obj=JSON.parse(reader.result);
+        const d=obj.datos||obj;
+        if(!d||typeof d!=="object") throw 0;
+        if(!await pedirConfirm({titulo:"Importar respaldo",texto:"Esto reemplazará TODOS tus datos actuales por los del archivo. ¿Continuar?",ok:"Importar"})) return;
+        Object.keys(setters).forEach(k=>{ if(d[k]!==undefined) setters[k](d[k]); });
+        setMsg("Datos importados ✓"); setTimeout(()=>setMsg(""),2600);
+      }catch(e){ setMsg("Archivo no válido ✗"); setTimeout(()=>setMsg(""),2600); }
+    };
+    reader.readAsText(file); ev.target.value="";
+  };
+  const conteo=Object.entries(datos).filter(([k])=>Array.isArray(datos[k])).map(([k,v])=>({k,n:v.length}));
+  return <Sheet open={open} onClose={onClose} title="Ajustes y respaldo">
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 16px",lineHeight:1.5}}>Tus datos viven solo en este dispositivo. Exporta un respaldo para no perderlos o para pasarlos entre tu celular y tu PC.</p>
+    <button onClick={exportar} style={{width:"100%",padding:"14px 0",background:C.espresso,color:C.bg,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>⬇ Exportar respaldo (.json)</button>
+    <label style={{display:"block",width:"100%",padding:"14px 0",marginTop:10,background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer",textAlign:"center"}}>
+      ⬆ Importar respaldo
+      <input type="file" accept="application/json,.json" onChange={importar} style={{display:"none"}}/>
+    </label>
+    {msg&&<div style={{marginTop:14,background:msg.includes("✗")?C.redSoft:C.greenSoft,color:msg.includes("✗")?C.red:C.green,borderRadius:10,padding:"10px 12px",textAlign:"center",fontFamily:SANS,fontSize:14,fontWeight:600}}>{msg}</div>}
+    <div style={{height:1,background:C.borderSoft,margin:"18px 0 14px"}}/>
+    <p style={labelStyle}>Lo que tienes guardado</p>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:6}}>
+      {[["recetas","Recetas"],["lotes","Lotes activos"],["entrenos","Entrenos"],["metas","Metas"],["sprints","Sprints"],["notas","Notas"]].map(([k,l])=>{const c=conteo.find(x=>x.k===k);return <div key={k} style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>{l}</span><b>{c?c.n:0}</b></div>;})}
+    </div>
+  </Sheet>;
+}
+
+function Nav({tab,setTab}){
+  const items=[{id:"inicio",icon:"🏠",label:"Inicio"},{id:"comida",icon:"📖",label:"Comida"},{id:"crono",icon:"🗓️",label:"Cronograma"},{id:"finanzas",icon:"💰",label:"Finanzas"},{id:"gym",icon:"🏋️",label:"Gym"},{id:"lista",icon:"🛒",label:"Lista"}];
+  return <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:C.espresso,display:"flex",justifyContent:"space-around",padding:"8px 2px 14px",boxShadow:"0 -4px 20px rgba(0,0,0,.18)"}}>
+    {items.map(it=>{const a=tab===it.id;return <button key={it.id} onClick={()=>setTab(it.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 4px",opacity:a?1:.5,transition:"opacity .2s",flex:1,minWidth:0}}><span style={{fontSize:18,filter:a?"none":"grayscale(.4)"}}>{it.icon}</span><span style={{fontSize:9,fontFamily:SANS,color:a?C.gold:"#d8cdb8",fontWeight:a?600:400,whiteSpace:"nowrap"}}>{it.label}</span></button>;})}
+  </div>;
+}
+
+/* ═══════════ INICIO ═══════════ */
+function Inicio({recetas,lista,consumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,horario,sprints,setTab,abrirAjustes}){
+  const sobras=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
+  const hora=new Date().getHours();
+  const saludo=hora<12?"Buenos días":hora<19?"Buenas tardes":"Buenas noches";
+  const pendientes=lista.filter(i=>!i.comprado).length;
+  const hoyBloques=((horario||{})[diaHoyNombre()]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
+  const ahora=minNow();
+  const bloqueActual=hoyBloques.find(b=>ahora>=hhmmToMin(b.desde)&&ahora<hhmmToMin(b.hasta));
+  const bloqueSig=hoyBloques.find(b=>hhmmToMin(b.desde)>ahora);
+  const t=totDia(consumo,HOY);
+  const lim=num(limites.kcal);
+  const quemHoy=quemadoDia(quemadas,HOY,limites.quemadaDiaria);
+  const neto=t.kcal-quemHoy;
+
+  const efectivo=transacciones.reduce((a,x)=>a+(x.tipo==="ingreso"?num(x.monto):-num(x.monto)),0);
+  const tMes=transacciones.filter(x=>mesDe(x.fecha)===MES_ACTUAL);
+  const ing=tMes.filter(x=>x.tipo==="ingreso").reduce((a,x)=>a+num(x.monto),0);
+  const gas=tMes.filter(x=>x.tipo==="gasto").reduce((a,x)=>a+num(x.monto),0);
+
+  const metaAct=m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);return inv?num(inv.actual):num(m.actual);};
+  const metaProx=[...metas].filter(m=>metaAct(m)<num(m.objetivo)).sort((a,b)=>new Date(a.fecha||"2999")-new Date(b.fecha||"2999"))[0];
+  const entSem=entrenos.filter(e=>ultimos7().includes(e.fecha)).length;
+
+  const diaAno=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/864e5);
+  const frase=FRASES[diaAno%FRASES.length];
+
+  let estado=null;
+  if(quemHoy>0||lim>0){ const ref=quemHoy>0?quemHoy:lim;
+    if(neto>ref*0.05+50) estado={t:"Superávit",c:C.red}; else if(neto<-(ref*0.05+50)) estado={t:"Déficit",c:C.green}; else estado={t:"Mantenimiento",c:C.blue}; }
+
+  return <div>
+    <div style={{position:"relative",minHeight:340,overflow:"hidden",backgroundColor:"#11264a",backgroundImage:"linear-gradient(180deg, rgba(12,22,44,.30) 0%, rgba(12,18,34,.20) 38%, rgba(14,12,8,.86) 100%), url('./asta.jpg'), linear-gradient(160deg,#3f86c9 0%,#1d3f74 55%,#11203f 100%)",backgroundSize:"cover, cover, cover",backgroundPosition:"center, top center, center",backgroundRepeat:"no-repeat"}}>
+      <button onClick={abrirAjustes} style={{position:"absolute",top:18,right:16,background:"rgba(0,0,0,.35)",border:"1px solid rgba(255,255,255,.25)",width:38,height:38,borderRadius:"50%",color:C.gold,fontSize:18,cursor:"pointer",lineHeight:1,zIndex:2,backdropFilter:"blur(2px)"}}>⚙</button>
+      <div style={{position:"relative",zIndex:1,padding:"22px 22px 26px"}}>
+        <p style={{margin:0,fontSize:11,letterSpacing:4,color:C.gold,fontFamily:SANS,textTransform:"uppercase",fontWeight:700,textShadow:"0 1px 6px rgba(0,0,0,.6)"}}>✦ Mi Vida en Orden</p>
+        <p style={{margin:"14px 0 0",fontSize:11,letterSpacing:3,color:"#dfe9f5",fontFamily:SANS,textTransform:"uppercase",textShadow:"0 1px 6px rgba(0,0,0,.7)"}}>{fechaBonita()}</p>
+        <h1 style={{margin:"5px 0 0",fontFamily:SERIF,fontSize:30,fontWeight:"normal",color:"#fff",textShadow:"0 2px 10px rgba(0,0,0,.65)"}}>{saludo}</h1>
+      </div>
+      <div style={{position:"absolute",left:0,right:0,bottom:0,zIndex:1,padding:"40px 22px 18px",background:"linear-gradient(180deg, rgba(10,8,6,0) 0%, rgba(10,8,6,.78) 70%)"}}>
+        <p style={{margin:0,fontFamily:SERIF,fontStyle:"italic",fontWeight:"bold",fontSize:24,lineHeight:1.15,color:"#fff",textShadow:"0 2px 12px rgba(0,0,0,.8)"}}>“{frase}”</p>
+        <p style={{margin:"7px 0 0",fontSize:11,letterSpacing:2,color:C.gold,fontFamily:SANS,textTransform:"uppercase",fontWeight:700,textShadow:"0 1px 6px rgba(0,0,0,.7)"}}>— Asta · supera tus límites</p>
+      </div>
+    </div>
+
+    <div style={{padding:18,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <Card onClick={()=>setTab("comida")}>
+        <Mini icon="🍽️" label="Hoy comiste"/>
+        <p style={{margin:"8px 0 0",fontFamily:SERIF,fontSize:26,lineHeight:1}}>{t.kcal}<span style={{fontSize:13,color:C.muted}}> kcal</span></p>
+        {lim>0?<div style={{marginTop:8}}><Bar pct={t.kcal/lim*100} color={t.kcal>lim?C.red:C.green}/><p style={{margin:"5px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>Meta {lim}</p></div>:<p style={{margin:"6px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>Define tu meta →</p>}
+        <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
+          <Chip bg={C.greenSoft} col={C.green}>{t.proteina}g P</Chip>
+          <Chip bg={C.blueSoft} col={C.blue}>{t.carbos}g C</Chip>
+          <Chip bg={C.redSoft} col={C.red}>{t.grasa}g G</Chip>
+        </div>
+        {estado&&<p style={{margin:"10px 0 0",fontSize:12,fontFamily:SANS,fontWeight:700,color:estado.c}}>{estado.t} {neto>=0?"+":""}{neto} kcal</p>}
+      </Card>
+
+      <Card onClick={()=>setTab("finanzas")}>
+        <Mini icon="💵" label="Efectivo disponible"/>
+        <p style={{margin:"8px 0 0",fontFamily:SERIF,fontSize:24,lineHeight:1,color:efectivo>=0?C.green:C.red}}>{moneyShort(efectivo)}</p>
+        <p style={{margin:"6px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>Sin contar inversiones</p>
+        <div style={{height:1,background:C.borderSoft,margin:"12px 0 10px"}}/>
+        <Mini icon="📅" label="Este mes"/>
+        <p style={{margin:"6px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>+{moneyShort(ing)} · −{moneyShort(gas)}</p>
+      </Card>
+    </div>
+
+    {metaProx&&(()=>{const ma=metaAct(metaProx),mo=num(metaProx.objetivo);return <div style={{padding:"0 18px 6px"}}><Card onClick={()=>setTab("finanzas")}>
+      <Mini icon="🎯" label="Meta más próxima"/>
+      <p style={{margin:"8px 0 6px",fontFamily:SERIF,fontSize:18}}>{metaProx.nombre}</p>
+      <Bar pct={ma/mo*100} color={C.gold} h={10}/>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontSize:12,fontFamily:SANS,color:C.muted}}><span>{Math.round(ma/mo*100)}% · {money(ma)}</span><span>Faltan {moneyShort(mo-ma)}</span></div>
+    </Card></div>;})()}
+
+    {(bloqueActual||bloqueSig)&&<div style={{padding:"0 18px 6px"}}><Card onClick={()=>setTab("crono")}>
+      <Mini icon="🗓️" label={bloqueActual?"Ahora":"Lo siguiente hoy"}/>
+      <p style={{margin:"8px 0 4px",fontFamily:SERIF,fontSize:18}}>{(bloqueActual||bloqueSig).act}</p>
+      <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>{(bloqueActual||bloqueSig).desde}–{(bloqueActual||bloqueSig).hasta}{bloqueActual&&bloqueSig?" · luego "+bloqueSig.act:""}</p>
+    </Card></div>}
+
+    <div style={{padding:"14px 18px 10px",display:"grid",gap:8}}>
+      <Card onClick={()=>setTab("crono")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>🗂️ Sprints activos</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{(sprints||[]).filter(s=>progresoSprint(s).pct<100).length}</span></div></Card>
+      <Card onClick={()=>setTab("gym")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>🏋️ Entrenos esta semana</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{entSem}</span></div></Card>
+      <Card onClick={()=>setTab("lista")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>🛒 Lista de mercado</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{pendientes} pendientes</span></div></Card>
+      {sobras.length>0&&<Card onClick={()=>setTab("comida")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>🍳 Lotes / sobras</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{(sobras.reduce((a,l)=>a+num(l.porcionesRest),0)).toFixed(2).replace(/\.?0+$/,"")} porc</span></div></Card>}
+      <Card onClick={()=>setTab("comida")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>📖 Recetas guardadas</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{recetas.length}</span></div></Card>
+    </div>
+  </div>;
+}
+
+/* ═══════════ COMIDA ═══════════ */
+function Comida(props){
+  const [vista,setVista]=useState("recetas");
+  return <div>
+    <Header titulo="Comida"/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"recetas",label:"📖 Recetas"},{id:"diario",label:"🍽️ Diario"},{id:"guias",label:"📚 Guías"}]}/>
+    {vista==="recetas"&&<Recetas {...props} irADiario={()=>setVista("diario")}/>}
+    {vista==="diario"&&<Diario {...props}/>}
+    {vista==="guias"&&<Guias {...props}/>}
+  </div>;
+}
+
+function Recetas({recetas,setRecetas,setLista,setConsumo,lotes,setLotes,irADiario}){
+  const [editando,setEditando]=useState(null);
+  const [ver,setVer]=useState(null);
+  const [registrar,setRegistrar]=useState(null);
+  const [cocina,setCocina]=useState(null);
+  const [cocinar,setCocinar]=useState(null);
+  const [filtro,setFiltro]=useState("Todas");
+  const [q,setQ]=useState("");
+  const [toast,setToast]=useState("");
+  const nueva=()=>setEditando({id:uid(),nombre:"",tipo:"Almuerzo",porciones:1,kcal:"",proteina:"",carbos:"",grasa:"",ingredientes:[{nombre:"",cantidad:"",medida:"g"}],pasos:[{id:uid(),texto:"",min:""}],notas:""});
+  const guardar=r=>{setRecetas(p=>p.some(x=>x.id===r.id)?p.map(x=>x.id===r.id?r:x):[...p,r]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar receta",texto:"Se borrará esta receta."})){ setRecetas(p=>p.filter(x=>x.id!==id)); setVer(null);} };
+  const enviarALista=r=>{const n=r.ingredientes.filter(i=>i.nombre.trim()).map(i=>{const med=[i.cantidad,i.medida].filter(Boolean).join(" ").trim();return {id:uid(),nombre:med?i.nombre+" ("+med+")":i.nombre,categoria:"🍽️ De recetas",comprado:false,precio:"",tienda:""};});setLista(p=>[...p,...n]);setToast(n.length+" ingredientes → lista");setTimeout(()=>setToast(""),2400);};
+  const confirmarConsumo=(r,por,fecha)=>{const p=num(por)||1;setConsumo(prev=>[...prev,{id:uid(),fecha,nombre:r.nombre,porciones:p,kcal:Math.round(num(r.kcal)*p),proteina:Math.round(num(r.proteina)*p),carbos:Math.round(num(r.carbos)*p),grasa:Math.round(num(r.grasa)*p)}]);setRegistrar(null);setVer(null);setToast("Consumo registrado 🍽️");setTimeout(()=>setToast(""),2400);};
+  const confirmarLote=(r,porciones)=>{const pt=num(porciones)||1;setLotes&&setLotes(prev=>[{id:uid(),nombre:r.nombre,recetaId:r.id,fecha:HOY,porcionesTotal:pt,porcionesRest:pt,kcal:num(r.kcal),proteina:num(r.proteina),carbos:num(r.carbos),grasa:num(r.grasa)},...prev]);setCocinar(null);setVer(null);setToast("Lote creado 🍳 ("+pt+" porciones)");setTimeout(()=>setToast(""),2600);};
+  const tipos=["Todas",...TIPOS_RECETA.filter(t=>recetas.some(r=>r.tipo===t))];
+  const ql=q.trim().toLowerCase();
+  const porTipo=filtro==="Todas"?recetas:recetas.filter(r=>r.tipo===filtro);
+  const visibles=ql?porTipo.filter(r=>r.nombre.toLowerCase().includes(ql)||(r.ingredientes||[]).some(i=>(i.nombre||"").toLowerCase().includes(ql))):porTipo;
+  return <div>
+    <div style={{padding:"12px 18px 6px"}}><button onClick={nueva} style={{width:"100%",padding:"13px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva receta</button></div>
+    {recetas.length>0&&<div style={{padding:"6px 18px 0"}}><input style={inputStyle} placeholder="🔍 Buscar receta o ingrediente…" value={q} onChange={e=>setQ(e.target.value)}/></div>}
+    {tipos.length>1&&<div style={{display:"flex",gap:7,overflowX:"auto",padding:"6px 18px 4px"}}>{tipos.map(t=><button key={t} onClick={()=>setFiltro(t)} style={{whiteSpace:"nowrap",padding:"6px 13px",borderRadius:20,border:"1.5px solid "+(filtro===t?C.gold:C.border),background:filtro===t?C.gold:"transparent",color:filtro===t?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:filtro===t?600:400,cursor:"pointer"}}>{t}</button>)}</div>}
+    <div style={{padding:"8px 18px 20px"}}>
+      {visibles.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:30}}>Sin recetas en esta categoría.</p>}
+      {visibles.map(r=><div key={r.id} onClick={()=>setVer(r)} style={{background:C.card,borderRadius:14,padding:16,marginBottom:10,border:"1.5px solid "+C.border,cursor:"pointer"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:18,fontWeight:"normal"}}>{r.nombre}</h3>{r.tipo&&<Chip>{r.tipo}</Chip>}</div>
+        <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>{r.kcal?<Chip bg={C.borderSoft}>{Math.round(num(r.kcal))} kcal</Chip>:null}{r.proteina?<Chip bg={C.borderSoft}>{Math.round(num(r.proteina))}g P</Chip>:null}{r.carbos?<Chip bg={C.borderSoft}>{Math.round(num(r.carbos))}g C</Chip>:null}{r.grasa?<Chip bg={C.borderSoft}>{Math.round(num(r.grasa))}g G</Chip>:null}{num(r.porciones)>1?<Chip bg={C.goldSoft}>rinde {r.porciones}</Chip>:null}</div>
+      </div>)}
+    </div>
+
+    <Sheet open={!!ver} onClose={()=>setVer(null)} title={ver?.nombre}>{ver&&<div>
+      {ver.tipo&&<div style={{marginBottom:12}}><Chip>{ver.tipo}</Chip></div>}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}><Macro label="kcal" value={ver.kcal?Math.round(num(ver.kcal)):""}/><Macro label="Proteína" value={ver.proteina?Math.round(num(ver.proteina))+"g":""}/><Macro label="Carbos" value={ver.carbos?Math.round(num(ver.carbos))+"g":""}/><Macro label="Grasa" value={ver.grasa?Math.round(num(ver.grasa))+"g":""}/></div>
+      {ver.porciones?<p style={{fontSize:13,color:C.muted,fontFamily:SANS,margin:"0 0 14px"}}>Valores por porción · rinde {ver.porciones} {num(ver.porciones)===1?"porción":"porciones"} · plato completo ≈ {Math.round(num(ver.kcal)*num(ver.porciones))} kcal</p>:null}
+      <p style={labelStyle}>Ingredientes</p>
+      <div style={{marginBottom:16}}>{ver.ingredientes.filter(i=>i.nombre).map((i,k)=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid "+C.borderSoft,fontFamily:SANS,fontSize:14}}><span>{i.nombre}</span><span style={{color:C.muted}}>{[i.cantidad,i.medida].filter(Boolean).join(" ")}</span></div>)}</div>
+      {(ver.pasos||[]).filter(s=>s.texto&&s.texto.trim()).length>0&&<div><p style={labelStyle}>Preparación por pasos</p><div style={{marginBottom:14}}>{(ver.pasos||[]).filter(s=>s.texto&&s.texto.trim()).map((s,k)=><div key={k} style={{display:"flex",gap:10,padding:"9px 0",borderBottom:"1px solid "+C.borderSoft,fontFamily:SANS,fontSize:14,lineHeight:1.5}}><span style={{flexShrink:0,width:24,height:24,borderRadius:"50%",background:C.goldSoft,color:C.espresso,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{k+1}</span><span style={{flex:1}}>{s.texto}{num(s.min)>0&&<span style={{display:"inline-block",marginLeft:6,background:C.blueSoft,color:C.blue,fontSize:11,fontWeight:700,padding:"1px 7px",borderRadius:10}}>⏱ {s.min} min</span>}</span></div>)}</div></div>}
+      {ver.notas?<div><p style={labelStyle}>Notas</p><p style={{fontFamily:SANS,fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap",marginTop:4}}>{ver.notas}</p></div>:null}
+      {(ver.pasos||[]).filter(s=>s.texto&&s.texto.trim()).length>0&&<button onClick={()=>{setCocina(ver);setVer(null);}} style={{width:"100%",padding:"14px 0",marginTop:18,background:C.espresso,color:C.gold,border:"none",borderRadius:11,fontSize:15,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>👨‍🍳 Modo cocina</button>}
+      {setLotes&&<button onClick={()=>setCocinar(ver)} style={{width:"100%",padding:"13px 0",marginTop:10,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>🍳 Cociné este plato (lote)</button>}
+      <button onClick={()=>setRegistrar(ver)} style={{width:"100%",padding:"13px 0",marginTop:10,background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>🍽️ Comí ahora (sin lote)</button>
+      <div style={{display:"flex",gap:10,marginTop:10}}><button onClick={()=>enviarALista(ver)} style={{flex:1,padding:"11px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:SANS,cursor:"pointer"}}>🛒 A la lista</button><button onClick={()=>{setEditando(ver);setVer(null);}} style={{flex:1,padding:"11px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Editar</button></div>
+      <button onClick={()=>eliminar(ver.id)} style={{width:"100%",marginTop:10,padding:"8px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar receta</button>
+    </div>}</Sheet>
+
+    <Sheet open={!!registrar} onClose={()=>setRegistrar(null)} title="Comí ahora">{registrar&&<FormConsumo receta={registrar} onConfirmar={confirmarConsumo}/>}</Sheet>
+    <Sheet open={!!cocinar} onClose={()=>setCocinar(null)} title="Cociné un lote">{cocinar&&<FormCocinar receta={cocinar} onConfirmar={confirmarLote} verLotes={()=>{setCocinar(null);setVer(null);irADiario&&irADiario();}}/>}</Sheet>
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?.nombre?"Editar receta":"Nueva receta"}>{editando&&<FormReceta receta={editando} onGuardar={guardar}/>}</Sheet>
+    {cocina&&<ModoCocina receta={cocina} onClose={()=>setCocina(null)}/>}
+    {toast&&<Toast>{toast}</Toast>}
+  </div>;
+}
+
+function ModoCocina({receta,onClose}){
+  const pasos=(receta.pasos||[]).filter(s=>s.texto&&s.texto.trim());
+  const [i,setI]=useState(0);
+  const [left,setLeft]=useState(0);      // segundos restantes
+  const [run,setRun]=useState(false);
+  const [fin,setFin]=useState(false);    // este paso terminó su tiempo
+  const finAt=React.useRef(0);
+  const paso=pasos[i]||{};
+  const mins=num(paso.min);
+
+  // wake lock para que la pantalla no se apague
+  useEffect(()=>{let wl=null;(async()=>{try{if("wakeLock"in navigator)wl=await navigator.wakeLock.request("screen");}catch(e){}})();return()=>{try{wl&&wl.release();}catch(e){}};},[]);
+  useEffect(()=>{pedirNoti();},[]);
+
+  // al cambiar de paso, prepara su cronómetro
+  useEffect(()=>{ setRun(false); setFin(false); setLeft(num(paso.min)*60); notiCancelar("cocina"); },[i]);
+
+  // tick del cronómetro
+  useEffect(()=>{
+    if(!run) return;
+    const id=setInterval(()=>{
+      const rem=Math.round((finAt.current-Date.now())/1000);
+      if(rem<=0){ setLeft(0); setRun(false); setFin(true); beep(3); notiAhora("⏱ ¡Tiempo!","Paso "+(i+1)+": "+paso.texto,"cocina-fin"); clearInterval(id); }
+      else setLeft(rem);
+    },250);
+    return ()=>clearInterval(id);
+  },[run]);
+
+  const iniciar=()=>{ if(mins<=0) return; beep(1); finAt.current=Date.now()+left*1000; setFin(false); setRun(true); notiProgramar("⏱ ¡Tiempo! · "+receta.nombre,"Paso "+(i+1)+": "+paso.texto, finAt.current, "cocina-fin"); };
+  const pausar=()=>{ setRun(false); notiCancelar("cocina"); };
+  const reiniciar=()=>{ setRun(false); setFin(false); setLeft(mins*60); notiCancelar("cocina"); };
+  const irA=n=>{ if(n<0||n>=pasos.length) return; setI(n); };
+  const cerrar=()=>{ notiCancelar("cocina"); onClose(); };
+
+  if(pasos.length===0) return null;
+  const total=mins*60, prog=total>0?(1-left/total)*100:0;
+  return <div style={{position:"fixed",inset:0,zIndex:200,background:C.espresso,color:"#fff",display:"flex",flexDirection:"column",fontFamily:SANS}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px"}}>
+      <span style={{fontFamily:SERIF,fontSize:18,color:C.gold}}>👨‍🍳 {receta.nombre}</span>
+      <button onClick={cerrar} style={{background:"rgba(255,255,255,.12)",border:"none",color:"#fff",width:36,height:36,borderRadius:"50%",fontSize:18,cursor:"pointer"}}>✕</button>
+    </div>
+    <div style={{display:"flex",gap:5,padding:"0 18px 6px"}}>{pasos.map((_,k)=><div key={k} onClick={()=>irA(k)} style={{flex:1,height:5,borderRadius:3,background:k<i?C.gold:k===i?"#fff":"rgba(255,255,255,.22)",cursor:"pointer"}}/>)}</div>
+    <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:"10px 26px",textAlign:"center"}}>
+      <p style={{margin:0,fontSize:13,letterSpacing:2,textTransform:"uppercase",color:C.gold}}>Paso {i+1} de {pasos.length}</p>
+      <p style={{margin:"18px 0 0",fontFamily:SERIF,fontSize:25,lineHeight:1.35,maxWidth:520}}>{paso.texto}</p>
+      {mins>0?<div style={{marginTop:34,display:"flex",flexDirection:"column",alignItems:"center"}}>
+        <div style={{position:"relative",width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="200" height="200" style={{position:"absolute",top:0,left:0,transform:"rotate(-90deg)"}}><circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="10"/><circle cx="100" cy="100" r="90" fill="none" stroke={fin?C.gold:"#fff"} strokeWidth="10" strokeLinecap="round" strokeDasharray={2*Math.PI*90} strokeDashoffset={2*Math.PI*90*(1-prog/100)} style={{transition:"stroke-dashoffset .4s linear"}}/></svg>
+          <span style={{fontFamily:SERIF,fontSize:46,fontWeight:"bold",color:fin?C.gold:"#fff"}}>{fin?"¡Listo!":fmtMMSS(left)}</span>
+        </div>
+        <div style={{display:"flex",gap:12,marginTop:26}}>
+          {!run&&!fin&&<button onClick={iniciar} style={{padding:"13px 30px",background:C.gold,color:C.espresso,border:"none",borderRadius:30,fontSize:15,fontWeight:700,cursor:"pointer"}}>▶ {left===total?"Iniciar":"Reanudar"}</button>}
+          {run&&<button onClick={pausar} style={{padding:"13px 30px",background:"rgba(255,255,255,.15)",color:"#fff",border:"none",borderRadius:30,fontSize:15,fontWeight:700,cursor:"pointer"}}>⏸ Pausar</button>}
+          {(fin||left!==total)&&<button onClick={reiniciar} style={{padding:"13px 24px",background:"transparent",color:"#fff",border:"1.5px solid rgba(255,255,255,.4)",borderRadius:30,fontSize:15,fontWeight:600,cursor:"pointer"}}>↻ Reiniciar</button>}
+        </div>
+        {!tieneTriggers&&<p style={{margin:"16px 0 0",fontSize:11,color:"rgba(255,255,255,.55)",maxWidth:280}}>Mantén esta pantalla abierta para que suene la alarma.</p>}
+      </div>:<p style={{marginTop:30,fontSize:13,color:"rgba(255,255,255,.5)"}}>Paso sin cronómetro</p>}
+    </div>
+    <div style={{display:"flex",gap:10,padding:"14px 18px 26px"}}>
+      <button disabled={i===0} onClick={()=>irA(i-1)} style={{flex:1,padding:"15px 0",background:"rgba(255,255,255,.1)",color:i===0?"rgba(255,255,255,.3)":"#fff",border:"none",borderRadius:12,fontSize:15,fontWeight:600,cursor:i===0?"default":"pointer"}}>← Anterior</button>
+      {i<pasos.length-1?<button onClick={()=>irA(i+1)} style={{flex:2,padding:"15px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>Siguiente →</button>:<button onClick={cerrar} style={{flex:2,padding:"15px 0",background:C.green,color:"#fff",border:"none",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>✓ Terminar</button>}
+    </div>
+  </div>;
+}
+
+function FormConsumo({receta,onConfirmar}){
+  const [por,setPor]=useState(1); const [fecha,setFecha]=useState(HOY); const p=num(por)||1;
+  return <div>
+    <p style={{fontFamily:SERIF,fontSize:18,margin:"0 0 4px"}}>{receta.nombre}</p>
+    <Field label="Porciones consumidas"><div style={{display:"flex",alignItems:"center",gap:14}}><button onClick={()=>setPor(x=>Math.max(.5,num(x)-.5))} style={stepBtn}>−</button><span style={{fontFamily:SERIF,fontSize:22,minWidth:40,textAlign:"center"}}>{p}</span><button onClick={()=>setPor(x=>num(x)+.5)} style={stepBtn}>+</button></div></Field>
+    <Field label="Fecha"><input type="date" style={inputStyle} value={fecha} onChange={e=>setFecha(e.target.value)}/></Field>
+    <div style={{background:C.greenSoft,borderRadius:12,padding:14,margin:"4px 0 8px",fontFamily:SANS,fontSize:14,color:C.green}}>Registrarás: <b>{Math.round(num(receta.kcal)*p)} kcal</b> · {Math.round(num(receta.proteina)*p)}g P · {Math.round(num(receta.carbos)*p)}g C · {Math.round(num(receta.grasa)*p)}g G</div>
+    <button onClick={()=>onConfirmar(receta,por,fecha)} style={btnP(true)}>Registrar</button>
+  </div>;
+}
+
+function FormCocinar({receta,onConfirmar,verLotes}){
+  const [porc,setPorc]=useState(num(receta.porciones)||1); const p=num(porc)||1;
+  return <div>
+    <p style={{fontFamily:SERIF,fontSize:18,margin:"0 0 4px"}}>{receta.nombre}</p>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 14px",lineHeight:1.5}}>Crea un "lote" con lo que cocinaste. Luego, cada día registras cuánto comes y la app va descontando las porciones que te quedan.</p>
+    <Field label="¿Cuántas porciones rinde lo que cocinaste?"><div style={{display:"flex",alignItems:"center",gap:14}}><button onClick={()=>setPorc(x=>Math.max(.5,num(x)-.5))} style={stepBtn}>−</button><span style={{fontFamily:SERIF,fontSize:24,minWidth:50,textAlign:"center"}}>{p}</span><button onClick={()=>setPorc(x=>num(x)+.5)} style={stepBtn}>+</button></div></Field>
+    <div style={{background:C.goldSoft,borderRadius:12,padding:14,margin:"4px 0 10px",fontFamily:SANS,fontSize:13.5,color:C.espresso}}>El plato completo aporta <b>{Math.round(num(receta.kcal)*p)} kcal</b> · {Math.round(num(receta.proteina)*p)}g P · {Math.round(num(receta.carbos)*p)}g C · {Math.round(num(receta.grasa)*p)}g G<br/><span style={{color:C.muted}}>Cada porción ≈ {Math.round(num(receta.kcal))} kcal</span></div>
+    <button onClick={()=>onConfirmar(receta,porc)} style={btnP(true)}>🍳 Crear lote de {p} porciones</button>
+    <button onClick={verLotes} style={{width:"100%",marginTop:10,padding:"10px 0",background:"transparent",color:C.muted,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Ver mis lotes en Diario →</button>
+  </div>;
+}
+
+function FormReceta({receta,onGuardar}){
+  const [r,setR]=useState(receta);
+  const set=(k,v)=>setR(p=>({...p,[k]:v}));
+  const setIng=(i,k,v)=>setR(p=>({...p,ingredientes:p.ingredientes.map((x,j)=>j===i?{...x,[k]:v}:x)}));
+  const addIng=()=>setR(p=>({...p,ingredientes:[...p.ingredientes,{nombre:"",cantidad:"",medida:"g"}]}));
+  const delIng=i=>setR(p=>({...p,ingredientes:p.ingredientes.filter((_,j)=>j!==i)}));
+  const pasos=r.pasos||[];
+  const setPaso=(i,k,v)=>setR(p=>({...p,pasos:(p.pasos||[]).map((x,j)=>j===i?{...x,[k]:v}:x)}));
+  const addPaso=()=>setR(p=>({...p,pasos:[...(p.pasos||[]),{id:uid(),texto:"",min:""}]}));
+  const delPaso=i=>setR(p=>({...p,pasos:(p.pasos||[]).filter((_,j)=>j!==i)}));
+  const porc=Math.max(.5,num(r.porciones)||1);
+  const [tot,setTot]=useState(()=>{const pp=num(receta.porciones)||1;const f=v=>(v===""||v==null)?"":String(Math.round(num(v)*pp));return {kcal:f(receta.kcal),proteina:f(receta.proteina),carbos:f(receta.carbos),grasa:f(receta.grasa)};});
+  const setTotK=(k,v)=>setTot(p=>({...p,[k]:v}));
+  const perPortion=k=>tot[k]===""?"":num(tot[k])/porc;
+  const guardarReceta=()=>onGuardar({...r,kcal:perPortion("kcal"),proteina:perPortion("proteina"),carbos:perPortion("carbos"),grasa:perPortion("grasa")});
+  const algoNutri=["kcal","proteina","carbos","grasa"].some(k=>tot[k]!=="");
+  const ok=r.nombre.trim().length>0;
+  return <div>
+    <Field label="Nombre"><input style={inputStyle} value={r.nombre} placeholder="Ej. Pollo a la naranja" onChange={e=>set("nombre",e.target.value)}/></Field>
+    <Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={r.tipo} onChange={e=>set("tipo",e.target.value)}>{TIPOS_RECETA.map(t=><option key={t} value={t}>{t}</option>)}</select></Field>
+    <Field label="Porciones que rinde el plato"><input style={inputStyle} type="number" inputMode="decimal" value={r.porciones} onChange={e=>set("porciones",e.target.value)}/></Field>
+    <p style={{...labelStyle,marginTop:4}}>Nutrición del PLATO COMPLETO</p>
+    <p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"0 0 8px"}}>Pon el total de todo lo que cocinaste. La app lo divide entre las porciones.</p>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+      <input style={inputStyle} type="number" inputMode="numeric" placeholder="kcal totales" value={tot.kcal} onChange={e=>setTotK("kcal",e.target.value)}/>
+      <input style={inputStyle} type="number" inputMode="numeric" placeholder="Proteína total (g)" value={tot.proteina} onChange={e=>setTotK("proteina",e.target.value)}/>
+      <input style={inputStyle} type="number" inputMode="numeric" placeholder="Carbos total (g)" value={tot.carbos} onChange={e=>setTotK("carbos",e.target.value)}/>
+      <input style={inputStyle} type="number" inputMode="numeric" placeholder="Grasa total (g)" value={tot.grasa} onChange={e=>setTotK("grasa",e.target.value)}/>
+    </div>
+    {algoNutri&&<div style={{background:C.greenSoft,borderRadius:12,padding:"11px 14px",margin:"0 0 16px",fontFamily:SANS,fontSize:13.5,color:C.green}}>Por porción ≈ <b>{Math.round(num(perPortion("kcal")))} kcal</b> · {Math.round(num(perPortion("proteina")))}g P · {Math.round(num(perPortion("carbos")))}g C · {Math.round(num(perPortion("grasa")))}g G</div>}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><label style={{...labelStyle,marginBottom:0}}>Ingredientes</label><button onClick={addIng} style={{background:C.goldSoft,border:"none",borderRadius:8,padding:"5px 12px",fontSize:13,color:C.espresso,cursor:"pointer",fontFamily:SANS,fontWeight:600}}>+ Añadir</button></div>
+    {r.ingredientes.map((i,idx)=><div key={idx} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}><input style={{...inputStyle,flex:"2 1 0",minWidth:0}} placeholder="Ingrediente" value={i.nombre} onChange={e=>setIng(idx,"nombre",e.target.value)}/><input style={{...inputStyle,flex:"1 1 0",minWidth:0}} inputMode="decimal" placeholder="Cant." value={i.cantidad} onChange={e=>setIng(idx,"cantidad",e.target.value)}/><select style={{...inputStyle,flex:"1.2 1 0",minWidth:0,appearance:"none",padding:"11px 6px"}} value={i.medida||"g"} onChange={e=>setIng(idx,"medida",e.target.value)}>{MEDIDAS.map(u=><option key={u} value={u}>{u}</option>)}</select>{r.ingredientes.length>1&&<button onClick={()=>delIng(idx)} style={{background:"none",border:"none",color:C.red,fontSize:20,cursor:"pointer",width:18,flexShrink:0}}>×</button>}</div>)}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"4px 0 8px"}}><label style={{...labelStyle,marginBottom:0}}>Pasos de preparación</label><button onClick={addPaso} style={{background:C.goldSoft,border:"none",borderRadius:8,padding:"5px 12px",fontSize:13,color:C.espresso,cursor:"pointer",fontFamily:SANS,fontWeight:600}}>+ Paso</button></div>
+    <p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"0 0 10px"}}>Pon los minutos a un paso para activar su cronómetro en el Modo cocina (te avisa al celular).</p>
+    {pasos.map((s,idx)=><div key={s.id||idx} style={{display:"flex",gap:7,marginBottom:8,alignItems:"flex-start"}}>
+      <span style={{flexShrink:0,width:26,height:26,marginTop:8,borderRadius:"50%",background:C.goldSoft,color:C.espresso,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{idx+1}</span>
+      <div style={{flex:1,minWidth:0}}>
+        <textarea style={{...inputStyle,minHeight:54,resize:"vertical"}} placeholder={"Ej. Sofríe la cebolla hasta dorar"} value={s.texto} onChange={e=>setPaso(idx,"texto",e.target.value)}/>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}><span style={{fontSize:12,color:C.muted,fontFamily:SANS}}>⏱</span><input style={{...inputStyle,width:70,padding:"7px 8px",fontSize:13}} inputMode="numeric" placeholder="min" value={s.min} onChange={e=>setPaso(idx,"min",e.target.value)}/><span style={{fontSize:12,color:C.muted,fontFamily:SANS}}>min (opcional)</span></div>
+      </div>
+      {pasos.length>1&&<button onClick={()=>delPaso(idx)} style={{background:"none",border:"none",color:C.red,fontSize:20,cursor:"pointer",width:18,flexShrink:0,marginTop:6}}>×</button>}
+    </div>)}
+    <Field label="Notas extra (opcional)"><textarea style={{...inputStyle,minHeight:60,resize:"vertical",marginTop:6}} value={r.notas} placeholder="Tips, variaciones…" onChange={e=>set("notas",e.target.value)}/></Field>
+    <button disabled={!ok} onClick={guardarReceta} style={btnP(ok)}>Guardar receta</button>
+  </div>;
+}
+
+function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes}){
+  const [editLim,setEditLim]=useState(false);
+  const [addQuem,setAddQuem]=useState(false);
+  const [metrica,setMetrica]=useState("kcal");
+  const [toast,setToast]=useState("");
+  const lotesAct=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
+  const comerLote=(l,p)=>{const real=Math.min(num(p),num(l.porcionesRest));if(real<=0)return;setConsumo(prev=>[...prev,{id:uid(),fecha:HOY,nombre:l.nombre,porciones:real,kcal:Math.round(num(l.kcal)*real),proteina:Math.round(num(l.proteina)*real),carbos:Math.round(num(l.carbos)*real),grasa:Math.round(num(l.grasa)*real)}]);setLotes(prev=>prev.map(x=>x.id===l.id?{...x,porcionesRest:+(num(x.porcionesRest)-real).toFixed(2)}:x));setToast("Registrado: "+real+" porción"+(real===1?"":"es")+" 🍽️");setTimeout(()=>setToast(""),2200);};
+  const delLote=async id=>{ if(await pedirConfirm({titulo:"Eliminar lote",texto:"Se borra lo que sobró. No afecta lo ya registrado."})) setLotes(prev=>prev.filter(x=>x.id!==id)); };
+  const hoy=consumo.filter(c=>c.fecha===HOY);
+  const t=totDia(consumo,HOY);
+  const quemHoy=quemadoDia(quemadas,HOY,limites.quemadaDiaria);
+  const neto=t.kcal-quemHoy;
+  const quemLog=quemadas.filter(q=>q.fecha===HOY);
+
+  const sem=ultimos7().map(f=>{const td=totDia(consumo,f);const q=quemadoDia(quemadas,f,limites.quemadaDiaria);return{f,...td,quem:q,neto:td.kcal-q};});
+  const filas=[{k:"kcal",label:"Calorías",unit:"kcal",color:C.gold},{k:"proteina",label:"Proteína",unit:"g",color:C.green},{k:"carbos",label:"Carbohidratos",unit:"g",color:C.blue},{k:"grasa",label:"Grasa",unit:"g",color:C.red}];
+  const eliminar=id=>setConsumo(p=>p.filter(c=>c.id!==id));
+  const elimQuem=id=>setQuemadas(p=>p.filter(q=>q.id!==id));
+
+  const refEstado=quemHoy>0?quemHoy:num(limites.kcal);
+  let estado=null;
+  if(refEstado>0){ const margen=refEstado*0.05+50;
+    if(neto>margen) estado={t:"Superávit",c:C.red,bg:C.redSoft}; else if(neto<-margen) estado={t:"Déficit",c:C.green,bg:C.greenSoft}; else estado={t:"Mantenimiento",c:C.blue,bg:C.blueSoft}; }
+
+  const metricaCfg={kcal:{label:"Calorías",unit:"",color:C.gold},proteina:{label:"Proteína",unit:"g",color:C.green},carbos:{label:"Carbos",unit:"g",color:C.blue},grasa:{label:"Grasa",unit:"g",color:C.red}}[metrica];
+  const valores=sem.map(s=>s[metrica]);
+  const maxV=Math.max(...valores,metrica==="kcal"?num(limites.kcal):0,1);
+  const sumaSem=valores.reduce((a,v)=>a+v,0);
+  const netoSem=sem.reduce((a,s)=>a+s.neto,0);
+
+  return <div style={{padding:"10px 18px 20px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontFamily:SERIF,fontSize:17}}>Hoy</span><button onClick={()=>setEditLim(true)} style={{background:"transparent",border:"1.5px solid "+C.border,borderRadius:20,padding:"5px 12px",fontSize:12,color:C.muted,fontFamily:SANS,cursor:"pointer"}}>⚙ Metas y quemadas</button></div>
+
+    {/* macros vs meta */}
+    <Card pad={16}>{filas.map((f,i)=>{const cons=t[f.k],lim=num(limites[f.k]);const pct=lim>0?cons/lim*100:0;const over=lim>0&&cons>lim;return <div key={f.k} style={{marginBottom:i<3?14:0}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontFamily:SANS,fontSize:13}}><span>{f.label}</span><span style={{color:over?C.red:C.muted}}>{cons}{lim>0?" / "+lim:""} {f.unit}</span></div><Bar pct={pct} color={over?C.red:f.color} h={f.k==="kcal"?11:7}/></div>;})}
+      {num(limites.kcal)===0&&<p style={{margin:"12px 0 0",fontSize:12,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Toca "Metas y quemadas" para fijarlas.</p>}
+    </Card>
+
+    {/* balance energetico */}
+    <div style={{marginTop:12}}><Card pad={16}>
+      <Mini icon="🔥" label="Balance energético de hoy"/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
+        <div style={{textAlign:"center",flex:1}}><p style={{margin:0,fontFamily:SERIF,fontSize:20}}>{t.kcal}</p><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>consumido</p></div>
+        <span style={{fontSize:18,color:C.muted}}>−</span>
+        <div style={{textAlign:"center",flex:1}}><p style={{margin:0,fontFamily:SERIF,fontSize:20}}>{quemHoy}</p><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>quemado</p></div>
+        <span style={{fontSize:18,color:C.muted}}>=</span>
+        <div style={{textAlign:"center",flex:1}}><p style={{margin:0,fontFamily:SERIF,fontSize:20,color:estado?estado.c:C.text}}>{neto>=0?"+":""}{neto}</p><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>neto</p></div>
+      </div>
+      {estado&&<div style={{marginTop:12,background:estado.bg,borderRadius:10,padding:"8px 12px",textAlign:"center",fontFamily:SANS,fontSize:14,fontWeight:700,color:estado.c}}>{estado.t}</div>}
+      <button onClick={()=>setAddQuem(true)} style={{width:"100%",marginTop:10,padding:"9px 0",background:"transparent",border:"1.5px solid "+C.border,borderRadius:9,fontSize:13,color:C.text,fontFamily:SANS,cursor:"pointer"}}>+ Registrar quemadas (extra)</button>
+      {quemLog.map(q=><div key={q.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,fontFamily:SANS,fontSize:13,color:C.muted}}><span>{q.nombre||"Actividad"} · {q.kcal} kcal</span><button onClick={()=>elimQuem(q.id)} style={{background:"none",border:"none",color:C.red,cursor:"pointer",fontSize:16}}>×</button></div>)}
+    </Card></div>
+
+    {setLotes&&lotesAct.length>0&&<div style={{marginTop:18}}>
+      <p style={{...labelStyle,marginBottom:8}}>🍳 Lo que cociné · porciones restantes</p>
+      {lotesAct.map(l=>{const rest=num(l.porcionesRest),tt=num(l.porcionesTotal)||rest,pct=tt>0?rest/tt*100:0;return <div key={l.id} style={{background:C.card,borderRadius:13,padding:14,marginBottom:9,border:"1.5px solid "+C.border}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div style={{flex:1}}><p style={{margin:0,fontFamily:SERIF,fontSize:16}}>{l.nombre}</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>{Math.round(num(l.kcal))} kcal/porción · cocinado {l.fecha===HOY?"hoy":l.fecha}</p></div>
+          <button onClick={()=>delLote(l.id)} style={{background:"none",border:"none",color:C.muted,fontSize:17,cursor:"pointer",marginLeft:6}}>×</button>
+        </div>
+        <div style={{margin:"10px 0 4px"}}><Bar pct={pct} color={C.gold} h={9}/></div>
+        <p style={{margin:"0 0 10px",fontFamily:SANS,fontSize:13}}><b>{rest}</b> de {tt} porciones</p>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+          {[["¼",.25],["½",.5],["¾",.75],["1",1]].map(([lbl,v])=><button key={lbl} disabled={rest<v-0.001} onClick={()=>comerLote(l,v)} style={{flex:"1 1 0",minWidth:54,padding:"9px 0",borderRadius:9,border:"none",background:rest<v-0.001?C.borderSoft:C.green,color:rest<v-0.001?C.muted:"#fff",fontSize:13.5,fontWeight:700,fontFamily:SANS,cursor:rest<v-0.001?"default":"pointer"}}>Comí {lbl}</button>)}
+        </div>
+      </div>;})}
+    </div>}
+
+    {/* comidas hoy */}
+    <p style={{...labelStyle,margin:"22px 0 8px"}}>Comidas de hoy</p>
+    {hoy.length===0?<p style={{color:C.muted,fontFamily:SANS,fontSize:14}}>Nada registrado. Abre una receta y toca "Registrar consumo".</p>:hoy.map(c=><div key={c.id} style={{background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{c.nombre}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{c.porciones} porc · {c.kcal} kcal · {c.proteina}P {c.carbos}C {c.grasa}G</p></div><button onClick={()=>eliminar(c.id)} style={{background:"none",border:"none",color:C.red,fontSize:18,cursor:"pointer"}}>×</button></div>)}
+
+    {/* semanal */}
+    <p style={{...labelStyle,margin:"26px 0 8px"}}>Semana</p>
+    <div style={{display:"flex",gap:6,marginBottom:10,overflowX:"auto"}}>{Object.keys(metricaCfg?{}:{})}{["kcal","proteina","carbos","grasa"].map(m=>{const a=metrica===m;const lbl={kcal:"Calorías",proteina:"Proteína",carbos:"Carbos",grasa:"Grasa"}[m];return <button key={m} onClick={()=>setMetrica(m)} style={{whiteSpace:"nowrap",padding:"6px 13px",borderRadius:20,border:"1.5px solid "+(a?C.gold:C.border),background:a?C.gold:"transparent",color:a?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:a?600:400,cursor:"pointer"}}>{lbl}</button>;})}</div>
+    <Card pad={16}>
+      <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:130,gap:6}}>{sem.map((s,idx)=>{const v=valores[idx];const h=v/maxV*110;const lim=metrica==="kcal"?num(limites.kcal):0;const over=lim>0&&v>lim;const esHoy=s.f===HOY;return <div key={s.f} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><span style={{fontSize:9.5,color:C.muted,fontFamily:SANS}}>{v||""}</span><div style={{width:"100%",maxWidth:30,height:Math.max(3,h),background:over?C.red:esHoy?metricaCfg.color:C.goldSoft,borderRadius:5,transition:"height .4s"}}/><span style={{fontSize:11,color:esHoy?C.espresso:C.muted,fontFamily:SANS,fontWeight:esHoy?700:400}}>{DIA_CORTO(s.f)}</span></div>;})}</div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:14,paddingTop:12,borderTop:"1px solid "+C.borderSoft,fontFamily:SANS,fontSize:13}}>
+        <div><p style={{margin:0,fontSize:11,color:C.muted}}>Total semana</p><p style={{margin:"2px 0 0",fontFamily:SERIF,fontSize:17}}>{sumaSem}{metricaCfg.unit}</p></div>
+        <div style={{textAlign:"right"}}><p style={{margin:0,fontSize:11,color:C.muted}}>Promedio/día</p><p style={{margin:"2px 0 0",fontFamily:SERIF,fontSize:17}}>{Math.round(sumaSem/7)}{metricaCfg.unit}</p></div>
+      </div>
+      {metrica==="kcal"&&refEstado>0&&<div style={{marginTop:10,textAlign:"center",fontFamily:SANS,fontSize:13,fontWeight:700,color:netoSem>0?C.red:C.green}}>Balance semanal: {netoSem>=0?"+":""}{netoSem} kcal · {netoSem>(refEstado*0.05+50)*1?"Superávit":netoSem<-(refEstado*0.05+50)?"Déficit":"Mantenimiento"}</div>}
+    </Card>
+
+    <Sheet open={editLim} onClose={()=>setEditLim(false)} title="Metas y quemadas"><FormLimites limites={limites} onGuardar={l=>{setLimites(l);setEditLim(false);}}/></Sheet>
+    <Sheet open={addQuem} onClose={()=>setAddQuem(false)} title="Registrar quemadas"><FormQuemada onGuardar={(nombre,kcal)=>{setQuemadas(p=>[...p,{id:uid(),fecha:HOY,nombre,kcal:num(kcal)}]);setAddQuem(false);}}/></Sheet>
+    {toast&&<Toast>{toast}</Toast>}
+  </div>;
+}
+
+function FormLimites({limites,onGuardar}){
+  const [l,setL]=useState(limites); const set=(k,v)=>setL(p=>({...p,[k]:v}));
+  const aplicarPreset=p=>setL({kcal:p.kcal,proteina:p.proteina,carbos:p.carbos,grasa:p.grasa,quemadaDiaria:p.quemadaDiaria});
+  return <div>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 12px"}}>Define tus metas diarias y tu gasto calórico fijo. Déjalo en blanco si no quieres seguir alguno.</p>
+    <p style={labelStyle}>Presets para tu fase</p>
+    <div style={{display:"flex",gap:10,margin:"4px 0 8px"}}>
+      {Object.values(PRESETS_NUTRI).map(p=><button key={p.titulo} onClick={()=>aplicarPreset(p)} style={{flex:1,textAlign:"left",background:C.card,border:"1.5px solid "+C.gold,borderRadius:12,padding:"11px 12px",cursor:"pointer",fontFamily:SANS}}>
+        <span style={{display:"block",fontFamily:SERIF,fontSize:15,color:C.espresso}}>{p.titulo}</span>
+        <span style={{display:"block",fontSize:11,color:C.muted,marginTop:2}}>{p.sub}</span>
+        <span style={{display:"block",fontSize:12,color:C.gold,marginTop:6,fontWeight:600}}>{p.kcal} kcal · {p.proteina}g P</span>
+      </button>)}
+    </div>
+    <p style={{fontFamily:SANS,fontSize:11,color:C.muted,margin:"0 0 16px",lineHeight:1.4}}>Basados en tu plan (73 kg, avanzado, 6 días + carrera). Toca uno para rellenar y ajústalo si quieres.</p>
+    <Field label="Calorías objetivo (kcal/día)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 2800" value={l.kcal} onChange={e=>set("kcal",e.target.value)}/></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Field label="Proteína (g)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 150" value={l.proteina} onChange={e=>set("proteina",e.target.value)}/></Field><Field label="Carbos (g)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 320" value={l.carbos} onChange={e=>set("carbos",e.target.value)}/></Field></div>
+    <Field label="Grasa (g)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 80" value={l.grasa} onChange={e=>set("grasa",e.target.value)}/></Field>
+    <div style={{height:1,background:C.borderSoft,margin:"6px 0 16px"}}/>
+    <Field label="🔥 Gasto calórico fijo diario (kcal)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 2500 (tu TDEE)" value={l.quemadaDiaria} onChange={e=>set("quemadaDiaria",e.target.value)}/></Field>
+    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 6px"}}>Es tu gasto base por día. Aplica a toda la semana. Suma actividades extra desde "Registrar quemadas".</p>
+    <button onClick={()=>onGuardar(l)} style={btnP(true)}>Guardar</button>
+  </div>;
+}
+function FormQuemada({onGuardar}){
+  const [nombre,setNombre]=useState(""); const [kcal,setKcal]=useState(""); const ok=num(kcal)>0;
+  return <div><Field label="Actividad (opcional)"><input style={inputStyle} placeholder="Ej. Cardio, caminata" value={nombre} onChange={e=>setNombre(e.target.value)}/></Field><Field label="Calorías quemadas"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={kcal} onChange={e=>setKcal(e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(nombre,kcal)} style={btnP(ok)}>Registrar</button></div>;
+}
+
+function Guias({guias,setGuias}){
+  const [editando,setEditando]=useState(null); const [ver,setVer]=useState(null); const [filtro,setFiltro]=useState("Todas"); const [q,setQ]=useState("");
+  const nueva=()=>setEditando({id:uid(),titulo:"",categoria:"Tips",contenido:""});
+  const guardar=g=>{setGuias(p=>p.some(x=>x.id===g.id)?p.map(x=>x.id===g.id?g:x):[...p,g]);setEditando(null);setVer(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar guía",texto:"Se borrará esta guía."})){ setGuias(p=>p.filter(x=>x.id!==id)); setVer(null);} };
+  const cats=["Todas",...CAT_GUIA.filter(c=>guias.some(g=>g.categoria===c))];
+  const ql=q.trim().toLowerCase();
+  const porCat=filtro==="Todas"?guias:guias.filter(g=>g.categoria===filtro);
+  const visibles=ql?porCat.filter(g=>(g.titulo||"").toLowerCase().includes(ql)||(g.contenido||"").toLowerCase().includes(ql)):porCat;
+  return <div>
+    <div style={{padding:"12px 18px 6px"}}><button onClick={nueva} style={{width:"100%",padding:"13px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva guía / tip</button></div>
+    {guias.length>0&&<div style={{padding:"6px 18px 0"}}><input style={inputStyle} placeholder="🔍 Buscar guía…" value={q} onChange={e=>setQ(e.target.value)}/></div>}
+    {cats.length>1&&<div style={{display:"flex",gap:7,overflowX:"auto",padding:"6px 18px 4px"}}>{cats.map(c=><button key={c} onClick={()=>setFiltro(c)} style={{whiteSpace:"nowrap",padding:"6px 13px",borderRadius:20,border:"1.5px solid "+(filtro===c?C.gold:C.border),background:filtro===c?C.gold:"transparent",color:filtro===c?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:filtro===c?600:400,cursor:"pointer"}}>{c}</button>)}</div>}
+    <div style={{padding:"8px 18px 20px"}}>
+      {visibles.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:30}}>Aquí guardas lo que vas aprendiendo: cómo marinar, escoger carnes, almacenar, técnicas…</p>}
+      {visibles.map(g=><div key={g.id} onClick={()=>setVer(g)} style={{background:C.card,borderRadius:14,padding:16,marginBottom:10,border:"1.5px solid "+C.border,cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:17,fontWeight:"normal"}}>{g.titulo}</h3><Chip>{g.categoria}</Chip></div><p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{g.contenido}</p></div>)}
+    </div>
+    <Sheet open={!!ver} onClose={()=>setVer(null)} title={ver?.titulo}>{ver&&<div><div style={{marginBottom:12}}><Chip>{ver.categoria}</Chip></div><p style={{fontFamily:SANS,fontSize:15,lineHeight:1.65,whiteSpace:"pre-wrap"}}>{ver.contenido}</p><button onClick={()=>{setEditando(ver);setVer(null);}} style={{width:"100%",marginTop:16,padding:"11px 0",background:"transparent",border:"1.5px solid "+C.border,borderRadius:10,fontSize:14,fontFamily:SANS,cursor:"pointer"}}>Editar</button><button onClick={()=>eliminar(ver.id)} style={{width:"100%",marginTop:8,padding:"8px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar</button></div>}</Sheet>
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?.titulo?"Editar guía":"Nueva guía"}>{editando&&<FormGuia guia={editando} onGuardar={guardar}/>}</Sheet>
+  </div>;
+}
+function FormGuia({guia,onGuardar}){
+  const [g,setG]=useState(guia); const set=(k,v)=>setG(p=>({...p,[k]:v})); const ok=g.titulo.trim()&&g.contenido.trim();
+  return <div><Field label="Título"><input style={inputStyle} placeholder="Ej. Cómo escoger un buen corte de res" value={g.titulo} onChange={e=>set("titulo",e.target.value)}/></Field><Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={g.categoria} onChange={e=>set("categoria",e.target.value)}>{CAT_GUIA.map(c=><option key={c} value={c}>{c}</option>)}</select></Field><Field label="Contenido"><textarea style={{...inputStyle,minHeight:160,resize:"vertical"}} placeholder="Escribe la guía, pasos, tips…" value={g.contenido} onChange={e=>set("contenido",e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(g)} style={btnP(ok)}>Guardar</button></div>;
+}
+
+/* ═══════════ LISTA ═══════════ */
+function ListaCompras({lista,setLista}){
+  const [editando,setEditando]=useState(null);
+  const [copiado,setCopiado]=useState(false);
+  const [estado,setEstado]=useState("pendientes"); // pendientes|compradas|todas
+  const [agrupar,setAgrupar]=useState("categoria"); // categoria|tienda
+  const toggle=id=>setLista(p=>p.map(i=>i.id===id?{...i,comprado:!i.comprado}:i));
+  const guardarItem=it=>{setLista(p=>p.some(x=>x.id===it.id)?p.map(x=>x.id===it.id?it:x):[...p,it]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar artículo",texto:"Se quitará de la lista."})){ setLista(p=>p.filter(i=>i.id!==id)); setEditando(null);} };
+  const pendientes=lista.filter(i=>!i.comprado).length;
+  const costo=lista.reduce((a,i)=>a+num(i.precio),0);
+  const nuevoItem=()=>setEditando({id:uid(),nombre:"",categoria:"📦 Otros",comprado:false,precio:"",tienda:"",_nuevo:true});
+
+  const filtrada=lista.filter(i=>estado==="todas"?true:estado==="pendientes"?!i.comprado:i.comprado);
+  let grupos;
+  if(agrupar==="categoria"){ grupos=CAT_LISTA.map(cat=>({cat,items:filtrada.filter(i=>i.categoria===cat)})).filter(g=>g.items.length); }
+  else { const tiendas=[...new Set(filtrada.map(i=>i.tienda||"Sin tienda"))]; grupos=tiendas.map(tn=>({cat:tn==="Sin tienda"?"📍 Sin tienda":"📍 "+tn,items:filtrada.filter(i=>(i.tienda||"Sin tienda")===tn)})).filter(g=>g.items.length); }
+
+  const copiar=()=>{const texto=grupos.map(g=>g.cat+"\n"+g.items.map(i=>"  • "+i.nombre+(i.precio?" — "+money(i.precio):"")+(i.tienda?" ("+i.tienda+")":"")).join("\n")).join("\n\n");navigator.clipboard&&navigator.clipboard.writeText("🛒 LISTA DE MERCADO\n"+"─".repeat(24)+"\n\n"+texto);setCopiado(true);setTimeout(()=>setCopiado(false),2200);};
+
+  return <div>
+    <Header titulo="Lista de Mercado" sub={pendientes+" pendientes · "+money(costo)}/>
+    <Segmented value={estado} onChange={setEstado} options={[{id:"pendientes",label:"Por comprar"},{id:"compradas",label:"Ya tengo"},{id:"todas",label:"Todas"}]}/>
+    <div style={{display:"flex",gap:8,padding:"6px 18px 0",alignItems:"center"}}>
+      <span style={{fontSize:12,color:C.muted,fontFamily:SANS}}>Agrupar:</span>
+      {[["categoria","Categoría"],["tienda","Tienda"]].map(([k,l])=><button key={k} onClick={()=>setAgrupar(k)} style={{padding:"5px 12px",borderRadius:20,border:"1.5px solid "+(agrupar===k?C.espresso:C.border),background:agrupar===k?C.espresso:"transparent",color:agrupar===k?C.bg:C.muted,fontSize:12,fontFamily:SANS,cursor:"pointer"}}>{l}</button>)}
+    </div>
+    <div style={{padding:"14px 18px 6px",display:"flex",gap:10}}>
+      <button onClick={nuevoItem} style={{flex:1,padding:"12px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Agregar artículo</button>
+      <button onClick={copiar} style={{padding:"12px 16px",background:copiado?C.green:"transparent",color:copiado?"#fff":C.text,border:"1.5px solid "+(copiado?C.green:C.border),borderRadius:11,fontSize:14,fontFamily:SANS,cursor:"pointer",fontWeight:600}}>{copiado?"✓":"📋"}</button>
+    </div>
+    <div style={{padding:"10px 18px 20px"}}>
+      {grupos.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:30}}>Nada por aquí.</p>}
+      {grupos.map(g=><div key={g.cat} style={{marginBottom:22}}>
+        <h3 style={{margin:"0 0 8px",fontFamily:SERIF,fontSize:15,fontWeight:"normal",borderBottom:"1.5px solid "+C.border,paddingBottom:6}}>{g.cat}</h3>
+        {g.items.map(i=><div key={i.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 8px",borderRadius:10,background:i.comprado?C.borderSoft:"transparent"}}>
+          <div onClick={()=>toggle(i.id)} style={{width:22,height:22,borderRadius:7,flexShrink:0,cursor:"pointer",border:i.comprado?"none":"1.5px solid "+C.gold,background:i.comprado?C.gold:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{i.comprado&&<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#2c2415" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+          <div onClick={()=>setEditando(i)} style={{flex:1,cursor:"pointer",minWidth:0}}><p style={{margin:0,fontSize:14,fontFamily:SANS,color:i.comprado?C.muted:C.text,textDecoration:i.comprado?"line-through":"none"}}>{i.nombre}</p>{(i.precio||i.tienda)&&<p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>{i.precio?money(i.precio):""}{i.precio&&i.tienda?" · ":""}{i.tienda}</p>}</div>
+          <button onClick={()=>setEditando(i)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16,padding:4}}>✎</button>
+        </div>)}
+      </div>)}
+    </div>
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo artículo":"Editar artículo"}>{editando&&<FormItem item={editando} onGuardar={guardarItem} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+  </div>;
+}
+function FormItem({item,onGuardar,onEliminar}){
+  const [it,setIt]=useState(item); const set=(k,v)=>setIt(p=>({...p,[k]:v})); const ok=it.nombre.trim().length>0;
+  return <div><Field label="Artículo"><input style={inputStyle} value={it.nombre} placeholder="Ej. Tomate cherry" onChange={e=>set("nombre",e.target.value)}/></Field><Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={it.categoria} onChange={e=>set("categoria",e.target.value)}>{CAT_LISTA.map(c=><option key={c} value={c}>{c}</option>)}</select></Field><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Field label="Precio"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={it.precio} onChange={e=>set("precio",e.target.value)}/></Field><Field label="Dónde comprar"><input style={inputStyle} placeholder="Ej. Éxito" value={it.tienda} onChange={e=>set("tienda",e.target.value)}/></Field></div><button disabled={!ok} onClick={()=>onGuardar(it)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}</div>;
+}
+
+/* ═══════════ FINANZAS ═══════════ */
+function Finanzas(props){
+  const [vista,setVista]=useState("mov");
+  return <div>
+    <Header titulo="Finanzas"/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"mov",label:"Mes"},{id:"fijos",label:"Fijos"},{id:"inv",label:"Inversión"},{id:"metas",label:"Metas"}]}/>
+    {vista==="mov"&&<Movimientos {...props}/>}
+    {vista==="fijos"&&<Fijos {...props}/>}
+    {vista==="inv"&&<Inversiones {...props}/>}
+    {vista==="metas"&&<Metas {...props}/>}
+  </div>;
+}
+
+function Movimientos({transacciones,setTransacciones}){
+  const [mes,setMes]=useState(MES_ACTUAL); const [editando,setEditando]=useState(null);
+  const delMes=transacciones.filter(t=>mesDe(t.fecha)===mes).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const ing=delMes.filter(t=>t.tipo==="ingreso").reduce((a,t)=>a+num(t.monto),0);
+  const gas=delMes.filter(t=>t.tipo==="gasto").reduce((a,t)=>a+num(t.monto),0);
+  const balance=ing-gas;
+  const guardar=t=>{setTransacciones(p=>p.some(x=>x.id===t.id)?p.map(x=>x.id===t.id?t:x):[...p,t]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar movimiento",texto:"Se borrará este movimiento."})){ setTransacciones(p=>p.filter(t=>t.id!==id)); setEditando(null);} };
+  const nuevo=tipo=>setEditando({id:uid(),tipo,concepto:"",monto:"",categoria:tipo==="gasto"?"🛒 Mercado":"💼 Salario",fecha:HOY,_nuevo:true});
+
+  const porCat={}; delMes.filter(t=>t.tipo==="gasto").forEach(t=>{porCat[t.categoria]=(porCat[t.categoria]||0)+num(t.monto);});
+  const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
+  const maxCat=Math.max(...cats.map(c=>c[1]),1);
+
+  return <div style={{padding:"10px 18px 20px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><button onClick={()=>setMes(mesAdj(mes,-1))} style={navMesBtn}>‹</button><span style={{fontFamily:SERIF,fontSize:16}}>{nombreMes(mes)}</span><button onClick={()=>setMes(mesAdj(mes,1))} style={navMesBtn}>›</button></div>
+    <Card pad={18}><p style={{margin:0,...labelStyle}}>Balance del mes</p><p style={{margin:"6px 0 14px",fontFamily:SERIF,fontSize:30,color:balance>=0?C.green:C.red}}>{money(balance)}</p>
+      <div style={{display:"flex",gap:10}}><div style={{flex:1,background:C.greenSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.green,fontFamily:SANS}}>Ingresos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.green}}>{money(ing)}</p></div><div style={{flex:1,background:C.redSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.red,fontFamily:SANS}}>Gastos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.red}}>{money(gas)}</p></div></div>
+    </Card>
+
+    <div style={{display:"flex",gap:10,margin:"14px 0 18px"}}><button onClick={()=>nuevo("ingreso")} style={{flex:1,padding:"12px 0",background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Ingreso</button><button onClick={()=>nuevo("gasto")} style={{flex:1,padding:"12px 0",background:C.red,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Gasto</button></div>
+
+    {cats.length>0&&<div style={{marginBottom:20}}><p style={{...labelStyle,marginBottom:10}}>¿En qué gastas?</p><Card pad={16}>{cats.map(([cat,val],i)=><div key={cat} style={{marginBottom:i<cats.length-1?12:0}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontFamily:SANS,fontSize:13}}><span>{cat}</span><span style={{color:C.muted}}>{money(val)} · {Math.round(val/gas*100)}%</span></div><Bar pct={val/maxCat*100} color={C.gold}/></div>)}</Card></div>}
+
+    {delMes.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Sin movimientos este mes.</p>:<div><p style={{...labelStyle,marginBottom:8}}>Movimientos</p>{delMes.map(t=><div key={t.id} onClick={()=>setEditando(t)} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}><div style={{minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{t.categoria}{t.concepto?" · "+t.concepto:""}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{t.fecha}</p></div><span style={{fontFamily:SERIF,fontSize:16,color:t.tipo==="ingreso"?C.green:C.red,whiteSpace:"nowrap"}}>{t.tipo==="ingreso"?"+":"−"}{money(t.monto)}</span></div>)}</div>}
+
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?(editando.tipo==="ingreso"?"Ingreso":"Gasto"):""}>{editando&&<FormMov mov={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+  </div>;
+}
+function FormMov({mov,onGuardar,onEliminar}){
+  const [m,setM]=useState(mov); const set=(k,v)=>setM(p=>({...p,[k]:v})); const cats=m.tipo==="gasto"?CAT_GASTO:CAT_INGRESO; const ok=num(m.monto)>0;
+  return <div><Field label="Monto"><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={m.monto} onChange={e=>set("monto",e.target.value)}/></Field><Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={m.categoria} onChange={e=>set("categoria",e.target.value)}>{cats.map(c=><option key={c} value={c}>{c}</option>)}</select></Field><Field label="Concepto (opcional)"><input style={inputStyle} placeholder="Ej. Mercado del mes" value={m.concepto} onChange={e=>set("concepto",e.target.value)}/></Field><Field label="Fecha"><input style={inputStyle} type="date" value={m.fecha} onChange={e=>set("fecha",e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(m)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}</div>;
+}
+
+function Fijos({fijos,setFijos,setTransacciones}){
+  const [mes,setMes]=useState(MES_ACTUAL); const [editando,setEditando]=useState(null);
+  const guardar=f=>{setFijos(p=>p.some(x=>x.id===f.id)?p.map(x=>x.id===f.id?f:x):[...p,f]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar gasto fijo",texto:"Se borrará este gasto fijo."})){ setFijos(p=>p.filter(f=>f.id!==id)); setEditando(null);} };
+  const nuevo=()=>setEditando({id:uid(),nombre:"",monto:"",categoria:"💡 Servicios",pagos:{},_nuevo:true});
+  const togglePagado=f=>{
+    const pagado=f.pagos&&f.pagos[mes]; const tid="fijo-"+f.id+"-"+mes;
+    setFijos(p=>p.map(x=>x.id===f.id?{...x,pagos:{...(x.pagos||{}),[mes]:!pagado}}:x));
+    if(!pagado){ setTransacciones(p=>[...p,{id:tid,tipo:"gasto",categoria:f.categoria,concepto:f.nombre+" (fijo)",monto:num(f.monto),fecha:mes+"-"+String(new Date().getDate()).padStart(2,"0"),_fijo:tid}]); }
+    else { setTransacciones(p=>p.filter(t=>t.id!==tid)); }
+  };
+  const total=fijos.reduce((a,f)=>a+num(f.monto),0);
+  const pagado=fijos.filter(f=>f.pagos&&f.pagos[mes]).reduce((a,f)=>a+num(f.monto),0);
+  return <div style={{padding:"10px 18px 20px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><button onClick={()=>setMes(mesAdj(mes,-1))} style={navMesBtn}>‹</button><span style={{fontFamily:SERIF,fontSize:16}}>{nombreMes(mes)}</span><button onClick={()=>setMes(mesAdj(mes,1))} style={navMesBtn}>›</button></div>
+    <Card pad={18}><div style={{display:"flex",justifyContent:"space-between"}}><div><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>Pagado</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:20,color:C.green}}>{money(pagado)}</p></div><div style={{textAlign:"right"}}><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>Falta</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:20,color:C.red}}>{money(total-pagado)}</p></div></div><div style={{marginTop:12}}><Bar pct={total>0?pagado/total*100:0} color={C.green} h={10}/></div></Card>
+    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",margin:"14px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo gasto fijo</button>
+    {fijos.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Agrega tus fijos: arriendo, internet, servicios, deudas…</p>}
+    {fijos.map(f=>{const p=f.pagos&&f.pagos[mes];return <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+(p?C.green:C.border)}}>
+      <div onClick={()=>togglePagado(f)} style={{width:24,height:24,borderRadius:8,flexShrink:0,cursor:"pointer",border:p?"none":"1.5px solid "+C.gold,background:p?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{p&&<svg width="13" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+      <div style={{flex:1,minWidth:0}} onClick={()=>setEditando(f)}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:p?C.muted:C.text,textDecoration:p?"line-through":"none"}}>{f.nombre}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{f.categoria}</p></div>
+      <span style={{fontFamily:SERIF,fontSize:15,whiteSpace:"nowrap"}}>{money(f.monto)}</span>
+    </div>;})}
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo gasto fijo":"Editar gasto fijo"}>{editando&&<FormFijo fijo={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+  </div>;
+}
+function FormFijo({fijo,onGuardar,onEliminar}){
+  const [f,setF]=useState(fijo); const set=(k,v)=>setF(p=>({...p,[k]:v})); const ok=f.nombre.trim()&&num(f.monto)>0;
+  return <div><Field label="Nombre"><input style={inputStyle} placeholder="Ej. Internet" value={f.nombre} onChange={e=>set("nombre",e.target.value)}/></Field><Field label="Monto mensual"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={f.monto} onChange={e=>set("monto",e.target.value)}/></Field><Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={f.categoria} onChange={e=>set("categoria",e.target.value)}>{CAT_GASTO.map(c=><option key={c} value={c}>{c}</option>)}</select></Field><p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 8px"}}>Al marcarlo como pagado se suma a tus gastos del mes automáticamente.</p><button disabled={!ok} onClick={()=>onGuardar(f)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}</div>;
+}
+
+function Inversiones({inversiones,setInversiones,metas}){
+  const [editando,setEditando]=useState(null);
+  const [aportar,setAportar]=useState(null);
+  const invertido=inversiones.reduce((a,i)=>a+num(i.invertido),0);
+  const actual=inversiones.reduce((a,i)=>a+num(i.actual),0);
+  const gan=actual-invertido; const rend=invertido>0?gan/invertido*100:0;
+  const guardar=i=>{setInversiones(p=>p.some(x=>x.id===i.id)?p.map(x=>x.id===i.id?i:x):[...p,i]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar inversión",texto:"Se borrará esta inversión."})){ setInversiones(p=>p.filter(i=>i.id!==id)); setEditando(null);} };
+  const aplicarAporte=(id,monto)=>{setInversiones(p=>p.map(x=>x.id===id?{...x,invertido:num(x.invertido)+num(monto),actual:num(x.actual)+num(monto)}:x));setAportar(null);};
+  const nueva=()=>setEditando({id:uid(),nombre:"",invertido:"",actual:"",_nuevo:true});
+  return <div style={{padding:"10px 18px 20px"}}>
+    <Card pad={18}><p style={{margin:0,...labelStyle}}>Portafolio total</p><p style={{margin:"6px 0 4px",fontFamily:SERIF,fontSize:30}}>{money(actual)}</p><p style={{margin:0,fontFamily:SANS,fontSize:14,color:gan>=0?C.green:C.red}}>{gan>=0?"▲":"▼"} {money(Math.abs(gan))} ({rend>=0?"+":""}{rend.toFixed(1)}%)</p><p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>Invertido: {money(invertido)}</p></Card>
+    <button onClick={nueva} style={{width:"100%",padding:"12px 0",margin:"14px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Agregar inversión</button>
+    {inversiones.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Sin inversiones registradas.</p>:inversiones.map(i=>{const g=num(i.actual)-num(i.invertido);const r=num(i.invertido)>0?g/num(i.invertido)*100:0;const meta=(metas||[]).find(m=>m.inversionId===i.id);return <div key={i.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:8,border:"1.5px solid "+C.border}}><div onClick={()=>setEditando(i)} style={{cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><span style={{fontFamily:SERIF,fontSize:16}}>{i.nombre}</span><span style={{fontFamily:SANS,fontSize:13,color:g>=0?C.green:C.red,fontWeight:600}}>{r>=0?"+":""}{r.toFixed(1)}%</span></div><div style={{display:"flex",justifyContent:"space-between",marginTop:8,fontFamily:SANS,fontSize:13,color:C.muted}}><span>Actual {money(i.actual)}</span><span>Invertido {money(i.invertido)}</span></div>{meta&&<p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>🎯 {meta.nombre}</p>}</div><button onClick={()=>setAportar(i)} style={{width:"100%",marginTop:11,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Aportar dinero</button></div>;})}
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title="Inversión">{editando&&<FormInv inv={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={!!aportar} onClose={()=>setAportar(null)} title={"Aportar a "+(aportar?.nombre||"")}>{aportar&&<FormAporte onAportar={monto=>aplicarAporte(aportar.id,monto)}/>}</Sheet>
+  </div>;
+}
+function FormInv({inv,onGuardar,onEliminar}){
+  const [i,setI]=useState(inv); const set=(k,v)=>setI(p=>({...p,[k]:v})); const ok=i.nombre.trim()&&num(i.actual)>0;
+  return <div><Field label="Nombre"><input style={inputStyle} placeholder="Ej. CDT / Acciones / Cripto" value={i.nombre} onChange={e=>set("nombre",e.target.value)}/></Field><Field label="Monto invertido"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={i.invertido} onChange={e=>set("invertido",e.target.value)}/></Field><Field label="Valor actual"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={i.actual} onChange={e=>set("actual",e.target.value)}/></Field><p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 10px"}}>Usa "+ Aportar dinero" para sumar aportes mensuales. Edita aquí el "valor actual" solo para reflejar rendimiento (ganancia o pérdida).</p><button disabled={!ok} onClick={()=>onGuardar(i)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}</div>;
+}
+function FormAporte({onAportar}){
+  const [monto,setMonto]=useState(""); const ok=num(monto)>0;
+  return <div><Field label="¿Cuánto vas a aportar?"><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={monto} onChange={e=>setMonto(e.target.value)} autoFocus/></Field><p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 10px"}}>Se suma al monto invertido y al valor actual (dinero nuevo, no rendimiento).</p><button disabled={!ok} onClick={()=>onAportar(monto)} style={btnP(ok)}>Aportar</button></div>;
+}
+
+function Metas({metas,setMetas,inversiones}){
+  const [editando,setEditando]=useState(null); const [abonar,setAbonar]=useState(null);
+  const guardar=m=>{setMetas(p=>p.some(x=>x.id===m.id)?p.map(x=>x.id===m.id?m:x):[...p,m]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar meta",texto:"Se borrará esta meta de ahorro."})){ setMetas(p=>p.filter(m=>m.id!==id)); setEditando(null);} };
+  const aplicar=(id,monto)=>{setMetas(p=>p.map(m=>m.id===id?{...m,actual:num(m.actual)+num(monto)}:m));setAbonar(null);};
+  const nueva=()=>setEditando({id:uid(),nombre:"",objetivo:"",actual:"",fecha:"",inversionId:"",_nuevo:true});
+  return <div style={{padding:"10px 18px 20px"}}>
+    <button onClick={nueva} style={{width:"100%",padding:"12px 0",marginBottom:16,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva meta</button>
+    {metas.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Crea tu primera meta (maestría, viaje, fondo de emergencia…).</p>}
+    {metas.map(m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);const obj=num(m.objetivo),act=inv?num(inv.actual):num(m.actual);const falta=Math.max(0,obj-act);const pct=obj>0?act/obj*100:0;const meses=m.fecha?mesesHasta(m.fecha):0;const mensual=falta>0&&meses>0?falta/meses:0;const lograda=act>=obj&&obj>0;
+      return <div key={m.id} style={{background:C.card,borderRadius:16,padding:18,marginBottom:12,border:"1.5px solid "+(lograda?C.green:C.border)}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div><h3 style={{margin:0,fontFamily:SERIF,fontSize:19,fontWeight:"normal"}}>{m.nombre}</h3>{m.fecha&&<p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>Para {m.fecha}{meses>0?" · "+meses+" meses":""}</p>}{inv&&<p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>📈 Vinculada a {inv.nombre}</p>}</div><button onClick={()=>setEditando(m)} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>✎</button></div>
+        <div style={{margin:"14px 0 8px"}}><Bar pct={pct} color={lograda?C.green:C.gold} h={12}/></div>
+        <div style={{display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13}}><span style={{fontWeight:600}}>{Math.round(pct)}%</span><span style={{color:C.muted}}>{money(act)} / {money(obj)}</span></div>
+        {lograda?<div style={{marginTop:14,background:C.greenSoft,borderRadius:10,padding:12,fontFamily:SANS,fontSize:14,color:C.green,textAlign:"center"}}>🎉 ¡Meta cumplida!</div>:<div style={{marginTop:14,background:C.borderSoft,borderRadius:12,padding:14}}><div style={{display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13,marginBottom:mensual>0?8:0}}><span style={{color:C.muted}}>Te falta</span><span style={{fontWeight:600}}>{money(falta)}</span></div>{mensual>0&&<div style={{display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>Ahorra al mes</span><span style={{color:C.espresso,fontWeight:700}}>{money(Math.ceil(mensual))}/mes</span></div>}{m.fecha&&meses===0&&falta>0&&<p style={{margin:"6px 0 0",fontSize:12,color:C.red,fontFamily:SANS}}>⚠ La fecha objetivo ya pasó o es este mes.</p>}</div>}
+        {!lograda&&(inv?<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,textAlign:"center"}}>El avance se actualiza con los aportes de la inversión.</p>:<button onClick={()=>setAbonar(m)} style={{width:"100%",marginTop:10,padding:"11px 0",background:C.espresso,color:C.bg,border:"none",borderRadius:10,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Abonar</button>)}
+      </div>;})}
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nueva meta":"Editar meta"}>{editando&&<FormMeta meta={editando} inversiones={inversiones} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={!!abonar} onClose={()=>setAbonar(null)} title={"Abonar a "+(abonar?.nombre||"")}>{abonar&&<FormAbono onAbonar={monto=>aplicar(abonar.id,monto)}/>}</Sheet>
+  </div>;
+}
+function FormMeta({meta,onGuardar,onEliminar,inversiones}){
+  const [m,setM]=useState(meta); const set=(k,v)=>setM(p=>({...p,[k]:v})); const ok=m.nombre.trim()&&num(m.objetivo)>0;
+  const invs=inversiones||[]; const ligada=!!m.inversionId;
+  return <div><Field label="Nombre de la meta"><input style={inputStyle} placeholder="Ej. Maestría" value={m.nombre} onChange={e=>set("nombre",e.target.value)}/></Field><Field label="Monto objetivo"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 20000000" value={m.objetivo} onChange={e=>set("objetivo",e.target.value)}/></Field>
+    {invs.length>0&&<Field label="Vincular a una inversión (opcional)"><select style={{...inputStyle,appearance:"none"}} value={m.inversionId||""} onChange={e=>set("inversionId",e.target.value)}><option value="">— Ahorro manual (sin inversión) —</option>{invs.map(i=>(<option key={i.id} value={i.id}>{i.nombre}</option>))}</select></Field>}
+    {ligada?<p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 12px"}}>El avance de la meta tomará el valor actual de la inversión. Aporta desde Finanzas → Inversión.</p>:<Field label="Ya tengo ahorrado"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={m.actual} onChange={e=>set("actual",e.target.value)}/></Field>}
+    <Field label="Fecha objetivo"><input style={inputStyle} type="date" value={m.fecha} onChange={e=>set("fecha",e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(m)} style={btnP(ok)}>Guardar meta</button>{onEliminar&&btnDel(onEliminar)}</div>;
+}
+function FormAbono({onAbonar}){
+  const [monto,setMonto]=useState(""); const ok=num(monto)>0;
+  return <div><Field label="¿Cuánto vas a abonar?"><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={monto} onChange={e=>setMonto(e.target.value)} autoFocus/></Field><button disabled={!ok} onClick={()=>onAbonar(monto)} style={btnP(ok)}>Abonar</button></div>;
+}
+
+/* ═══════════ GIMNASIO ═══════════ */
+function volumen(e){ return e.ejercicios.reduce((a,ej)=>a+ej.sets.reduce((b,s)=>b+num(s.reps)*num(s.peso),0),0); }
+function seriesSemana(entrenos){
+  const dias=ultimos7(); const c={}; MUSCULOS.forEach(m=>c[m]=0);
+  entrenos.filter(e=>dias.includes(e.fecha)).forEach(e=>e.ejercicios.forEach(ej=>{
+    const m=musculoDe(ej); const hechas=ej.sets.filter(s=>num(s.reps)>0).length;
+    c[m]=(c[m]||0)+(hechas||0);
+  }));
+  return c;
+}
+function entrenoDesdePlantilla(dia){
+  const base={id:uid(),fecha:HOY,nombre:dia==="Otro"?"":dia,dia,ejercicios:[],notas:""};
+  if(dia!=="Otro"&&PLANTILLAS[dia]) base.ejercicios=PLANTILLAS[dia].map(p=>({id:uid(),nombre:p.nombre,musculo:p.musculo,reps:p.reps,sets:Array.from({length:p.sets},()=>({reps:"",peso:""}))}));
+  else base.ejercicios=[{id:uid(),nombre:"",musculo:"Otro",sets:[{reps:"",peso:""}]}];
+  return base;
+}
+
+function Gym(props){
+  const [vista,setVista]=useState("entrenos");
+  return <div>
+    <Header titulo="Gimnasio"/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"entrenos",label:"🏋️ Entrenos"},{id:"plan",label:"📋 Plan"},{id:"progreso",label:"📈 Progreso"}]}/>
+    {vista==="entrenos"&&<GymEntrenos {...props}/>}
+    {vista==="plan"&&<GymPlan/>}
+    {vista==="progreso"&&<GymProgreso {...props}/>}
+  </div>;
+}
+
+function GymEntrenos({entrenos,setEntrenos}){
+  const [editando,setEditando]=useState(null); const [ver,setVer]=useState(null); const [eligiendo,setEligiendo]=useState(false);
+  const guardar=e=>{
+    const limpio={...e,ejercicios:e.ejercicios.map(ej=>({...ej,sets:ej.sets.filter(s=>num(s.reps)>0||num(s.peso)>0)})).filter(ej=>ej.nombre.trim()&&ej.sets.length>0)};
+    if(limpio.ejercicios.length===0) return;
+    setEntrenos(p=>p.some(x=>x.id===limpio.id)?p.map(x=>x.id===limpio.id?limpio:x):[...p,limpio]);setEditando(null);setVer(null);
+  };
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar entreno",texto:"Se borrará este entreno y sus series."})){ setEntrenos(p=>p.filter(x=>x.id!==id)); setVer(null);} };
+  const elegir=dia=>{ setEligiendo(false); setEditando(entrenoDesdePlantilla(dia)); };
+  const ordenados=[...entrenos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const dias=ultimos7();
+  const semVol=dias.map(f=>({f,vol:entrenos.filter(e=>e.fecha===f).reduce((a,e)=>a+volumen(e),0)}));
+  const maxVol=Math.max(...semVol.map(s=>s.vol),1);
+  const entSem=entrenos.filter(e=>dias.includes(e.fecha)).length;
+  const series=seriesSemana(entrenos);
+  return <div>
+    <div style={{padding:"14px 18px 8px"}}><button onClick={()=>setEligiendo(true)} style={{width:"100%",padding:"13px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Registrar entreno</button>
+      <p style={{margin:"8px 0 0",fontSize:12,color:C.muted,fontFamily:SANS,textAlign:"center"}}>{entrenos.length} entrenos · {entSem} esta semana</p></div>
+
+    {/* series por músculo vs objetivo semanal */}
+    <div style={{padding:"8px 18px 0"}}><p style={{...labelStyle,marginBottom:8}}>Series por músculo · esta semana</p><Card pad={16}>
+      {VOL_MUSCULO.map((v,i)=>{const n=series[v.m]||0;const pct=Math.min(100,n/v.max*100);const ok=n>=v.min;const col=n===0?C.borderSoft:ok?C.green:C.gold;return <div key={v.m} style={{marginBottom:i<VOL_MUSCULO.length-1?11:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontFamily:SANS,fontSize:12.5}}><span>{v.m}</span><span style={{color:n>v.max?C.red:C.muted}}>{n} / {v.min}–{v.max}</span></div>
+        <Bar pct={pct} color={n>v.max?C.red:col} h={7}/></div>;})}
+      <p style={{margin:"12px 0 0",fontSize:11,color:C.muted,fontFamily:SANS,lineHeight:1.4}}>Objetivo: empieza en el mínimo (MEV) y sube ~1 serie/semana hasta el máximo (MAV), luego deload. Cuenta solo series con reps registradas.</p>
+    </Card></div>
+
+    {/* volumen total kg */}
+    <div style={{padding:"14px 18px 0"}}><p style={{...labelStyle,marginBottom:8}}>Volumen total (kg) · 7 días</p><Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:96,gap:6}}>{semVol.map(s=>{const h=s.vol/maxVol*78;const esHoy=s.f===HOY;return <div key={s.f} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><div style={{width:"100%",maxWidth:28,height:Math.max(3,h),background:s.vol>0?(esHoy?C.purple:C.purpleSoft):C.borderSoft,borderRadius:5}}/><span style={{fontSize:11,color:esHoy?C.espresso:C.muted,fontFamily:SANS,fontWeight:esHoy?700:400}}>{DIA_CORTO(s.f)}</span></div>;})}</div><p style={{margin:"10px 0 0",fontSize:12,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Volumen = repeticiones × peso</p></Card></div>
+
+    <div style={{padding:"18px 18px 20px"}}>
+      <p style={{...labelStyle,marginBottom:8}}>Historial</p>
+      {ordenados.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Aún no registras entrenos. Toca “Registrar entreno”.</p>}
+      {ordenados.map(e=><div key={e.id} onClick={()=>setVer(e)} style={{background:C.card,borderRadius:14,padding:16,marginBottom:10,border:"1.5px solid "+C.border,cursor:"pointer"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:18,fontWeight:"normal"}}>{e.nombre||"Entreno"}</h3><span style={{fontFamily:SANS,fontSize:12,color:C.muted}}>{e.fecha}</span></div>
+        <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>{e.dia&&e.dia!=="Otro"&&<Chip bg={C.purpleSoft} col={C.purple}>{e.dia}</Chip>}<Chip bg={C.borderSoft}>{e.ejercicios.length} ejercicios</Chip><Chip bg={C.borderSoft}>{volumen(e).toLocaleString("es-CO")} kg</Chip></div>
+      </div>)}
+    </div>
+
+    <Sheet open={eligiendo} onClose={()=>setEligiendo(false)} title="¿Qué entrenas hoy?">
+      <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 14px"}}>Elige una sesión del plan y se cargan los ejercicios recomendados, o empieza en blanco.</p>
+      {DIAS_ENTRENO.map(d=>{const pl=PLANTILLAS[d];return <button key={d} onClick={()=>elegir(d)} style={{width:"100%",textAlign:"left",background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"13px 15px",marginBottom:10,cursor:"pointer",fontFamily:SANS}}>
+        <span style={{fontFamily:SERIF,fontSize:17,color:C.espresso}}>{d==="Otro"?"Entreno libre":d}</span>
+        {pl&&<span style={{display:"block",fontSize:12,color:C.muted,marginTop:3}}>{pl.length} ejercicios · {pl.reduce((a,x)=>a+x.sets,0)} series</span>}
+        {d==="Otro"&&<span style={{display:"block",fontSize:12,color:C.muted,marginTop:3}}>Sin plantilla, lo armas tú</span>}
+      </button>;})}
+    </Sheet>
+
+    <Sheet open={!!ver} onClose={()=>setVer(null)} title={ver?.nombre||"Entreno"}>{ver&&<div>
+      <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 14px"}}>{ver.fecha} · Volumen {volumen(ver).toLocaleString("es-CO")} kg</p>
+      {ver.ejercicios.map((ej,k)=><div key={k} style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",margin:"0 0 6px"}}><p style={{margin:0,fontFamily:SERIF,fontSize:16}}>{ej.nombre}</p><span style={{fontSize:11,color:C.muted,fontFamily:SANS}}>{musculoDe(ej)}</span></div>{ej.sets.map((s,si)=><div key={si} style={{display:"flex",justifyContent:"space-between",padding:"6px 10px",background:C.card,borderRadius:8,marginBottom:5,border:"1px solid "+C.borderSoft,fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>Serie {si+1}</span><span>{s.reps||0} reps × {s.peso||0} kg</span></div>)}</div>)}
+      {ver.notas&&<div><p style={labelStyle}>Notas</p><p style={{fontFamily:SANS,fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{ver.notas}</p></div>}
+      <button onClick={()=>{setEditando(ver);setVer(null);}} style={{width:"100%",marginTop:14,padding:"11px 0",background:"transparent",border:"1.5px solid "+C.border,borderRadius:10,fontSize:14,fontFamily:SANS,cursor:"pointer"}}>Editar</button>
+      <button onClick={()=>eliminar(ver.id)} style={{width:"100%",marginTop:8,padding:"8px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar</button>
+    </div>}</Sheet>
+
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando&&entrenos.some(x=>x.id===editando.id)?"Editar entreno":"Nuevo entreno"}>{editando&&<FormEntreno entreno={editando} onGuardar={guardar}/>}</Sheet>
+  </div>;
+}
+
+function GymPlan(){
+  const [musAbierto,setMusAbierto]=useState(null);
+  const bloque={padding:"14px 18px 0"};
+  return <div style={{paddingBottom:20}}>
+    <div style={bloque}><Card pad={16}>
+      <Mini icon="📋" label="Tu split"/>
+      <p style={{margin:"8px 0 4px",fontFamily:SERIF,fontSize:20}}>Push / Pull / Legs ×2</p>
+      <p style={{margin:0,fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>6 días. Cada músculo 2×/semana (lo óptimo según la evidencia). Las dos piernas caen lejos de la carrera larga del domingo para minimizar la interferencia.</p>
+    </Card></div>
+
+    <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Calendario semanal</p><Card pad={14}>
+      {CALENDARIO.map((c,i)=><div key={c.d} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:i<6?"1px solid "+C.borderSoft:"none"}}>
+        <span style={{width:34,fontFamily:SERIF,fontSize:15,color:C.espresso}}>{c.d}</span>
+        <span style={{minWidth:62}}><Chip bg={c.s==="Carrera"?C.blueSoft:C.purpleSoft} col={c.s==="Carrera"?C.blue:C.purple}>{c.s}</Chip></span>
+        <span style={{flex:1,fontFamily:SANS,fontSize:12.5,color:C.muted}}>{c.x}</span>
+      </div>)}
+    </Card></div>
+
+    <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Volumen objetivo (series/semana)</p><Card pad={16}>
+      {VOL_MUSCULO.map((v,i)=><div key={v.m} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:i<VOL_MUSCULO.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13.5}}><span>{v.m}</span><span style={{color:C.gold,fontWeight:600}}>{v.min}–{v.max}</span></div>)}
+      <p style={{margin:"12px 0 0",fontSize:11,color:C.muted,fontFamily:SANS,lineHeight:1.45}}>Empieza en el mínimo (MEV) y progresa ~1 serie/semana hacia el máximo (MAV). Máximo ~8–10 series por músculo en una sesión.</p>
+    </Card></div>
+
+    <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Cómo entrenar</p><Card pad={16}>
+      {[["Reps","6–10 en compuestos · 12–20 en aislamientos"],["Cerca del fallo","1–3 RIR (deja el fallo para la última serie)"],["Descanso","2–3 min en básicos · 60–90 s en aislamientos"],["Progresión","Doble progresión: sube reps hasta el techo, luego +2,5 kg"],["Deload","Cada 4–6 semanas baja el volumen 40–50% una semana"],["Posición estirada","Prioriza curl femoral sentado, tríceps overhead, sentadilla profunda, parciales de gemelo"]].map(([k,v],i)=><div key={k} style={{padding:"8px 0",borderBottom:i<5?"1px solid "+C.borderSoft:"none"}}><p style={{margin:0,fontFamily:SANS,fontSize:13,fontWeight:700,color:C.espresso}}>{k}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.45}}>{v}</p></div>)}
+    </Card></div>
+
+    <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Ejercicios recomendados por sesión</p>
+      {Object.keys(PLANTILLAS).map(dia=><div key={dia} style={{marginBottom:10}}>
+        <button onClick={()=>setMusAbierto(musAbierto===dia?null:dia)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"13px 15px",cursor:"pointer",fontFamily:SERIF,fontSize:16,color:C.espresso}}>
+          <span>{dia}</span><span style={{color:C.gold,fontSize:18}}>{musAbierto===dia?"–":"+"}</span></button>
+        {musAbierto===dia&&<div style={{padding:"8px 4px 0"}}>{PLANTILLAS[dia].map((p,i)=><div key={i} style={{padding:"9px 8px",borderBottom:i<PLANTILLAS[dia].length-1?"1px solid "+C.borderSoft:"none"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontFamily:SANS,fontSize:14,fontWeight:600}}>{p.nombre}</span><span style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,whiteSpace:"nowrap"}}>{p.sets}×{p.reps}</span></div>
+          <p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{p.musculo} · {p.nota}</p>
+        </div>)}</div>}
+      </div>)}
+    </div>
+
+    <div style={bloque}><Card pad={16} bd={C.gold}>
+      <Mini icon="🏃" label="Carrera e interferencia"/>
+      <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>Nunca pongas pierna pesada justo antes o después de los 15 km. Corre después de las pesas si coinciden y mantén el domingo en zona 2. Si las piernas no progresan, cambia parte de la carrera por bici.</p>
+    </Card></div>
+  </div>;
+}
+
+function GymProgreso({entrenos}){
+  const nombres=[...new Set(entrenos.flatMap(e=>e.ejercicios.map(ej=>ej.nombre.trim()).filter(Boolean)))].sort();
+  const [sel,setSel]=useState("");
+  const ejNombre=sel||nombres[0]||"";
+  const ses=entrenos.filter(e=>e.ejercicios.some(ej=>ej.nombre.trim()===ejNombre))
+    .map(e=>{const ej=e.ejercicios.find(x=>x.nombre.trim()===ejNombre);
+      let best={e1:0,reps:0,peso:0}; ej.sets.forEach(s=>{const v=e1rm(s.reps,s.peso); if(v>best.e1) best={e1:v,reps:num(s.reps),peso:num(s.peso)};});
+      const vol=ej.sets.reduce((a,s)=>a+num(s.reps)*num(s.peso),0);
+      return {fecha:e.fecha,...best,vol};})
+    .sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const pr=ses.reduce((m,s)=>s.e1>m?s.e1:m,0);
+  const grafico=ses.slice(-10);
+  const maxE=Math.max(...grafico.map(s=>s.e1),1);
+  return <div style={{padding:"14px 18px 20px"}}>
+    {nombres.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:20}}>Registra entrenos y aquí verás tu progresión por ejercicio.</p>:<div>
+      <Field label="Ejercicio"><select style={{...inputStyle,appearance:"none"}} value={ejNombre} onChange={e=>setSel(e.target.value)}>{nombres.map(n=><option key={n} value={n}>{n}</option>)}</select></Field>
+
+      <div style={{display:"flex",gap:10,margin:"4px 0 14px"}}>
+        <div style={{flex:1,background:C.purpleSoft,borderRadius:12,padding:"12px 14px"}}><p style={{margin:0,fontSize:11,color:C.purple,fontFamily:SANS}}>PR (1RM est.)</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:22,color:C.purple}}>{pr} kg</p></div>
+        <div style={{flex:1,background:C.borderSoft,borderRadius:12,padding:"12px 14px"}}><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>Sesiones</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:22}}>{ses.length}</p></div>
+      </div>
+
+      <p style={{...labelStyle,marginBottom:8}}>1RM estimado en el tiempo</p>
+      <Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:120,gap:5}}>{grafico.map((s,i)=>{const h=s.e1/maxE*100;const top=i===grafico.length-1;return <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:9.5,color:C.muted,fontFamily:SANS}}>{s.e1||""}</span><div style={{width:"100%",maxWidth:26,height:Math.max(3,h),background:top?C.purple:C.purpleSoft,borderRadius:5,transition:"height .4s"}}/><span style={{fontSize:9.5,color:C.muted,fontFamily:SANS}}>{s.fecha.slice(5)}</span></div>;})}</div>
+        <p style={{margin:"10px 0 0",fontSize:11,color:C.muted,fontFamily:SANS,textAlign:"center"}}>1RM estimado (Epley) de tu mejor serie por sesión</p></Card>
+
+      <p style={{...labelStyle,margin:"22px 0 8px"}}>Detalle por sesión</p>
+      {[...ses].reverse().map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+(s.e1===pr&&pr>0?C.purple:C.border),fontFamily:SANS,fontSize:13.5}}>
+        <div><p style={{margin:0}}>{s.peso} kg × {s.reps} reps</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted}}>{s.fecha}{s.e1===pr&&pr>0?" · 🏆 PR":""}</p></div>
+        <span style={{fontFamily:SERIF,fontSize:16,color:C.purple}}>{s.e1} kg</span>
+      </div>)}
+    </div>}
+  </div>;
+}
+
+function FormEntreno({entreno,onGuardar}){
+  const [e,setE]=useState(entreno); const set=(k,v)=>setE(p=>({...p,[k]:v}));
+  const setEj=(i,k,v)=>setE(p=>({...p,ejercicios:p.ejercicios.map((x,j)=>j===i?{...x,[k]:v}:x)}));
+  const addEj=()=>setE(p=>({...p,ejercicios:[...p.ejercicios,{id:uid(),nombre:"",musculo:"Otro",sets:[{reps:"",peso:""}]}]}));
+  const delEj=i=>setE(p=>({...p,ejercicios:p.ejercicios.filter((_,j)=>j!==i)}));
+  const setSet=(ei,si,k,v)=>setE(p=>({...p,ejercicios:p.ejercicios.map((x,j)=>j===ei?{...x,sets:x.sets.map((s,sj)=>sj===si?{...s,[k]:v}:s)}:x)}));
+  const addSet=ei=>setE(p=>({...p,ejercicios:p.ejercicios.map((x,j)=>j===ei?{...x,sets:[...x.sets,{reps:"",peso:""}]}:x)}));
+  const delSet=(ei,si)=>setE(p=>({...p,ejercicios:p.ejercicios.map((x,j)=>j===ei?{...x,sets:x.sets.filter((_,sj)=>sj!==si)}:x)}));
+  const ok=e.ejercicios.some(ej=>ej.nombre.trim()&&ej.sets.some(s=>num(s.reps)>0));
+  return <div>
+    <Field label="Fecha"><input style={inputStyle} type="date" value={e.fecha} onChange={ev=>set("fecha",ev.target.value)}/></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <Field label="Nombre"><input style={inputStyle} placeholder="Ej. Push A" value={e.nombre} onChange={ev=>set("nombre",ev.target.value)}/></Field>
+      <Field label="Sesión"><select style={{...inputStyle,appearance:"none"}} value={e.dia||"Otro"} onChange={ev=>set("dia",ev.target.value)}>{DIAS_ENTRENO.map(d=><option key={d} value={d}>{d==="Otro"?"Libre":d}</option>)}</select></Field>
+    </div>
+    {e.ejercicios.map((ej,ei)=><div key={ej.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:12,border:"1.5px solid "+C.border}}>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}><input style={{...inputStyle,flex:1}} placeholder="Ejercicio" value={ej.nombre} onChange={ev=>setEj(ei,"nombre",ev.target.value)}/>{e.ejercicios.length>1&&<button onClick={()=>delEj(ei)} style={{background:"none",border:"none",color:C.red,fontSize:20,cursor:"pointer"}}>×</button>}</div>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+        <select style={{...inputStyle,flex:1,padding:"8px 11px",fontSize:13,appearance:"none"}} value={ej.musculo||"Otro"} onChange={ev=>setEj(ei,"musculo",ev.target.value)}>{MUSCULOS.map(m=><option key={m} value={m}>{m}</option>)}</select>
+        {ej.reps&&<span style={{fontSize:12,color:C.gold,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap"}}>meta {ej.reps}</span>}
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:6,fontSize:11,color:C.muted,fontFamily:SANS,paddingLeft:4}}><span style={{flex:1}}>Reps</span><span style={{flex:1}}>Peso (kg)</span><span style={{width:24}}/></div>
+      {ej.sets.map((s,si)=><div key={si} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}><input style={{...inputStyle,flex:1,padding:"9px 11px"}} type="number" inputMode="numeric" placeholder={ej.reps||"0"} value={s.reps} onChange={ev=>setSet(ei,si,"reps",ev.target.value)}/><input style={{...inputStyle,flex:1,padding:"9px 11px"}} type="number" inputMode="decimal" placeholder="0" value={s.peso} onChange={ev=>setSet(ei,si,"peso",ev.target.value)}/>{ej.sets.length>1&&<button onClick={()=>delSet(ei,si)} style={{background:"none",border:"none",color:C.muted,fontSize:18,cursor:"pointer",width:24}}>×</button>}</div>)}
+      <button onClick={()=>addSet(ei)} style={{background:C.borderSoft,border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,color:C.espresso,cursor:"pointer",fontFamily:SANS,marginTop:4}}>+ Serie</button>
+    </div>)}
+    <button onClick={addEj} style={{width:"100%",padding:"11px 0",background:C.goldSoft,border:"none",borderRadius:10,fontSize:14,color:C.espresso,fontWeight:600,fontFamily:SANS,cursor:"pointer",marginBottom:12}}>+ Añadir ejercicio</button>
+    <Field label="Notas (opcional)"><textarea style={{...inputStyle,minHeight:70,resize:"vertical"}} placeholder="Cómo te sentiste, PRs, RIR, etc." value={e.notas} onChange={ev=>set("notas",ev.target.value)}/></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(e)} style={btnP(ok)}>Guardar entreno</button>
+  </div>;
+}
+
+/* ═══════════ CRONOGRAMA (ESTUDIO + TRABAJO) ═══════════ */
+function progresoSprint(sp){
+  let tot=0,hechos=0;
+  (sp.macros||[]).forEach(m=>(m.tareas||[]).forEach(t=>{
+    const pasos=t.pasos||[];
+    if(pasos.length){ tot+=pasos.length; hechos+=pasos.filter(p=>p.hecho).length; }
+    else { tot+=1; if(t.hecho) hechos+=1; }
+  }));
+  return {tot,hechos,pct:tot>0?Math.round(hechos/tot*100):0};
+}
+
+function Cronograma({horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg}){
+  const [vista,setVista]=useState("estudio");
+  return <div>
+    <Header titulo="Cronograma"/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"estudio",label:"📚 Estudio"},{id:"trabajo",label:"💼 Trabajo"}]}/>
+    {vista==="estudio"&&<CronoEstudio {...{horario,setHorario,pomoCfg,setPomoCfg}}/>}
+    {vista==="trabajo"&&<CronoTrabajo {...{sprints,setSprints,notas,setNotas}}/>}
+  </div>;
+}
+
+/* ---------- ESTUDIO: calendario + pomodoro ---------- */
+function CronoEstudio({horario,setHorario,pomoCfg,setPomoCfg}){
+  const [sub,setSub]=useState("calendario");
+  return <div style={{padding:"10px 18px 20px"}}>
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      {[["calendario","🗓️ Calendario"],["pomodoro","🍅 Pomodoro"]].map(([id,l])=><button key={id} onClick={()=>setSub(id)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid "+(sub===id?C.gold:C.border),background:sub===id?C.gold:"transparent",color:sub===id?C.espresso:C.muted,fontSize:13.5,fontFamily:SANS,fontWeight:sub===id?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>
+    {sub==="calendario"?<Calendario horario={horario} setHorario={setHorario}/>:<Pomodoro cfg={pomoCfg} setCfg={setPomoCfg}/>}
+  </div>;
+}
+
+function Calendario({horario,setHorario}){
+  const [dia,setDia]=useState(diaHoyNombre());
+  const [vista,setVista]=useState("dia");
+  const [edit,setEdit]=useState(null);
+  const [avisoMsg,setAvisoMsg]=useState("");
+  const bloques=(horario[dia]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
+  const guardar=b=>{ setHorario(p=>{ const arr=(p[dia]||[]).some(x=>x.id===b.id)?(p[dia]||[]).map(x=>x.id===b.id?b:x):[...(p[dia]||[]),b]; return {...p,[dia]:arr}; }); setEdit(null); };
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar bloque",texto:"Se borrará este bloque del día."})){ setHorario(p=>({...p,[dia]:(p[dia]||[]).filter(x=>x.id!==id)})); setEdit(null);} };
+  const nuevo=()=>{ const ult=bloques[bloques.length-1]; setEdit({id:uid(),desde:ult?ult.hasta:"08:00",hasta:ult?minToHHMM(Math.min(22*60,hhmmToMin(ult.hasta)+60)):"09:00",act:"",color:0,_nuevo:true}); };
+
+  const activarAvisos=async()=>{
+    const perm=await pedirNoti();
+    if(perm!=="granted"){ setAvisoMsg("Permiso de notificaciones denegado ✗"); setTimeout(()=>setAvisoMsg(""),3000); return; }
+    await notiCancelar("crono-");
+    const hoy=diaHoyNombre(); const lista=(horario[hoy]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
+    const base=new Date(); base.setSeconds(0,0); let n=0;
+    for(const b of lista){ const m=hhmmToMin(b.desde); const when=new Date(base); when.setHours(Math.floor(m/60),m%60,0,0); if(when.getTime()>Date.now()+1500){ const ok=await notiProgramar("📚 "+b.act,"Ahora toca: "+b.act+" ("+b.desde+"–"+b.hasta+")",when.getTime(),"crono-"+b.id); if(ok)n++; } }
+    if(!tieneTriggers){ setAvisoMsg("Tu navegador no permite avisos programados. Usa Chrome en Android."); setTimeout(()=>setAvisoMsg(""),4000); }
+    else { setAvisoMsg(n>0?("✓ "+n+" avisos programados para hoy"):"No quedan bloques pendientes hoy"); setTimeout(()=>setAvisoMsg(""),3500); }
+  };
+
+  return <div>
+    <div style={{display:"flex",gap:7,overflowX:"auto",paddingBottom:10}}>
+      {DIAS_SEM.map(d=>{const a=d===dia,hoy=d===diaHoyNombre();return <button key={d} onClick={()=>setDia(d)} style={{whiteSpace:"nowrap",padding:"7px 13px",borderRadius:20,border:"1.5px solid "+(a?C.gold:C.border),background:a?C.gold:"transparent",color:a?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:a?700:500,cursor:"pointer",position:"relative"}}>{d.slice(0,3)}{hoy&&<span style={{position:"absolute",top:-3,right:-3,width:8,height:8,borderRadius:"50%",background:C.green,border:"1.5px solid "+C.bg}}/>}</button>;})}
+    </div>
+    <div style={{display:"flex",gap:8,margin:"4px 0 12px"}}>
+      <button onClick={()=>setVista(vista==="dia"?"semana":"dia")} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid "+C.border,background:"transparent",color:C.espresso,fontSize:13,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>{vista==="dia"?"📊 Ver semana":"📋 Ver día"}</button>
+      <button onClick={activarAvisos} style={{flex:1,padding:"9px 0",borderRadius:9,border:"none",background:C.espresso,color:C.gold,fontSize:13,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>🔔 Avisar hoy</button>
+    </div>
+    {avisoMsg&&<div style={{marginBottom:12,background:avisoMsg.includes("✗")||avisoMsg.includes("no permite")?C.redSoft:C.greenSoft,color:avisoMsg.includes("✗")||avisoMsg.includes("no permite")?C.red:C.green,borderRadius:10,padding:"9px 12px",fontFamily:SANS,fontSize:13,textAlign:"center"}}>{avisoMsg}</div>}
+
+    {vista==="dia"?<div>
+      <button onClick={nuevo} style={{width:"100%",padding:"11px 0",marginBottom:12,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Bloque en {dia}</button>
+      {bloques.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:14}}>Sin bloques para {dia}. Añade uno (ej. 5:30–6:30 Gym).</p>:bloques.map(b=>{const c=PALETA_BLOQUES[b.color%PALETA_BLOQUES.length];return <div key={b.id} onClick={()=>setEdit(b)} style={{display:"flex",alignItems:"stretch",gap:0,marginBottom:8,borderRadius:12,overflow:"hidden",border:"1.5px solid "+C.border,cursor:"pointer",background:C.card}}>
+        <div style={{width:6,background:c.fg}}/>
+        <div style={{flex:1,padding:"12px 14px",background:c.bg}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SERIF,fontSize:16,color:c.fg}}>{b.act||"(sin nombre)"}</span><span style={{fontFamily:SANS,fontSize:12.5,color:c.fg,fontWeight:600}}>{b.desde}–{b.hasta}</span></div>
+        </div>
+      </div>;})}
+    </div>:<GridSemana horario={horario}/>}
+
+    <Sheet open={!!edit} onClose={()=>setEdit(null)} title={edit?._nuevo?"Nuevo bloque · "+dia:"Editar bloque · "+dia}>{edit&&<FormBloque bloque={edit} onGuardar={guardar} onEliminar={edit._nuevo?null:()=>eliminar(edit.id)}/>}</Sheet>
+  </div>;
+}
+
+function GridSemana({horario}){
+  const filas=HORAS_DIA;
+  return <div style={{overflowX:"auto",border:"1.5px solid "+C.border,borderRadius:10}}>
+    <div style={{display:"grid",gridTemplateColumns:"46px repeat(7,minmax(64px,1fr))",minWidth:540,fontFamily:SANS}}>
+      <div style={{position:"sticky",left:0,background:C.bg,borderBottom:"1px solid "+C.border,borderRight:"1px solid "+C.border}}/>
+      {DIAS_SEM.map(d=><div key={d} style={{padding:"7px 2px",textAlign:"center",fontSize:11,fontWeight:700,color:d===diaHoyNombre()?C.gold:C.muted,borderBottom:"1px solid "+C.border,background:C.bg}}>{d.slice(0,3)}</div>)}
+      {filas.map((hh,ri)=>{const m=hhmmToMin(hh);return <React.Fragment key={hh}>
+        <div style={{position:"sticky",left:0,background:C.bg,fontSize:9.5,color:C.muted,padding:"0 3px",textAlign:"right",borderRight:"1px solid "+C.border,borderBottom:"1px solid "+C.borderSoft,lineHeight:"22px"}}>{hh.endsWith(":00")?hh:""}</div>
+        {DIAS_SEM.map(d=>{const b=(horario[d]||[]).find(x=>m>=hhmmToMin(x.desde)&&m<hhmmToMin(x.hasta));const start=b&&hhmmToMin(b.desde)===m;const c=b?PALETA_BLOQUES[b.color%PALETA_BLOQUES.length]:null;return <div key={d} title={b?b.act:""} style={{height:22,borderBottom:"1px solid "+C.borderSoft,borderLeft:"1px solid "+C.borderSoft,background:c?c.bg:"transparent",fontSize:8.5,color:c?c.fg:"transparent",padding:"0 2px",overflow:"hidden",whiteSpace:"nowrap",fontWeight:600,lineHeight:"22px"}}>{start?b.act:""}</div>;})}
+      </React.Fragment>;})}
+    </div>
+  </div>;
+}
+
+function FormBloque({bloque,onGuardar,onEliminar}){
+  const [b,setB]=useState(bloque); const set=(k,v)=>setB(p=>({...p,[k]:v}));
+  const ok=b.act.trim()&&hhmmToMin(b.hasta)>hhmmToMin(b.desde);
+  return <div>
+    <Field label="Actividad"><input style={inputStyle} placeholder="Ej. Estudio · Trabajo · Gym" value={b.act} onChange={e=>set("act",e.target.value)} autoFocus/></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <Field label="Desde"><input style={inputStyle} type="time" value={b.desde} onChange={e=>set("desde",e.target.value)}/></Field>
+      <Field label="Hasta"><input style={inputStyle} type="time" value={b.hasta} onChange={e=>set("hasta",e.target.value)}/></Field>
+    </div>
+    <p style={labelStyle}>Color</p>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>{PALETA_BLOQUES.map((c,i)=><button key={i} onClick={()=>set("color",i)} style={{width:34,height:34,borderRadius:9,background:c.bg,border:b.color===i?"3px solid "+c.fg:"1.5px solid "+C.border,cursor:"pointer"}}/>)}</div>
+    {!ok&&b.act.trim()&&<p style={{fontFamily:SANS,fontSize:12,color:C.red,margin:"0 0 10px"}}>La hora "hasta" debe ser mayor que "desde".</p>}
+    <button disabled={!ok} onClick={()=>onGuardar(b)} style={btnP(ok)}>Guardar bloque</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+
+function Pomodoro({cfg,setCfg}){
+  const c={...POMO_DEFAULT,...(cfg||{})};
+  const [fase,setFase]=useState("trabajo"); // trabajo | descanso | largo
+  const [left,setLeft]=useState(num(c.trabajo)*60);
+  const [run,setRun]=useState(false);
+  const [ciclo,setCiclo]=useState(1);
+  const [ajustar,setAjustar]=useState(false);
+  const finAt=React.useRef(0);
+  const durFase=f=>num(f==="trabajo"?c.trabajo:f==="largo"?c.largo:c.descanso)*60;
+
+  useEffect(()=>{ if(!run){ setLeft(durFase(fase)); } },[fase,cfg]);
+  useEffect(()=>{ pedirNoti(); },[]);
+  useEffect(()=>{let wl=null;(async()=>{try{if(run&&"wakeLock"in navigator)wl=await navigator.wakeLock.request("screen");}catch(e){}})();return()=>{try{wl&&wl.release();}catch(e){}};},[run]);
+
+  const avanzar=()=>{
+    let next,nciclo=ciclo;
+    if(fase==="trabajo"){ next=(ciclo%num(c.ciclos)===0)?"largo":"descanso"; }
+    else if(fase==="largo"){ next="trabajo"; nciclo=1; }
+    else { next="trabajo"; nciclo=ciclo+1; }
+    const titulo=next==="trabajo"?"💪 ¡A trabajar!":next==="largo"?"🌿 Descanso largo":"☕ Descanso";
+    beep(next==="trabajo"?3:2);
+    notiAhora(titulo, next==="trabajo"?"Concéntrate "+num(c.trabajo)+" min":"Relájate "+num(next==="largo"?c.largo:c.descanso)+" min","pomo");
+    setFase(next); setCiclo(nciclo); setRun(false); setLeft(durFase(next));
+  };
+
+  useEffect(()=>{
+    if(!run) return;
+    const id=setInterval(()=>{
+      const rem=Math.round((finAt.current-Date.now())/1000);
+      if(rem<=0){ clearInterval(id); avanzar(); }
+      else setLeft(rem);
+    },250);
+    return ()=>clearInterval(id);
+  },[run]);
+
+  const iniciar=()=>{ beep(1); finAt.current=Date.now()+left*1000; setRun(true); notiProgramar(fase==="trabajo"?"⏱ Fin del enfoque":"⏱ Fin del descanso", fase==="trabajo"?"Hora de descansar":"Vuelve a concentrarte", finAt.current,"pomo"); };
+  const pausar=()=>{ setRun(false); notiCancelar("pomo"); };
+  const reset=()=>{ setRun(false); setLeft(durFase(fase)); notiCancelar("pomo"); };
+  const saltar=()=>{ notiCancelar("pomo"); avanzar(); };
+
+  const col=fase==="trabajo"?C.red:fase==="largo"?C.green:C.blue;
+  const colSoft=fase==="trabajo"?C.redSoft:fase==="largo"?C.greenSoft:C.blueSoft;
+  const total=durFase(fase), prog=total>0?(1-left/total)*100:0;
+  const etiqueta=fase==="trabajo"?"Enfoque":fase==="largo"?"Descanso largo":"Descanso";
+
+  return <div>
+    <div style={{background:colSoft,borderRadius:18,padding:"26px 18px 28px",textAlign:"center",marginBottom:14}}>
+      <p style={{margin:0,fontSize:12,letterSpacing:2,textTransform:"uppercase",color:col,fontFamily:SANS,fontWeight:700}}>{etiqueta} · Ciclo {ciclo}/{num(c.ciclos)}</p>
+      <div style={{position:"relative",width:200,height:200,margin:"16px auto 0",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <svg width="200" height="200" style={{position:"absolute",top:0,left:0,transform:"rotate(-90deg)"}}><circle cx="100" cy="100" r="90" fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="11"/><circle cx="100" cy="100" r="90" fill="none" stroke={col} strokeWidth="11" strokeLinecap="round" strokeDasharray={2*Math.PI*90} strokeDashoffset={2*Math.PI*90*(1-prog/100)} style={{transition:"stroke-dashoffset .4s linear"}}/></svg>
+        <span style={{fontFamily:SERIF,fontSize:48,fontWeight:"bold",color:col}}>{fmtMMSS(left)}</span>
+      </div>
+      <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:24}}>
+        {!run?<button onClick={iniciar} style={{padding:"13px 32px",background:col,color:"#fff",border:"none",borderRadius:30,fontSize:15,fontWeight:700,cursor:"pointer"}}>▶ {left===total?"Iniciar":"Reanudar"}</button>:<button onClick={pausar} style={{padding:"13px 32px",background:"rgba(0,0,0,.12)",color:C.espresso,border:"none",borderRadius:30,fontSize:15,fontWeight:700,cursor:"pointer"}}>⏸ Pausar</button>}
+        <button onClick={reset} style={{padding:"13px 18px",background:"transparent",color:col,border:"1.5px solid "+col,borderRadius:30,fontSize:14,fontWeight:600,cursor:"pointer"}}>↻</button>
+        <button onClick={saltar} style={{padding:"13px 18px",background:"transparent",color:col,border:"1.5px solid "+col,borderRadius:30,fontSize:14,fontWeight:600,cursor:"pointer"}}>⏭</button>
+      </div>
+    </div>
+    <button onClick={()=>setAjustar(a=>!a)} style={{width:"100%",padding:"11px 0",background:"transparent",border:"1.5px solid "+C.border,borderRadius:10,fontSize:13.5,color:C.espresso,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>⚙ Ajustar tiempos</button>
+    {ajustar&&<div style={{marginTop:12,background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:14}}>
+      {[["trabajo","Enfoque (min)"],["descanso","Descanso (min)"],["largo","Descanso largo (min)"],["ciclos","Ciclos antes del largo"]].map(([k,l])=><div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontFamily:SANS,fontSize:13.5,color:C.muted}}>{l}</span><input style={{...inputStyle,width:74,padding:"7px 9px",textAlign:"center"}} inputMode="numeric" value={c[k]} onChange={e=>setCfg({...c,[k]:e.target.value})}/></div>)}
+      <p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"4px 0 0"}}>Suena y vibra al cambiar de fase. En Chrome Android avisa aunque cierres la app.</p>
+    </div>}
+  </div>;
+}
+
+/* ---------- TRABAJO: sprints + notas ---------- */
+function CronoTrabajo({sprints,setSprints,notas,setNotas}){
+  const [sub,setSub]=useState("sprints");
+  return <div style={{padding:"10px 18px 20px"}}>
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      {[["sprints","🗂️ Sprints"],["notas","📝 Notas"]].map(([id,l])=><button key={id} onClick={()=>setSub(id)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid "+(sub===id?C.gold:C.border),background:sub===id?C.gold:"transparent",color:sub===id?C.espresso:C.muted,fontSize:13.5,fontFamily:SANS,fontWeight:sub===id?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>
+    {sub==="sprints"?<Sprints sprints={sprints} setSprints={setSprints}/>:<Notas notas={notas} setNotas={setNotas}/>}
+  </div>;
+}
+
+function Sprints({sprints,setSprints}){
+  const [abierto,setAbierto]=useState(null);
+  const [editSprint,setEditSprint]=useState(null);
+  const nuevo=()=>setEditSprint({id:uid(),nombre:"",fecha:HOY,macros:[],_nuevo:true});
+  const guardarSprint=s=>{ setSprints(p=>p.some(x=>x.id===s.id)?p.map(x=>x.id===s.id?{...x,nombre:s.nombre,fecha:s.fecha}:x):[...p,{id:s.id,nombre:s.nombre,fecha:s.fecha,macros:[]}]); setEditSprint(null); if(s._nuevo) setAbierto(s.id); };
+  const eliminarSprint=async id=>{ if(await pedirConfirm({titulo:"Eliminar sprint",texto:"Se borrará el sprint con todas sus tareas."})){ setSprints(p=>p.filter(x=>x.id!==id)); setEditSprint(null);} };
+  const upd=(id,fn)=>setSprints(p=>p.map(s=>s.id===id?fn(s):s));
+
+  return <div>
+    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",marginBottom:14,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo sprint</button>
+    {sprints.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Crea un sprint y organízalo en macrotareas → tareas → pasos.</p>}
+    {sprints.map(sp=>{const pr=progresoSprint(sp);const open=abierto===sp.id;return <div key={sp.id} style={{background:C.card,borderRadius:14,marginBottom:10,border:"1.5px solid "+(pr.pct===100&&pr.tot>0?C.green:C.border),overflow:"hidden"}}>
+      <div onClick={()=>setAbierto(open?null:sp.id)} style={{padding:16,cursor:"pointer"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div style={{flex:1}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:18,fontWeight:"normal"}}>{sp.nombre}</h3><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{pr.hechos}/{pr.tot} pasos · {(sp.macros||[]).length} macrotareas</p></div>
+          <button onClick={e=>{e.stopPropagation();setEditSprint(sp);}} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer",padding:"0 4px"}}>✎</button>
+          <span style={{color:C.muted,fontSize:15,marginLeft:4}}>{open?"▲":"▼"}</span>
+        </div>
+        <div style={{marginTop:12}}><Bar pct={pr.pct} color={pr.pct===100&&pr.tot>0?C.green:C.gold} h={10}/></div>
+        <p style={{margin:"6px 0 0",textAlign:"right",fontFamily:SANS,fontSize:12,fontWeight:700,color:pr.pct===100&&pr.tot>0?C.green:C.espresso}}>{pr.pct}%</p>
+      </div>
+      {open&&<div style={{padding:"0 16px 16px"}}><SprintDetalle sprint={sp} upd={fn=>upd(sp.id,fn)}/></div>}
+    </div>;})}
+    <Sheet open={!!editSprint} onClose={()=>setEditSprint(null)} title={editSprint?._nuevo?"Nuevo sprint":"Editar sprint"}>{editSprint&&<FormSprint sprint={editSprint} onGuardar={guardarSprint} onEliminar={editSprint._nuevo?null:()=>eliminarSprint(editSprint.id)}/>}</Sheet>
+  </div>;
+}
+
+function FormSprint({sprint,onGuardar,onEliminar}){
+  const [s,setS]=useState(sprint); const set=(k,v)=>setS(p=>({...p,[k]:v})); const ok=s.nombre.trim().length>0;
+  return <div>
+    <Field label="Nombre del sprint"><input style={inputStyle} placeholder="Ej. Sprint 1 · Entrega proyecto" value={s.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
+    <Field label="Fecha / período"><input style={inputStyle} type="date" value={s.fecha} onChange={e=>set("fecha",e.target.value)}/></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(s)} style={btnP(ok)}>Guardar sprint</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+
+function SprintDetalle({sprint,upd}){
+  const [nuevaMacro,setNuevaMacro]=useState("");
+  const addMacro=()=>{ const t=nuevaMacro.trim(); if(!t) return; upd(s=>({...s,macros:[...(s.macros||[]),{id:uid(),titulo:t,tareas:[]}]})); setNuevaMacro(""); };
+  const delMacro=async id=>{ if(await pedirConfirm({titulo:"Eliminar macrotarea",texto:"Se borrará con sus tareas."})) upd(s=>({...s,macros:s.macros.filter(m=>m.id!==id)})); };
+  const updMacro=(mid,fn)=>upd(s=>({...s,macros:s.macros.map(m=>m.id===mid?fn(m):m)}));
+  return <div style={{borderTop:"1px solid "+C.borderSoft,paddingTop:12}}>
+    {(sprint.macros||[]).map(m=><MacroTarea key={m.id} macro={m} upd={fn=>updMacro(m.id,fn)} onDel={()=>delMacro(m.id)}/>)}
+    <div style={{display:"flex",gap:7,marginTop:6}}>
+      <input style={{...inputStyle,flex:1,padding:"9px 11px",fontSize:13.5}} placeholder="+ Nueva macrotarea" value={nuevaMacro} onChange={e=>setNuevaMacro(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addMacro();}}/>
+      <button onClick={addMacro} style={{background:C.espresso,color:C.bg,border:"none",borderRadius:9,padding:"0 16px",fontSize:18,cursor:"pointer"}}>+</button>
+    </div>
+  </div>;
+}
+
+function MacroTarea({macro,upd,onDel}){
+  const [nuevaTarea,setNuevaTarea]=useState("");
+  const addTarea=()=>{ const t=nuevaTarea.trim(); if(!t) return; upd(m=>({...m,tareas:[...(m.tareas||[]),{id:uid(),titulo:t,hecho:false,pasos:[]}]})); setNuevaTarea(""); };
+  const delTarea=async id=>{ if(await pedirConfirm({titulo:"Eliminar tarea",texto:"Se borrará esta tarea y sus pasos."})) upd(m=>({...m,tareas:m.tareas.filter(t=>t.id!==id)})); };
+  const updTarea=(tid,fn)=>upd(m=>({...m,tareas:m.tareas.map(t=>t.id===tid?fn(t):t)}));
+  const tareas=macro.tareas||[];
+  const done=tareas.filter(t=>(t.pasos||[]).length?t.pasos.every(p=>p.hecho):t.hecho).length;
+  return <div style={{background:C.bg,borderRadius:11,padding:12,marginBottom:10,border:"1px solid "+C.borderSoft}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+      <span style={{fontFamily:SANS,fontSize:14.5,fontWeight:700,color:C.espresso}}>📂 {macro.titulo}</span>
+      <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontFamily:SANS,fontSize:11.5,color:C.muted}}>{done}/{tareas.length}</span><button onClick={onDel} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>×</button></div>
+    </div>
+    {tareas.map(t=><Tarea key={t.id} tarea={t} upd={fn=>updTarea(t.id,fn)} onDel={()=>delTarea(t.id)}/>)}
+    <div style={{display:"flex",gap:6,marginTop:tareas.length?6:0}}>
+      <input style={{...inputStyle,flex:1,padding:"8px 10px",fontSize:13}} placeholder="+ Tarea" value={nuevaTarea} onChange={e=>setNuevaTarea(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTarea();}}/>
+      <button onClick={addTarea} style={{background:C.goldSoft,color:C.espresso,border:"none",borderRadius:8,padding:"0 14px",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+    </div>
+  </div>;
+}
+
+function Tarea({tarea,upd,onDel}){
+  const [open,setOpen]=useState(false);
+  const [nuevoPaso,setNuevoPaso]=useState("");
+  const pasos=tarea.pasos||[];
+  const completa=pasos.length?pasos.every(p=>p.hecho):tarea.hecho;
+  const toggleTarea=()=>{ if(pasos.length){ const all=pasos.every(p=>p.hecho); upd(t=>({...t,pasos:t.pasos.map(p=>({...p,hecho:!all}))})); } else upd(t=>({...t,hecho:!t.hecho})); };
+  const addPaso=()=>{ const x=nuevoPaso.trim(); if(!x) return; upd(t=>({...t,pasos:[...(t.pasos||[]),{id:uid(),texto:x,hecho:false}]})); setNuevoPaso(""); };
+  const togglePaso=pid=>upd(t=>({...t,pasos:t.pasos.map(p=>p.id===pid?{...p,hecho:!p.hecho}:p)}));
+  const delPaso=pid=>upd(t=>({...t,pasos:t.pasos.filter(p=>p.id!==pid)}));
+  const doneP=pasos.filter(p=>p.hecho).length;
+  return <div style={{marginBottom:6}}>
+    <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 4px"}}>
+      <button onClick={toggleTarea} style={{flexShrink:0,width:22,height:22,borderRadius:6,border:"1.5px solid "+(completa?C.green:C.border),background:completa?C.green:"transparent",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{completa?"✓":""}</button>
+      <span onClick={()=>pasos.length&&setOpen(o=>!o)} style={{flex:1,fontFamily:SANS,fontSize:14,color:completa?C.muted:C.espresso,textDecoration:completa?"line-through":"none",cursor:pasos.length?"pointer":"default"}}>{tarea.titulo}{pasos.length>0&&<span style={{marginLeft:6,fontSize:11,color:C.muted}}>({doneP}/{pasos.length}) {open?"▲":"▼"}</span>}</span>
+      <button onClick={onDel} style={{background:"none",border:"none",color:C.muted,fontSize:15,cursor:"pointer"}}>×</button>
+    </div>
+    {(open||pasos.length===0)&&<div style={{paddingLeft:30}}>
+      {pasos.map(p=><div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}}>
+        <button onClick={()=>togglePaso(p.id)} style={{flexShrink:0,width:18,height:18,borderRadius:"50%",border:"1.5px solid "+(p.hecho?C.gold:C.border),background:p.hecho?C.gold:"transparent",color:C.espresso,fontSize:10,cursor:"pointer"}}>{p.hecho?"✓":""}</button>
+        <span style={{flex:1,fontFamily:SANS,fontSize:13,color:p.hecho?C.muted:C.espresso,textDecoration:p.hecho?"line-through":"none"}}>{p.texto}</span>
+        <button onClick={()=>delPaso(p.id)} style={{background:"none",border:"none",color:C.muted,fontSize:13,cursor:"pointer"}}>×</button>
+      </div>)}
+      <div style={{display:"flex",gap:6,marginTop:4}}>
+        <input style={{...inputStyle,flex:1,padding:"6px 9px",fontSize:12.5}} placeholder="+ Paso / microtarea" value={nuevoPaso} onChange={e=>setNuevoPaso(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addPaso();}}/>
+        <button onClick={addPaso} style={{background:C.borderSoft,color:C.espresso,border:"none",borderRadius:7,padding:"0 12px",fontSize:14,cursor:"pointer"}}>+</button>
+      </div>
+    </div>}
+  </div>;
+}
+
+function Notas({notas,setNotas}){
+  const [editando,setEditando]=useState(null);
+  const guardar=n=>{ setNotas(p=>p.some(x=>x.id===n.id)?p.map(x=>x.id===n.id?n:x):[n,...p]); setEditando(null); };
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar nota",texto:"Se borrará esta nota."})){ setNotas(p=>p.filter(x=>x.id!==id)); setEditando(null);} };
+  const nueva=()=>setEditando({id:uid(),titulo:"",texto:"",_nuevo:true});
+  return <div>
+    <button onClick={nueva} style={{width:"100%",padding:"12px 0",marginBottom:14,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva nota</button>
+    {notas.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Guarda notas útiles, recordatorios e ideas.</p>}
+    {notas.map(n=><div key={n.id} onClick={()=>setEditando(n)} style={{background:C.card,borderRadius:12,padding:14,marginBottom:9,border:"1.5px solid "+C.border,cursor:"pointer"}}>
+      <h3 style={{margin:0,fontFamily:SERIF,fontSize:16,fontWeight:"normal"}}>{n.titulo||"(sin título)"}</h3>
+      {n.texto&&<p style={{margin:"5px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5,whiteSpace:"pre-wrap",maxHeight:60,overflow:"hidden"}}>{n.texto}</p>}
+    </div>)}
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nueva nota":"Editar nota"}>{editando&&<FormNota nota={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+  </div>;
+}
+
+function FormNota({nota,onGuardar,onEliminar}){
+  const [n,setN]=useState(nota); const set=(k,v)=>setN(p=>({...p,[k]:v})); const ok=n.titulo.trim()||n.texto.trim();
+  return <div>
+    <Field label="Título"><input style={inputStyle} placeholder="Ej. Comando útil de git" value={n.titulo} onChange={e=>set("titulo",e.target.value)} autoFocus/></Field>
+    <Field label="Contenido"><textarea style={{...inputStyle,minHeight:160,resize:"vertical"}} placeholder="Escribe aquí…" value={n.texto} onChange={e=>set("texto",e.target.value)}/></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(n)} style={btnP(!!ok)}>Guardar nota</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+
+/* piezas */
+function Macro({label,value}){ return <div style={{flex:"1 1 64px",background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"10px 8px",textAlign:"center",minWidth:60}}><p style={{margin:0,fontFamily:SERIF,fontSize:18,color:value?C.text:C.border}}>{value||"—"}</p><p style={{margin:"2px 0 0",fontSize:10,color:C.muted,fontFamily:SANS,textTransform:"uppercase",letterSpacing:.5}}>{label}</p></div>; }
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("service-worker.js").catch(function(){});});}
+</script>
+</body>
+</html>

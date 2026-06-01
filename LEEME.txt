@@ -1,0 +1,68 @@
+╔══════════════════════════════════════════╗
+        MI VIDA EN ORDEN — Cómo instalarla
+╚══════════════════════════════════════════╝
+
+Esta app es 100% tuya. Tus datos se guardan SOLO en tu
+dispositivo (no se envían a ningún lado). Funciona sin
+internet una vez instalada.
+
+Archivos de la app (todos van juntos en una misma carpeta):
+  • index.html
+  • manifest.webmanifest
+  • service-worker.js
+  • icon-192.png
+  • icon-512.png
+  • icon-512-maskable.png
+
+
+───────────────────────────────────────────────
+OPCIÓN A — INSTALARLA EN EL CELULAR (recomendada)
+───────────────────────────────────────────────
+Para que se instale como una app de verdad (ícono propio,
+pantalla completa, offline), el navegador necesita abrirla
+desde una dirección "https://", no desde un archivo suelto.
+La forma más fácil y gratis es subir la carpeta a un hosting
+gratuito. Hazlo UNA vez y listo:
+
+1. Entra desde tu PC a:  https://app.netlify.com/drop
+2. Arrastra la CARPETA completa con los 6 archivos.
+3. Netlify te dará un enlace tipo:
+   https://algo-aleatorio.netlify.app
+4. Abre ESE enlace en el navegador de tu celular (Chrome en
+   Android o Safari en iPhone).
+5. Instálala:
+   • ANDROID (Chrome): toca el menú ⋮ → "Agregar a pantalla
+     de inicio" / "Instalar aplicación".
+   • iPHONE (Safari): toca Compartir ⬆️ → "Agregar a pantalla
+     de inicio".
+6. Aparecerá el ícono en tu teléfono. Ábrela desde ahí: se ve
+   y funciona como app normal, incluso sin internet.
+
+(Alternativas al hosting: GitHub Pages o Vercel funcionan igual.
+ Cualquiera sirve, es gratis y queda privado mientras no
+ compartas el enlace.)
+
+
+───────────────────────────────────────────────
+OPCIÓN B — USARLA / GUARDARLA EN EL PC
+───────────────────────────────────────────────
+• Rápido: haz doble clic en "index.html" y se abre en tu
+  navegador. Tus datos quedan guardados en ese navegador.
+  (Nota: abierta así NO registra el modo offline/instalación,
+   pero la app funciona y guarda todo igual.)
+
+• Como app de escritorio: abre el enlace de Netlify (Opción A)
+  en Chrome/Edge en el PC → menú ⋮ → "Instalar Mi Vida en
+  Orden". Queda como programa con su ventana propia.
+
+
+───────────────────────────────────────────────
+IMPORTANTE SOBRE TUS DATOS
+───────────────────────────────────────────────
+• Los datos viven en el dispositivo/navegador donde la usas.
+  El celular y el PC son memorias separadas (no se sincronizan
+  entre sí).
+• Si borras los datos del navegador o desinstalas, se borran.
+• Moneda configurada: peso colombiano (COP).
+
+Disfrútala. Está pensada para una sola persona: tú.

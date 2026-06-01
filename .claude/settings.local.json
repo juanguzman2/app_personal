@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -o \"C:\\\\Users\\\\sojua\\\\Downloads\\\\files.zip\" -d .)",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell(Select-String -Path \"C:\\\\Users\\\\sojua\\\\OneDrive\\\\Desktop\\\\aplicacion\\\\app_personal\\\\index.html\" -Pattern 'Preparación \\\\\\(opcional\\\\\\)','function FormReceta','setRegistrar\\\\\\(ver\\\\\\)','tipo:\"Almuerzo\"','function FormConsumo' | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Substring\\(0,[Math]::Min\\(90,$_.Line.Length\\)\\)\\)\" })",
+      "PowerShell($lines = Get-Content \"C:\\\\Users\\\\sojua\\\\OneDrive\\\\Desktop\\\\aplicacion\\\\app_personal\\\\index.html\"; \"Total lines: $\\($lines.Count\\)\"; \"--- 529-532 ---\"; $lines[528..531])",
+      "Bash(cp index.html index.html.bak)",
+      "Bash(node -e \"const fs=require\\('fs'\\);let s=fs.readFileSync\\('index.html','utf8'\\);const orig=s.length;let i=s.indexOf\\('const rootEl=document.getElementById'\\);console.log\\('idx rootEl:',i\\);console.log\\('tail repeats?', \\(s.match\\(/const rootEl=document.getElementById/g\\)||[]\\).length\\);\")",
+      "Bash(rm -f index.html.bak)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const s=fs.readFileSync\\('index.html','utf8'\\);const fns=['function Cronograma','function CronoEstudio','function Calendario','function GridSemana','function FormBloque','function Pomodoro','function CronoTrabajo','function Sprints','function FormSprint','function SprintDetalle','function MacroTarea','function Tarea','function Notas','function FormNota','function ModoCocina','function progresoSprint'];fns.forEach\\(f=>{const c=\\(s.match\\(new RegExp\\(f.replace\\(/[.*+?^\\\\${}\\(\\)|[\\\\]\\\\\\\\\\\\\\\\]/g,'\\\\\\\\\\\\\\\\$&'\\),'g'\\)\\)||[]\\).length;if\\(c!==1\\)console.log\\('WARN',f,'=',c\\);}\\);console.log\\('check done, lines:',s.split\\('\\\\n'\\).length\\);\")",
+      "Bash(awk 'NR>=926 && NR<=950 {printf \"%d: %s\\\\n\", NR, $0}' \"C:\\\\Users\\\\sojua\\\\OneDrive\\\\Desktop\\\\aplicacion\\\\app_personal\\\\index.html\")"
+    ]
+  }
+}
