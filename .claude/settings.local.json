@@ -10,7 +10,11 @@
       "Bash(rm -f index.html.bak)",
       "Bash(node -e \"const fs=require\\('fs'\\);const s=fs.readFileSync\\('index.html','utf8'\\);const fns=['function Cronograma','function CronoEstudio','function Calendario','function GridSemana','function FormBloque','function Pomodoro','function CronoTrabajo','function Sprints','function FormSprint','function SprintDetalle','function MacroTarea','function Tarea','function Notas','function FormNota','function ModoCocina','function progresoSprint'];fns.forEach\\(f=>{const c=\\(s.match\\(new RegExp\\(f.replace\\(/[.*+?^\\\\${}\\(\\)|[\\\\]\\\\\\\\\\\\\\\\]/g,'\\\\\\\\\\\\\\\\$&'\\),'g'\\)\\)||[]\\).length;if\\(c!==1\\)console.log\\('WARN',f,'=',c\\);}\\);console.log\\('check done, lines:',s.split\\('\\\\n'\\).length\\);\")",
       "Bash(awk 'NR>=926 && NR<=950 {printf \"%d: %s\\\\n\", NR, $0}' \"C:\\\\Users\\\\sojua\\\\OneDrive\\\\Desktop\\\\aplicacion\\\\app_personal\\\\index.html\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(git ls-remote *)"
     ]
   }
 }
