@@ -1237,6 +1237,8 @@ function Calendario({horario,setHorario}){
   const [vista,setVista]=useState("dia");
   const [edit,setEdit]=useState(null);
   const [avisoMsg,setAvisoMsg]=useState("");
+  const timersRef=React.useRef([]);
+  useEffect(()=>()=>{timersRef.current.forEach(clearTimeout);},[]);
   const bloques=(horario[dia]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
   const diasDe=gid=>gid?DIAS_SEM.filter(d=>(horario[d]||[]).some(x=>x.gid===gid)):[];
   const guardar=(b,dias)=>{ const gid=b.gid||uid(); const{_nuevo,...limpio}=b; setHorario(p=>{ const next={...p}; DIAS_SEM.forEach(d=>{ let arr=(next[d]||[]).filter(x=>!(x.gid&&x.gid===gid)&&x.id!==b.id); if(dias.includes(d)) arr=[...arr,{...limpio,id:uid(),gid}]; next[d]=arr; }); return next; }); setEdit(null); };
@@ -1245,13 +1247,24 @@ function Calendario({horario,setHorario}){
 
   const activarAvisos=async()=>{
     const perm=await pedirNoti();
-    if(perm!=="granted"){ setAvisoMsg("Permiso de notificaciones denegado ✗"); setTimeout(()=>setAvisoMsg(""),3000); return; }
+    if(perm!=="granted"){ setAvisoMsg("Permiso de notificaciones denegado ✗"); setTimeout(()=>setAvisoMsg(""),3500); return; }
+    beep(1); // desbloquea el audio para que suene luego
     await notiCancelar("crono-");
+    timersRef.current.forEach(clearTimeout); timersRef.current=[];
     const hoy=diaHoyNombre(); const lista=(horario[hoy]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
-    const base=new Date(); base.setSeconds(0,0); let n=0;
-    for(const b of lista){ const m=hhmmToMin(b.desde); const when=new Date(base); when.setHours(Math.floor(m/60),m%60,0,0); if(when.getTime()>Date.now()+1500){ const ok=await notiProgramar("📚 "+b.act,"Ahora toca: "+b.act+" ("+b.desde+"–"+b.hasta+")",when.getTime(),"crono-"+b.id); if(ok)n++; } }
-    if(!tieneTriggers){ setAvisoMsg("Tu navegador no permite avisos programados. Usa Chrome en Android."); setTimeout(()=>setAvisoMsg(""),4000); }
-    else { setAvisoMsg(n>0?("✓ "+n+" avisos programados para hoy"):"No quedan bloques pendientes hoy"); setTimeout(()=>setAvisoMsg(""),3500); }
+    const base=new Date(); base.setSeconds(0,0); let prog=0, intern=0;
+    for(const b of lista){
+      const m=hhmmToMin(b.desde); const when=new Date(base); when.setHours(Math.floor(m/60),m%60,0,0); const ms=when.getTime()-Date.now();
+      if(ms<=1500) continue;
+      // 1) intento del sistema (suena con la app cerrada en Android)
+      const ok=await notiProgramar("📚 "+b.act,"Ahora toca: "+b.act+" ("+b.desde+"–"+b.hasta+")",when.getTime(),"crono-"+b.id); if(ok)prog++;
+      // 2) respaldo interno: suena/avisa mientras la app siga abierta
+      if(ms<=22*3600*1000){ const id=setTimeout(()=>{ beep(2); notiAhora("📚 "+b.act,"Ahora toca: "+b.act+" ("+b.desde+"–"+b.hasta+")","crono-live-"+b.id); },ms); timersRef.current.push(id); intern++; }
+    }
+    if(prog+intern===0){ setAvisoMsg("No quedan bloques pendientes hoy"); }
+    else if(tieneTriggers&&prog>0){ setAvisoMsg("✓ "+prog+" avisos programados (suenan aunque cierres la app)"); }
+    else { setAvisoMsg("✓ "+intern+" avisos activos · mantén la app abierta para que suenen"); }
+    setTimeout(()=>setAvisoMsg(""),4500);
   };
 
   return <div>
@@ -1262,7 +1275,7 @@ function Calendario({horario,setHorario}){
       <button onClick={()=>setVista(vista==="dia"?"semana":"dia")} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid "+C.border,background:"transparent",color:C.espresso,fontSize:13,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>{vista==="dia"?"📊 Ver semana":"📋 Ver día"}</button>
       <button onClick={activarAvisos} style={{flex:1,padding:"9px 0",borderRadius:9,border:"none",background:C.espresso,color:C.gold,fontSize:13,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>🔔 Avisar hoy</button>
     </div>
-    {avisoMsg&&<div style={{marginBottom:12,background:avisoMsg.includes("✗")||avisoMsg.includes("no permite")?C.redSoft:C.greenSoft,color:avisoMsg.includes("✗")||avisoMsg.includes("no permite")?C.red:C.green,borderRadius:10,padding:"9px 12px",fontFamily:SANS,fontSize:13,textAlign:"center"}}>{avisoMsg}</div>}
+    {avisoMsg&&<div style={{marginBottom:12,background:avisoMsg.includes("✗")?C.redSoft:C.greenSoft,color:avisoMsg.includes("✗")?C.red:C.green,borderRadius:10,padding:"9px 12px",fontFamily:SANS,fontSize:13,textAlign:"center"}}>{avisoMsg}</div>}
 
     {vista==="dia"?<div>
       <button onClick={nuevo} style={{width:"100%",padding:"11px 0",marginBottom:12,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Bloque en {dia}</button>
