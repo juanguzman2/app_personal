@@ -129,16 +129,15 @@ const POMO_DEFAULT={trabajo:25,descanso:5,largo:15,ciclos:4};
 
 /* ───── SEGUIMIENTO CORPORAL ───── */
 const PERFIL_DEFAULT={edad:"",altura:174,pesoObjetivo:"",sexo:"H"};
-// Pliegues que mide el usuario (mm). Para %grasa se usan los 7 de Jackson-Pollock.
+// Pliegues que mide el usuario (mm). Para %grasa se usan 3 (Jackson-Pollock 3: pecho, abdomen, muslo).
 const PLIEGUES=[
-  {k:"pecho",label:"Pecho",jp7:true},
-  {k:"subaxilar",label:"Subaxilar (axilar medio)",jp7:true},
-  {k:"triceps",label:"Tríceps",jp7:true},
-  {k:"subescapular",label:"Subescapular",jp7:true},
-  {k:"abdomen",label:"Abdomen (ombligo)",jp7:true},
-  {k:"suprailiaco",label:"Suprailíaco (V abdomen)",jp7:true},
-  {k:"muslo",label:"Muslo",jp7:true},
-  {k:"biceps",label:"Bíceps (informativo)",jp7:false},
+  {k:"pecho",label:"Pecho",calc:true},
+  {k:"abdomen",label:"Abdomen (ombligo)",calc:true},
+  {k:"muslo",label:"Muslo",calc:true},
+  {k:"subaxilar",label:"Subaxilar (axilar medio)",calc:false},
+  {k:"triceps",label:"Tríceps",calc:false},
+  {k:"suprailiaco",label:"Suprailíaco (V abdomen)",calc:false},
+  {k:"biceps",label:"Bíceps",calc:false},
 ];
 const MEDIDAS_CORP=[
   {k:"cuello",label:"Cuello"},{k:"pecho",label:"Pecho"},{k:"hombros",label:"Hombros"},
@@ -146,13 +145,13 @@ const MEDIDAS_CORP=[
   {k:"antebrazo",label:"Antebrazo"},{k:"cintura",label:"Cintura"},{k:"cadera",label:"Cadera"},
   {k:"musloD",label:"Muslo der."},{k:"musloI",label:"Muslo izq."},{k:"pantorrilla",label:"Pantorrilla"},
 ];
-// Jackson-Pollock 7 pliegues → densidad corporal → Siri → %grasa. edad en años, pliegues en mm.
+// Jackson-Pollock 3 pliegues (hombres: pecho, abdomen, muslo) → densidad → Siri → %grasa.
 function grasaJP7(pl, edad){
-  const keys=["pecho","subaxilar","triceps","subescapular","abdomen","suprailiaco","muslo"];
+  const keys=["pecho","abdomen","muslo"];
   const vals=keys.map(k=>num(pl[k]));
   if(vals.some(v=>v<=0)||num(edad)<=0) return 0;
   const S=vals.reduce((a,v)=>a+v,0);
-  const dens=1.112-0.00043499*S+0.00000055*S*S-0.00028826*num(edad);
+  const dens=1.10938-0.0008267*S+0.0000016*S*S-0.0002574*num(edad);
   const pct=(495/dens)-450;
   return Math.round(pct*10)/10;
 }
@@ -1007,9 +1006,9 @@ function FormSeguimiento({reg,edad,onGuardar}){
     </div>
 
     <p style={{...labelStyle,marginTop:6}}>Pliegues cutáneos (mm)</p>
-    <p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"0 0 8px"}}>Los 7 marcados calculan tu % de grasa (Jackson-Pollock + Siri). El bíceps es solo informativo.</p>
+    <p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"0 0 8px"}}>Los 3 marcados con <span style={{color:C.gold}}>*</span> (pecho, abdomen, muslo) calculan tu % de grasa (Jackson-Pollock 3 + Siri). Los demás son solo registro.</p>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-      {PLIEGUES.map(p=><div key={p.k}><label style={{fontSize:11,color:C.muted,fontFamily:SANS,display:"block",marginBottom:3}}>{p.label}{p.jp7&&<span style={{color:C.gold}}> *</span>}</label><input style={{...inputStyle,padding:"8px 10px"}} type="number" inputMode="decimal" placeholder="mm" value={r.pliegues[p.k]} onChange={e=>setPl(p.k,e.target.value)}/></div>)}
+      {PLIEGUES.map(p=><div key={p.k}><label style={{fontSize:11,color:C.muted,fontFamily:SANS,display:"block",marginBottom:3}}>{p.label}{p.calc&&<span style={{color:C.gold}}> *</span>}</label><input style={{...inputStyle,padding:"8px 10px"}} type="number" inputMode="decimal" placeholder="mm" value={r.pliegues[p.k]} onChange={e=>setPl(p.k,e.target.value)}/></div>)}
     </div>
     {grasaCalc>0&&<div style={{background:C.greenSoft,borderRadius:10,padding:"10px 13px",margin:"2px 0 14px",fontFamily:SANS,fontSize:14,color:C.green}}>% Grasa calculado: <b>{grasaCalc}%</b> · masa magra ≈ {num(r.peso)>0?mlg(r.peso,grasaCalc)+" kg":"(pon tu peso)"}</div>}
     {grasaCalc===0&&!edad&&<p style={{fontFamily:SANS,fontSize:12,color:C.red,margin:"0 0 12px"}}>Pon tu edad en "Mi perfil" para calcular el %.</p>}
