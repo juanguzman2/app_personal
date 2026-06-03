@@ -56,6 +56,11 @@ function mesAdj(ym,d){ const[y,m]=ym.split("-").map(Number); const x=new Date(y,
 function mesesHasta(f){ const a=new Date(HOY),b=new Date(f); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
 function ultimos7(){ const a=[]; for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(fechaLocal(d));} return a; }
 const DIA_CORTO = f => ["Do","Lu","Ma","Mi","Ju","Vi","Sa"][new Date(f+"T12:00").getDay()];
+// Semana Lun–Dom: lunes de la semana que contiene la fecha d
+function lunesDe(d=new Date()){ const x=new Date(d); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); x.setHours(0,0,0,0); return x; }
+function semanaLunDom(d=new Date()){ const ini=lunesDe(d); const a=[]; for(let i=0;i<7;i++){const x=new Date(ini);x.setDate(ini.getDate()+i);a.push(fechaLocal(x));} return a; }
+const LUNES_ACTUAL = fechaLocal(lunesDe());
+const DIAS_TRANSCURRIDOS = ()=>((new Date().getDay()+6)%7); // 0=lunes ... 6=domingo, índice del día de hoy
 function fechaBonita(){ let s=new Date().toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"}); return s.charAt(0).toUpperCase()+s.slice(1); }
 
 /* ───── STORAGE (Claude o local) ───── */
@@ -114,13 +119,44 @@ const HORAS_DIA = (()=>{ const a=[]; for(let h=5;h<=22;h++){ a.push(String(h).pa
 
 /* ───── CONSTANTES ───── */
 const CAT_LISTA=["🥦 Frutas y Verduras","🧀 Lácteos y Huevos","🍖 Carnes y Fríos","🌾 Despensa","🫙 Aceites y Salsas","🌿 Especias","🥫 Enlatados","🍽️ De recetas","📦 Otros"];
-const TIPOS_RECETA=["Desayuno","Almuerzo","Cena","Postre","Ensalada","Salsa","Aderezo","Pan","Snack","Otro"];
+const TIPOS_RECETA=["Desayuno","Almuerzo","Cena","Carnes","Crema/Sopa","Ensalada","Postre","Snack","Salsa","Aderezo","Pan","Otro"];
 const MEDIDAS=["g","kg","ml","L","unidad","taza","cda","cdta","oz","lb","pizca","al gusto"];
 const FRASES=["Mi magia es nunca rendirme.","Supera tus límites… ¡ahora mismo!","No me rendiré. Ese es mi único camino.","El que se cae siete veces, se levanta ocho.","Los límites están para romperlos.","Voy a ser el Rey Mago.","La determinación nunca se rinde.","El sudor de hoy es la fuerza de mañana."];
 const DIAS_SEM=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const diaHoyNombre=()=>DIAS_SEM[(new Date().getDay()+6)%7];
 const PALETA_BLOQUES=[{bg:"#e8dcc2",fg:"#7a5e2e"},{bg:"#cfe0f0",fg:"#2f4d6b"},{bg:"#e5dfec",fg:"#574668"},{bg:"#dcebd6",fg:"#3a6b35"},{bg:"#f2e1dd",fg:"#a8493a"},{bg:"#fde6c9",fg:"#8a6d2f"},{bg:"#d7e6e3",fg:"#356b63"}];
 const POMO_DEFAULT={trabajo:25,descanso:5,largo:15,ciclos:4};
+
+/* ───── SEGUIMIENTO CORPORAL ───── */
+const PERFIL_DEFAULT={edad:"",altura:174,pesoObjetivo:"",sexo:"H"};
+// Pliegues que mide el usuario (mm). Para %grasa se usan los 7 de Jackson-Pollock.
+const PLIEGUES=[
+  {k:"pecho",label:"Pecho",jp7:true},
+  {k:"subaxilar",label:"Subaxilar (axilar medio)",jp7:true},
+  {k:"triceps",label:"Tríceps",jp7:true},
+  {k:"subescapular",label:"Subescapular",jp7:true},
+  {k:"abdomen",label:"Abdomen (ombligo)",jp7:true},
+  {k:"suprailiaco",label:"Suprailíaco (V abdomen)",jp7:true},
+  {k:"muslo",label:"Muslo",jp7:true},
+  {k:"biceps",label:"Bíceps (informativo)",jp7:false},
+];
+const MEDIDAS_CORP=[
+  {k:"cuello",label:"Cuello"},{k:"pecho",label:"Pecho"},{k:"hombros",label:"Hombros"},
+  {k:"bicepsD",label:"Bíceps der."},{k:"bicepsI",label:"Bíceps izq."},
+  {k:"antebrazo",label:"Antebrazo"},{k:"cintura",label:"Cintura"},{k:"cadera",label:"Cadera"},
+  {k:"musloD",label:"Muslo der."},{k:"musloI",label:"Muslo izq."},{k:"pantorrilla",label:"Pantorrilla"},
+];
+// Jackson-Pollock 7 pliegues → densidad corporal → Siri → %grasa. edad en años, pliegues en mm.
+function grasaJP7(pl, edad){
+  const keys=["pecho","subaxilar","triceps","subescapular","abdomen","suprailiaco","muslo"];
+  const vals=keys.map(k=>num(pl[k]));
+  if(vals.some(v=>v<=0)||num(edad)<=0) return 0;
+  const S=vals.reduce((a,v)=>a+v,0);
+  const dens=1.112-0.00043499*S+0.00000055*S*S-0.00028826*num(edad);
+  const pct=(495/dens)-450;
+  return Math.round(pct*10)/10;
+}
+function mlg(peso,grasa){ const p=num(peso),g=num(grasa); if(!p) return 0; return Math.round((p*(1-g/100))*10)/10; } // masa libre de grasa
 const CAT_GUIA=["Marinados","Carnes","Almacenamiento","Técnicas","Tips","Otro"];
 const CAT_GASTO=["🍽️ Alimentación","🛒 Mercado","🏠 Vivienda","🚗 Transporte","🎓 Educación","🎉 Ocio","💊 Salud","💡 Servicios","💳 Deudas","🛍️ Compras","📦 Otros"];
 const CAT_INGRESO=["💼 Salario","💵 Freelance","🎁 Extra","📈 Rendimientos","📦 Otros"];
@@ -267,6 +303,8 @@ function App(){
   const [sprints,setSprints]=useState([]);
   const [notas,setNotas]=useState([]);
   const [pomoCfg,setPomoCfg]=useState(POMO_DEFAULT);
+  const [seguimiento,setSeguimiento]=useState([]);
+  const [perfil,setPerfil]=useState(PERFIL_DEFAULT);
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
 
@@ -287,6 +325,8 @@ function App(){
     setSprints(await load("sprints",[]));
     setNotas(await load("notas",[]));
     setPomoCfg(await load("pomoCfg",POMO_DEFAULT));
+    setSeguimiento(await load("seguimiento",[]));
+    setPerfil(await load("perfil",PERFIL_DEFAULT));
     setReady(true);
   })();},[]);
 
@@ -306,15 +346,17 @@ function App(){
   useEffect(()=>{if(ready)save("sprints",sprints)},[sprints,ready]);
   useEffect(()=>{if(ready)save("notas",notas)},[notas,ready]);
   useEffect(()=>{if(ready)save("pomoCfg",pomoCfg)},[pomoCfg,ready]);
+  useEffect(()=>{if(ready)save("seguimiento",seguimiento)},[seguimiento,ready]);
+  useEffect(()=>{if(ready)save("perfil",perfil)},[perfil,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
-    {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes}}/>}
+    {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="lista"&&<ListaCompras {...{lista,setLista}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos}}/>}
@@ -364,7 +406,7 @@ function Ajustes({open,onClose,datos,setters}){
     <div style={{height:1,background:C.borderSoft,margin:"18px 0 14px"}}/>
     <p style={labelStyle}>Lo que tienes guardado</p>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:6}}>
-      {[["recetas","Recetas"],["lotes","Lotes activos"],["entrenos","Entrenos"],["metas","Metas"],["sprints","Sprints"],["notas","Notas"]].map(([k,l])=>{const c=conteo.find(x=>x.k===k);return <div key={k} style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>{l}</span><b>{c?c.n:0}</b></div>;})}
+      {[["recetas","Recetas"],["seguimiento","Seguimiento"],["entrenos","Entrenos"],["metas","Metas"],["sprints","Sprints"],["notas","Notas"]].map(([k,l])=>{const c=conteo.find(x=>x.k===k);return <div key={k} style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>{l}</span><b>{c?c.n:0}</b></div>;})}
     </div>
   </Sheet>;
 }
@@ -493,10 +535,10 @@ function Comida(props){
   const [vista,setVista]=useState("recetas");
   return <div>
     <Header titulo="Comida"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"recetas",label:"📖 Recetas"},{id:"diario",label:"🍽️ Diario"},{id:"guias",label:"📚 Guías"}]}/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"recetas",label:"📖 Recetas"},{id:"diario",label:"🍽️ Diario"},{id:"seguimiento",label:"📊 Seguimiento"}]}/>
     {vista==="recetas"&&<Recetas {...props} irADiario={()=>setVista("diario")}/>}
     {vista==="diario"&&<Diario {...props}/>}
-    {vista==="guias"&&<Guias {...props}/>}
+    {vista==="seguimiento"&&<Seguimiento {...props}/>}
   </div>;
 }
 
@@ -692,6 +734,7 @@ function FormReceta({receta,onGuardar}){
 function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes}){
   const [editLim,setEditLim]=useState(false);
   const [addQuem,setAddQuem]=useState(false);
+  const [addRapido,setAddRapido]=useState(false);
   const [metrica,setMetrica]=useState("kcal");
   const [toast,setToast]=useState("");
   const lotesAct=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
@@ -704,6 +747,19 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
   const quemLog=quemadas.filter(q=>q.fecha===HOY);
 
   const sem=ultimos7().map(f=>{const td=totDia(consumo,f);const q=quemadoDia(quemadas,f,limites.quemadaDiaria);return{f,...td,quem:q,neto:td.kcal-q};});
+
+  // Balanza semanal Lun–Dom con redistribución
+  const metaDiaria=num(limites.kcal);
+  const diasSem=semanaLunDom();
+  const idxHoy=diasSem.indexOf(HOY); // 0..6, o -1 si HOY fuera (no debería)
+  const presupuestoSem=metaDiaria*7;
+  const consumidoPrev=diasSem.slice(0,Math.max(0,idxHoy)).reduce((a,f)=>a+totDia(consumo,f).kcal,0); // días ya cerrados (antes de hoy)
+  const consumidoHoy=totDia(consumo,HOY).kcal;
+  const diasRestantes=idxHoy>=0?(7-idxHoy):0; // incluye hoy
+  const restanteSem=presupuestoSem-consumidoPrev; // lo que queda para hoy + futuros
+  const promRedistribuido=diasRestantes>0?Math.round(restanteSem/diasRestantes):metaDiaria; // cuánto comer hoy y c/día restante
+  const consumidoSemTotal=consumidoPrev+consumidoHoy;
+  const pctSem=presupuestoSem>0?consumidoSemTotal/presupuestoSem*100:0;
   const filas=[{k:"kcal",label:"Calorías",unit:"kcal",color:C.gold},{k:"proteina",label:"Proteína",unit:"g",color:C.green},{k:"carbos",label:"Carbohidratos",unit:"g",color:C.blue},{k:"grasa",label:"Grasa",unit:"g",color:C.red}];
   const eliminar=id=>setConsumo(p=>p.filter(c=>c.id!==id));
   const elimQuem=id=>setQuemadas(p=>p.filter(q=>q.id!==id));
@@ -721,6 +777,21 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
 
   return <div style={{padding:"10px 18px 20px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontFamily:SERIF,fontSize:17}}>Hoy</span><button onClick={()=>setEditLim(true)} style={{background:"transparent",border:"1.5px solid "+C.border,borderRadius:20,padding:"5px 12px",fontSize:12,color:C.muted,fontFamily:SANS,cursor:"pointer"}}>⚙ Metas y quemadas</button></div>
+
+    {/* balanza semanal Lun–Dom */}
+    {metaDiaria>0&&idxHoy>=0&&(()=>{const sobreObjetivo=promRedistribuido<metaDiaria;const col=sobreObjetivo?C.red:C.green;return <div style={{marginBottom:12}}><Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon="⚖️" label="Balanza semanal (Lun–Dom)"/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>día {idxHoy+1}/7</span></div>
+      <div style={{display:"flex",alignItems:"baseline",gap:8,margin:"10px 0 2px"}}>
+        <span style={{fontFamily:SERIF,fontSize:30,color:col}}>{promRedistribuido}</span>
+        <span style={{fontFamily:SANS,fontSize:13,color:C.muted}}>kcal/día recomendadas hoy</span>
+      </div>
+      <p style={{margin:"0 0 10px",fontFamily:SANS,fontSize:12,color:C.muted}}>{sobreObjetivo?"Vas por encima: baja un poco para compensar la semana.":promRedistribuido>metaDiaria?"Tienes margen: puedes comer algo más esta semana.":"Vas justo en tu objetivo semanal."}</p>
+      <Bar pct={pctSem} color={pctSem>100?C.red:C.gold} h={10}/>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontFamily:SANS,fontSize:12,color:C.muted}}>
+        <span>{consumidoSemTotal} / {presupuestoSem} kcal</span>
+        <span>quedan {Math.max(0,presupuestoSem-consumidoSemTotal)}</span>
+      </div>
+    </Card></div>;})()}
 
     {/* macros vs meta */}
     <Card pad={16}>{filas.map((f,i)=>{const cons=t[f.k],lim=num(limites[f.k]);const pct=lim>0?cons/lim*100:0;const over=lim>0&&cons>lim;return <div key={f.k} style={{marginBottom:i<3?14:0}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontFamily:SANS,fontSize:13}}><span>{f.label}</span><span style={{color:over?C.red:C.muted}}>{cons}{lim>0?" / "+lim:""} {f.unit}</span></div><Bar pct={pct} color={over?C.red:f.color} h={f.k==="kcal"?11:7}/></div>;})}
@@ -758,8 +829,8 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
     </div>}
 
     {/* comidas hoy */}
-    <p style={{...labelStyle,margin:"22px 0 8px"}}>Comidas de hoy</p>
-    {hoy.length===0?<p style={{color:C.muted,fontFamily:SANS,fontSize:14}}>Nada registrado. Abre una receta y toca "Registrar consumo".</p>:hoy.map(c=><div key={c.id} style={{background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{c.nombre}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{c.porciones} porc · {c.kcal} kcal · {c.proteina}P {c.carbos}C {c.grasa}G</p></div><button onClick={()=>eliminar(c.id)} style={{background:"none",border:"none",color:C.red,fontSize:18,cursor:"pointer"}}>×</button></div>)}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"22px 0 8px"}}><p style={{...labelStyle,margin:0}}>Comidas de hoy</p><button onClick={()=>setAddRapido(true)} style={{background:C.gold,color:C.espresso,border:"none",borderRadius:8,padding:"6px 12px",fontSize:12.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ kcal rápidas</button></div>
+    {hoy.length===0?<p style={{color:C.muted,fontFamily:SANS,fontSize:14}}>Nada registrado. Abre una receta, un lote, o usa "+ kcal rápidas".</p>:hoy.map(c=><div key={c.id} style={{background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{c.nombre}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{c.porciones&&c.porciones!=1?c.porciones+" porc · ":""}{c.kcal} kcal · {c.proteina}P {c.carbos}C {c.grasa}G</p></div><button onClick={()=>eliminar(c.id)} style={{background:"none",border:"none",color:C.red,fontSize:18,cursor:"pointer"}}>×</button></div>)}
 
     {/* semanal */}
     <p style={{...labelStyle,margin:"26px 0 8px"}}>Semana</p>
@@ -775,7 +846,27 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
 
     <Sheet open={editLim} onClose={()=>setEditLim(false)} title="Metas y quemadas"><FormLimites limites={limites} onGuardar={l=>{setLimites(l);setEditLim(false);}}/></Sheet>
     <Sheet open={addQuem} onClose={()=>setAddQuem(false)} title="Registrar quemadas"><FormQuemada onGuardar={(nombre,kcal)=>{setQuemadas(p=>[...p,{id:uid(),fecha:HOY,nombre,kcal:num(kcal)}]);setAddQuem(false);}}/></Sheet>
+    <Sheet open={addRapido} onClose={()=>setAddRapido(false)} title="Registrar kcal (sin receta)"><FormRapido onGuardar={(c)=>{setConsumo(p=>[...p,{id:uid(),fecha:c.fecha,nombre:c.nombre||"Comida rápida",porciones:1,kcal:num(c.kcal),proteina:num(c.proteina),carbos:num(c.carbos),grasa:num(c.grasa)}]);setAddRapido(false);setToast("Registrado ✓");setTimeout(()=>setToast(""),2000);}}/></Sheet>
     {toast&&<Toast>{toast}</Toast>}
+  </div>;
+}
+
+function FormRapido({onGuardar}){
+  const [c,setC]=useState({nombre:"",kcal:"",proteina:"",carbos:"",grasa:"",fecha:HOY});
+  const set=(k,v)=>setC(p=>({...p,[k]:v}));
+  const ok=num(c.kcal)>0;
+  return <div>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 12px",lineHeight:1.5}}>Para algo que comiste fuera o sin receta. Solo las kcal son obligatorias; los macros son opcionales.</p>
+    <Field label="¿Qué comiste? (opcional)"><input style={inputStyle} placeholder="Ej. Empanada, café con leche" value={c.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
+    <Field label="Calorías (kcal)"><input style={{...inputStyle,fontSize:20,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={c.kcal} onChange={e=>set("kcal",e.target.value)}/></Field>
+    <p style={{...labelStyle,marginTop:4}}>Macros (opcional)</p>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+      <input style={inputStyle} type="number" inputMode="numeric" placeholder="Prot g" value={c.proteina} onChange={e=>set("proteina",e.target.value)}/>
+      <input style={inputStyle} type="number" inputMode="numeric" placeholder="Carb g" value={c.carbos} onChange={e=>set("carbos",e.target.value)}/>
+      <input style={inputStyle} type="number" inputMode="numeric" placeholder="Gras g" value={c.grasa} onChange={e=>set("grasa",e.target.value)}/>
+    </div>
+    <Field label="Fecha"><input style={inputStyle} type="date" value={c.fecha} onChange={e=>set("fecha",e.target.value)}/></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(c)} style={btnP(ok)}>Registrar</button>
   </div>;
 }
 
@@ -807,30 +898,195 @@ function FormQuemada({onGuardar}){
   return <div><Field label="Actividad (opcional)"><input style={inputStyle} placeholder="Ej. Cardio, caminata" value={nombre} onChange={e=>setNombre(e.target.value)}/></Field><Field label="Calorías quemadas"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={kcal} onChange={e=>setKcal(e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(nombre,kcal)} style={btnP(ok)}>Registrar</button></div>;
 }
 
-function Guias({guias,setGuias}){
-  const [editando,setEditando]=useState(null); const [ver,setVer]=useState(null); const [filtro,setFiltro]=useState("Todas"); const [q,setQ]=useState("");
-  const nueva=()=>setEditando({id:uid(),titulo:"",categoria:"Tips",contenido:""});
-  const guardar=g=>{setGuias(p=>p.some(x=>x.id===g.id)?p.map(x=>x.id===g.id?g:x):[...p,g]);setEditando(null);setVer(null);};
-  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar guía",texto:"Se borrará esta guía."})){ setGuias(p=>p.filter(x=>x.id!==id)); setVer(null);} };
-  const cats=["Todas",...CAT_GUIA.filter(c=>guias.some(g=>g.categoria===c))];
-  const ql=q.trim().toLowerCase();
-  const porCat=filtro==="Todas"?guias:guias.filter(g=>g.categoria===filtro);
-  const visibles=ql?porCat.filter(g=>(g.titulo||"").toLowerCase().includes(ql)||(g.contenido||"").toLowerCase().includes(ql)):porCat;
-  return <div>
-    <div style={{padding:"12px 18px 6px"}}><button onClick={nueva} style={{width:"100%",padding:"13px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva guía / tip</button></div>
-    {guias.length>0&&<div style={{padding:"6px 18px 0"}}><input style={inputStyle} placeholder="🔍 Buscar guía…" value={q} onChange={e=>setQ(e.target.value)}/></div>}
-    {cats.length>1&&<div style={{display:"flex",gap:7,overflowX:"auto",padding:"6px 18px 4px"}}>{cats.map(c=><button key={c} onClick={()=>setFiltro(c)} style={{whiteSpace:"nowrap",padding:"6px 13px",borderRadius:20,border:"1.5px solid "+(filtro===c?C.gold:C.border),background:filtro===c?C.gold:"transparent",color:filtro===c?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:filtro===c?600:400,cursor:"pointer"}}>{c}</button>)}</div>}
-    <div style={{padding:"8px 18px 20px"}}>
-      {visibles.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:30}}>Aquí guardas lo que vas aprendiendo: cómo marinar, escoger carnes, almacenar, técnicas…</p>}
-      {visibles.map(g=><div key={g.id} onClick={()=>setVer(g)} style={{background:C.card,borderRadius:14,padding:16,marginBottom:10,border:"1.5px solid "+C.border,cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:17,fontWeight:"normal"}}>{g.titulo}</h3><Chip>{g.categoria}</Chip></div><p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{g.contenido}</p></div>)}
-    </div>
-    <Sheet open={!!ver} onClose={()=>setVer(null)} title={ver?.titulo}>{ver&&<div><div style={{marginBottom:12}}><Chip>{ver.categoria}</Chip></div><p style={{fontFamily:SANS,fontSize:15,lineHeight:1.65,whiteSpace:"pre-wrap"}}>{ver.contenido}</p><button onClick={()=>{setEditando(ver);setVer(null);}} style={{width:"100%",marginTop:16,padding:"11px 0",background:"transparent",border:"1.5px solid "+C.border,borderRadius:10,fontSize:14,fontFamily:SANS,cursor:"pointer"}}>Editar</button><button onClick={()=>eliminar(ver.id)} style={{width:"100%",marginTop:8,padding:"8px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar</button></div>}</Sheet>
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?.titulo?"Editar guía":"Nueva guía"}>{editando&&<FormGuia guia={editando} onGuardar={guardar}/>}</Sheet>
+function Seguimiento({seguimiento,setSeguimiento,perfil,setPerfil}){
+  const [editando,setEditando]=useState(null);
+  const [editPerfil,setEditPerfil]=useState(false);
+  const [ver,setVer]=useState(null);
+  const [vista,setVista]=useState("resumen"); // resumen | proyeccion
+  const regs=[...(seguimiento||[])].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const ultimo=regs[0]||null;
+  const previo=regs[1]||null;
+  const guardar=r=>{const grasaPl=grasaJP7(r.pliegues||{},perfil.edad);const rr={...r,grasaPliegues:grasaPl};setSeguimiento(p=>p.some(x=>x.id===r.id)?p.map(x=>x.id===r.id?rr:x):[...p,rr]);setEditando(null);setVer(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar registro",texto:"Se borrará este registro semanal."})){ setSeguimiento(p=>p.filter(x=>x.id!==id)); setVer(null);} };
+  const nuevo=()=>{const pl={};PLIEGUES.forEach(p=>pl[p.k]="");const md={};MEDIDAS_CORP.forEach(m=>md[m.k]="");setEditando({id:uid(),fecha:HOY,peso:"",grasaBascula:"",pliegues:pl,medidas:md,nota:""});};
+
+  const delta=(campo,fmt=v=>v)=>{ if(!ultimo||!previo) return null; const a=num(ultimo[campo]),b=num(previo[campo]); if(!a&&!b) return null; const d=a-b; return d; };
+
+  return <div style={{padding:"10px 18px 24px"}}>
+    {/* perfil */}
+    <Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <div><Mini icon="🎯" label="Mi perfil"/><p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted}}>{perfil.edad?perfil.edad+" años · ":""}{perfil.altura||"—"} cm{perfil.pesoObjetivo?" · objetivo "+perfil.pesoObjetivo+" kg":""}</p></div>
+        <button onClick={()=>setEditPerfil(true)} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>✎</button>
+      </div>
+      {!perfil.edad&&<p style={{margin:"10px 0 0",fontSize:12,color:C.red,fontFamily:SANS}}>⚠ Pon tu edad para calcular el % de grasa con pliegues.</p>}
+    </Card>
+
+    <button onClick={nuevo} style={{width:"100%",padding:"13px 0",margin:"14px 0 14px",background:C.gold,color:C.espresso,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Registro de esta semana</button>
+
+    {ultimo&&<div style={{display:"flex",gap:8,marginBottom:14}}>
+      {[["resumen","📊 Resumen"],["proyeccion","📈 Proyección"]].map(([id,l])=><button key={id} onClick={()=>setVista(id)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid "+(vista===id?C.gold:C.border),background:vista===id?C.gold:"transparent",color:vista===id?C.espresso:C.muted,fontSize:13.5,fontFamily:SANS,fontWeight:vista===id?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>}
+
+    {!ultimo&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:16}}>Aún no tienes registros. Crea el primero con tu peso, % de grasa, pliegues y medidas.</p>}
+
+    {ultimo&&vista==="resumen"&&<div>
+      {/* tarjetas clave */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        <MetricCard label="Peso" value={ultimo.peso?ultimo.peso+" kg":"—"} delta={delta("peso")} unit="kg" invert={false}/>
+        <MetricCard label="% Grasa (báscula)" value={ultimo.grasaBascula?ultimo.grasaBascula+"%":"—"} delta={delta("grasaBascula")} unit="%" invert={true}/>
+        <MetricCard label="% Grasa (pliegues)" value={ultimo.grasaPliegues?ultimo.grasaPliegues+"%":"—"} delta={delta("grasaPliegues")} unit="%" invert={true}/>
+        <MetricCard label="Masa magra" value={ultimo.peso&&ultimo.grasaPliegues?mlg(ultimo.peso,ultimo.grasaPliegues)+" kg":(ultimo.peso&&ultimo.grasaBascula?mlg(ultimo.peso,ultimo.grasaBascula)+" kg":"—")} delta={null} unit="kg" invert={false}/>
+      </div>
+
+      {/* gráfica de peso */}
+      <p style={{...labelStyle,margin:"6px 0 8px"}}>Peso · últimos registros</p>
+      <MiniSerie regs={regs} campo="peso" color={C.gold} unit="kg"/>
+
+      {/* medidas */}
+      {ultimo.medidas&&Object.values(ultimo.medidas).some(v=>num(v)>0)&&<div style={{marginTop:18}}>
+        <p style={{...labelStyle,marginBottom:8}}>Medidas (cm)</p>
+        <Card pad={14}>{MEDIDAS_CORP.filter(m=>num(ultimo.medidas[m.k])>0).map((m,i,arr)=>{const d=delta("medidas")?null:(previo&&previo.medidas?num(ultimo.medidas[m.k])-num(previo.medidas[m.k]):null);return <div key={m.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<arr.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13.5}}><span style={{color:C.muted}}>{m.label}</span><span><b>{ultimo.medidas[m.k]}</b> cm {d!=null&&d!==0&&<span style={{fontSize:11,color:d>0?C.green:C.red,marginLeft:4}}>{d>0?"+":""}{Math.round(d*10)/10}</span>}</span></div>;})}</Card>
+      </div>}
+
+      {/* historial */}
+      <p style={{...labelStyle,margin:"20px 0 8px"}}>Historial</p>
+      {regs.map(r=><div key={r.id} onClick={()=>setVer(r)} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><p style={{margin:0,fontFamily:SERIF,fontSize:15}}>{r.fecha}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{r.peso?r.peso+" kg":""}{r.grasaPliegues?" · "+r.grasaPliegues+"% (pl)":r.grasaBascula?" · "+r.grasaBascula+"% (b)":""}</p></div>
+        <span style={{color:C.muted,fontSize:15}}>›</span>
+      </div>)}
+    </div>}
+
+    {ultimo&&vista==="proyeccion"&&<Proyeccion regs={regs} perfil={perfil}/>}
+
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title="Registro semanal">{editando&&<FormSeguimiento reg={editando} edad={perfil.edad} onGuardar={guardar}/>}</Sheet>
+    <Sheet open={editPerfil} onClose={()=>setEditPerfil(false)} title="Mi perfil"><FormPerfil perfil={perfil} onGuardar={p=>{setPerfil(p);setEditPerfil(false);}}/></Sheet>
+    <Sheet open={!!ver} onClose={()=>setVer(null)} title={"Registro · "+(ver?.fecha||"")}>{ver&&<VerSeguimiento reg={ver} onEditar={()=>{setEditando(ver);setVer(null);}} onEliminar={()=>eliminar(ver.id)}/>}</Sheet>
   </div>;
 }
-function FormGuia({guia,onGuardar}){
-  const [g,setG]=useState(guia); const set=(k,v)=>setG(p=>({...p,[k]:v})); const ok=g.titulo.trim()&&g.contenido.trim();
-  return <div><Field label="Título"><input style={inputStyle} placeholder="Ej. Cómo escoger un buen corte de res" value={g.titulo} onChange={e=>set("titulo",e.target.value)}/></Field><Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={g.categoria} onChange={e=>set("categoria",e.target.value)}>{CAT_GUIA.map(c=><option key={c} value={c}>{c}</option>)}</select></Field><Field label="Contenido"><textarea style={{...inputStyle,minHeight:160,resize:"vertical"}} placeholder="Escribe la guía, pasos, tips…" value={g.contenido} onChange={e=>set("contenido",e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(g)} style={btnP(ok)}>Guardar</button></div>;
+
+function MetricCard({label,value,delta,unit,invert}){
+  let col=C.muted,txt="";
+  if(delta!=null&&delta!==0){ const bueno=invert?delta<0:delta>0; col=bueno?C.green:C.red; txt=(delta>0?"+":"")+(Math.round(delta*10)/10)+" "+unit; }
+  return <div style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"12px 14px"}}>
+    <p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>{label}</p>
+    <p style={{margin:"4px 0 0",fontFamily:SERIF,fontSize:21}}>{value}</p>
+    {txt&&<p style={{margin:"2px 0 0",fontSize:12,color:col,fontFamily:SANS,fontWeight:600}}>{txt} vs anterior</p>}
+  </div>;
+}
+
+function MiniSerie({regs,campo,color,unit}){
+  const datos=[...regs].reverse().map(r=>({f:r.fecha,v:num(campo.includes(".")?campo.split(".").reduce((o,k)=>o&&o[k],r):r[campo])})).filter(d=>d.v>0).slice(-10);
+  if(datos.length===0) return <Card pad={16}><p style={{margin:0,fontSize:13,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Sin datos suficientes.</p></Card>;
+  const vals=datos.map(d=>d.v); const max=Math.max(...vals),min=Math.min(...vals);const rng=max-min||1;
+  return <Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:90,gap:5}}>{datos.map((d,i)=>{const h=20+((d.v-min)/rng)*60;const ult=i===datos.length-1;return <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:9,color:C.muted,fontFamily:SANS}}>{d.v}</span><div style={{width:"100%",maxWidth:26,height:h,background:ult?color:C.goldSoft,borderRadius:4}}/><span style={{fontSize:8.5,color:C.muted,fontFamily:SANS}}>{d.f.slice(5)}</span></div>;})}</div></Card>;
+}
+
+function FormPerfil({perfil,onGuardar}){
+  const [p,setP]=useState(perfil); const set=(k,v)=>setP(x=>({...x,[k]:v}));
+  return <div>
+    <Field label="Edad (años)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 25" value={p.edad} onChange={e=>set("edad",e.target.value)}/></Field>
+    <Field label="Altura (cm)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 174" value={p.altura} onChange={e=>set("altura",e.target.value)}/></Field>
+    <Field label="Peso objetivo para mantenimiento (kg)"><input style={inputStyle} type="number" inputMode="decimal" placeholder="Ej. 78" value={p.pesoObjetivo} onChange={e=>set("pesoObjetivo",e.target.value)}/></Field>
+    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 10px"}}>Es el peso al que quieres llegar antes de pasar a mantenimiento. La proyección lo usa como meta.</p>
+    <button onClick={()=>onGuardar(p)} style={btnP(true)}>Guardar perfil</button>
+  </div>;
+}
+
+function FormSeguimiento({reg,edad,onGuardar}){
+  const [r,setR]=useState(reg); const set=(k,v)=>setR(p=>({...p,[k]:v}));
+  const setPl=(k,v)=>setR(p=>({...p,pliegues:{...p.pliegues,[k]:v}}));
+  const setMd=(k,v)=>setR(p=>({...p,medidas:{...p.medidas,[k]:v}}));
+  const grasaCalc=grasaJP7(r.pliegues||{},edad);
+  const ok=num(r.peso)>0||num(r.grasaBascula)>0||Object.values(r.pliegues||{}).some(v=>num(v)>0);
+  return <div>
+    <Field label="Fecha"><input style={inputStyle} type="date" value={r.fecha} onChange={e=>set("fecha",e.target.value)}/></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <Field label="Peso (kg)"><input style={inputStyle} type="number" inputMode="decimal" placeholder="Ej. 73.5" value={r.peso} onChange={e=>set("peso",e.target.value)}/></Field>
+      <Field label="% Grasa báscula"><input style={inputStyle} type="number" inputMode="decimal" placeholder="Ej. 12" value={r.grasaBascula} onChange={e=>set("grasaBascula",e.target.value)}/></Field>
+    </div>
+
+    <p style={{...labelStyle,marginTop:6}}>Pliegues cutáneos (mm)</p>
+    <p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"0 0 8px"}}>Los 7 marcados calculan tu % de grasa (Jackson-Pollock + Siri). El bíceps es solo informativo.</p>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+      {PLIEGUES.map(p=><div key={p.k}><label style={{fontSize:11,color:C.muted,fontFamily:SANS,display:"block",marginBottom:3}}>{p.label}{p.jp7&&<span style={{color:C.gold}}> *</span>}</label><input style={{...inputStyle,padding:"8px 10px"}} type="number" inputMode="decimal" placeholder="mm" value={r.pliegues[p.k]} onChange={e=>setPl(p.k,e.target.value)}/></div>)}
+    </div>
+    {grasaCalc>0&&<div style={{background:C.greenSoft,borderRadius:10,padding:"10px 13px",margin:"2px 0 14px",fontFamily:SANS,fontSize:14,color:C.green}}>% Grasa calculado: <b>{grasaCalc}%</b> · masa magra ≈ {num(r.peso)>0?mlg(r.peso,grasaCalc)+" kg":"(pon tu peso)"}</div>}
+    {grasaCalc===0&&!edad&&<p style={{fontFamily:SANS,fontSize:12,color:C.red,margin:"0 0 12px"}}>Pon tu edad en "Mi perfil" para calcular el %.</p>}
+
+    <p style={{...labelStyle,marginTop:4}}>Medidas (cm)</p>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+      {MEDIDAS_CORP.map(m=><div key={m.k}><label style={{fontSize:11,color:C.muted,fontFamily:SANS,display:"block",marginBottom:3}}>{m.label}</label><input style={{...inputStyle,padding:"8px 10px"}} type="number" inputMode="decimal" placeholder="cm" value={r.medidas[m.k]} onChange={e=>setMd(m.k,e.target.value)}/></div>)}
+    </div>
+
+    <Field label="Nota (opcional)"><textarea style={{...inputStyle,minHeight:54,resize:"vertical"}} placeholder="Cómo te ves, energía, etc." value={r.nota} onChange={e=>set("nota",e.target.value)}/></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(r)} style={btnP(ok)}>Guardar registro</button>
+  </div>;
+}
+
+function VerSeguimiento({reg,onEditar,onEliminar}){
+  const grasa=reg.grasaPliegues||0;
+  return <div>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+      <Macro label="Peso" value={reg.peso?reg.peso+"kg":""}/>
+      <Macro label="%G báscula" value={reg.grasaBascula?reg.grasaBascula+"%":""}/>
+      <Macro label="%G pliegues" value={grasa?grasa+"%":""}/>
+      <Macro label="Magra" value={reg.peso&&grasa?mlg(reg.peso,grasa)+"kg":""}/>
+    </div>
+    {reg.pliegues&&Object.values(reg.pliegues).some(v=>num(v)>0)&&<div><p style={labelStyle}>Pliegues (mm)</p><div style={{marginBottom:12}}>{PLIEGUES.filter(p=>num(reg.pliegues[p.k])>0).map((p,i,a)=><div key={p.k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:i<a.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>{p.label}</span><span>{reg.pliegues[p.k]} mm</span></div>)}</div></div>}
+    {reg.medidas&&Object.values(reg.medidas).some(v=>num(v)>0)&&<div><p style={labelStyle}>Medidas (cm)</p><div style={{marginBottom:12}}>{MEDIDAS_CORP.filter(m=>num(reg.medidas[m.k])>0).map((m,i,a)=><div key={m.k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:i<a.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>{m.label}</span><span>{reg.medidas[m.k]} cm</span></div>)}</div></div>}
+    {reg.nota&&<div><p style={labelStyle}>Nota</p><p style={{fontFamily:SANS,fontSize:14,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{reg.nota}</p></div>}
+    <button onClick={onEditar} style={{width:"100%",marginTop:16,padding:"11px 0",background:"transparent",border:"1.5px solid "+C.border,borderRadius:10,fontSize:14,fontFamily:SANS,cursor:"pointer"}}>Editar</button>
+    <button onClick={onEliminar} style={{width:"100%",marginTop:8,padding:"8px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar</button>
+  </div>;
+}
+
+function Proyeccion({regs,perfil}){
+  const ord=[...regs].sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||""));
+  const conPeso=ord.filter(r=>num(r.peso)>0);
+  const primero=conPeso[0],ultimo=conPeso[conPeso.length-1];
+  const pesoObj=num(perfil.pesoObjetivo);
+  // ritmo recomendado lean bulk avanzado: ~0.25-0.5% del peso/semana
+  const pesoAct=ultimo?num(ultimo.peso):0;
+  const minSem=Math.round(pesoAct*0.0025*100)/100, maxSem=Math.round(pesoAct*0.005*100)/100;
+  // ritmo real medido
+  let ritmoReal=null, semanas=0;
+  if(primero&&ultimo&&primero!==ultimo){ const d1=new Date(primero.fecha),d2=new Date(ultimo.fecha); semanas=Math.max(1,Math.round((d2-d1)/(7*864e5))); ritmoReal=Math.round((num(ultimo.peso)-num(primero.peso))/semanas*100)/100; }
+  let estado=null;
+  if(ritmoReal!=null&&pesoAct>0){ if(ritmoReal>maxSem*1.15) estado={t:"Subes muy rápido",c:C.red,bg:C.redSoft,msg:"Estás ganando más rápido de lo ideal: más grasa de la necesaria. Baja ~200-300 kcal."}; else if(ritmoReal<minSem*0.6) estado={t:"Subes muy lento",c:C.blue,bg:C.blueSoft,msg:"Casi no ganas peso. Sube ~150-250 kcal para crecer."}; else estado={t:"Ritmo ideal ✓",c:C.green,bg:C.greenSoft,msg:"Vas en el rango óptimo de lean bulk. Mantén así."}; }
+  // semanas a objetivo
+  let semObj=null;
+  if(pesoObj>0&&pesoAct>0&&pesoObj>pesoAct){ const ritmoUsar=ritmoReal&&ritmoReal>0?ritmoReal:(minSem+maxSem)/2; semObj=Math.ceil((pesoObj-pesoAct)/ritmoUsar); }
+
+  return <div>
+    <Card pad={16}>
+      <Mini icon="📈" label="Ritmo de ganancia (lean bulk avanzado)"/>
+      <p style={{margin:"10px 0 4px",fontFamily:SANS,fontSize:13,color:C.muted}}>Para tu nivel, lo ideal es ganar entre:</p>
+      <p style={{margin:0,fontFamily:SERIF,fontSize:22,color:C.gold}}>{minSem}–{maxSem} kg <span style={{fontSize:14,color:C.muted}}>por semana</span></p>
+      <p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>(0,25–0,5% de tu peso/semana — minimiza grasa)</p>
+    </Card>
+
+    {ritmoReal!=null&&<div style={{marginTop:12}}><Card pad={16}>
+      <Mini icon="⚖️" label="Tu ritmo real"/>
+      <p style={{margin:"10px 0 2px",fontFamily:SERIF,fontSize:24,color:estado?estado.c:C.text}}>{ritmoReal>0?"+":""}{ritmoReal} kg/sem</p>
+      <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>medido sobre {semanas} semana{semanas!==1?"s":""} ({num(primero.peso)} → {num(ultimo.peso)} kg)</p>
+      {estado&&<div style={{marginTop:12,background:estado.bg,borderRadius:10,padding:"10px 13px"}}><p style={{margin:0,fontFamily:SANS,fontSize:14,fontWeight:700,color:estado.c}}>{estado.t}</p><p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:13,color:estado.c,lineHeight:1.4}}>{estado.msg}</p></div>}
+    </Card></div>}
+
+    {semObj!=null&&<div style={{marginTop:12}}><Card pad={16}>
+      <Mini icon="🏁" label="Hacia tu objetivo"/>
+      <p style={{margin:"10px 0 2px",fontFamily:SANS,fontSize:13,color:C.muted}}>De {pesoAct} kg a tu meta de {pesoObj} kg:</p>
+      <p style={{margin:0,fontFamily:SERIF,fontSize:22}}>~{semObj} semanas <span style={{fontSize:14,color:C.muted}}>({Math.round(semObj/4.3*10)/10} meses)</span></p>
+    </Card></div>}
+
+    {/* proyección de medidas */}
+    <div style={{marginTop:12}}><Card pad={16}>
+      <Mini icon="💪" label="Crecimiento esperado de medidas"/>
+      <p style={{margin:"10px 0 8px",fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.5}}>Como avanzado, las medidas crecen lento. Referencias mensuales sanas si el bulk va bien:</p>
+      {[["Brazo (bíceps)","+0,2–0,4 cm/mes"],["Pecho","+0,3–0,6 cm/mes"],["Muslo","+0,3–0,6 cm/mes"],["Cintura","≤ +0,2 cm/mes (¡vigila!)"]].map(([m,v],i,a)=><div key={m} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<a.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13.5}}><span style={{color:C.muted}}>{m}</span><span style={{fontWeight:600}}>{v}</span></div>)}
+      <p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted,lineHeight:1.4}}>Si la cintura sube más rápido que brazo/pecho/muslo, estás ganando grasa de más. Brazo y muslo deben crecer junto al peso; cintura casi quieta.</p>
+    </Card></div>}
+  </div>;
 }
 
 /* ═══════════ LISTA ═══════════ */
