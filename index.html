@@ -54,6 +54,7 @@ const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","
 const nombreMes = ym => { const[y,m]=ym.split("-"); return MESES[+m-1]+" "+y; };
 function mesAdj(ym,d){ const[y,m]=ym.split("-").map(Number); const x=new Date(y,m-1+d,1); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0"); }
 function mesesHasta(f){ const a=new Date(HOY),b=new Date(f); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
+function mesesDesde(f){ const a=new Date(f),b=new Date(HOY); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
 function ultimos7(){ const a=[]; for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(fechaLocal(d));} return a; }
 const DIA_CORTO = f => ["Do","Lu","Ma","Mi","Ju","Vi","Sa"][new Date(f+"T12:00").getDay()];
 // Semana Lun–Dom: lunes de la semana que contiene la fecha d
@@ -159,6 +160,10 @@ function mlg(peso,grasa){ const p=num(peso),g=num(grasa); if(!p) return 0; retur
 const CAT_GUIA=["Marinados","Carnes","Almacenamiento","Técnicas","Tips","Otro"];
 const CAT_GASTO=["🍽️ Alimentación","🛒 Mercado","🏠 Vivienda","🚗 Transporte","🎓 Educación","🎉 Ocio","💊 Salud","💡 Servicios","💳 Deudas","🛍️ Compras","📦 Otros"];
 const CAT_INGRESO=["💼 Salario","💵 Freelance","🎁 Extra","📈 Rendimientos","📦 Otros"];
+const CAT_PROVISION=["🚗 Carro","🏛️ Impuestos","🛡️ Seguros","🎄 Regalos/Navidad","🏥 Salud","✈️ Viajes","🔧 Mantenimiento","📦 Otros"];
+const TIPOS_ACTIVO=[{k:"cuenta",label:"💵 Cuenta/Efectivo",signo:1},{k:"activo",label:"🚗 Activo (carro, etc.)",signo:1},{k:"deuda",label:"💳 Deuda",signo:-1}];
+const AHORRO_META_DEFAULT=40; // % objetivo de tasa de ahorro
+const MESES_CORTOS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 const SEED_LISTA=[["Papa criolla","🥦 Frutas y Verduras"],["Zanahoria","🥦 Frutas y Verduras"],["Lechuga","🥦 Frutas y Verduras"],["Tomate cherry","🥦 Frutas y Verduras"],["Cebolla blanca","🥦 Frutas y Verduras"],["Champiñones","🥦 Frutas y Verduras"],["Limones","🥦 Frutas y Verduras"],["Ajo","🥦 Frutas y Verduras"],["Huevos","🧀 Lácteos y Huevos"],["Queso crema","🧀 Lácteos y Huevos"],["Crema de leche","🧀 Lácteos y Huevos"],["Mantequilla","🧀 Lácteos y Huevos"],["Parmesano en bloque","🧀 Lácteos y Huevos"],["Pechuga de pollo","🍖 Carnes y Fríos"],["Carne de res molida","🍖 Carnes y Fríos"],["Pepperoni","🍖 Carnes y Fríos"],["Harina de trigo","🌾 Despensa"],["Levadura seca","🌾 Despensa"],["Arroz blanco","🌾 Despensa"],["Pasta","🌾 Despensa"],["Granola","🌾 Despensa"],["Gelatina sin sabor","🌾 Despensa"],["Leche condensada","🌾 Despensa"],["Aceite de oliva","🫙 Aceites y Salsas"],["Salsa de soya","🫙 Aceites y Salsas"],["Mostaza Dijon","🫙 Aceites y Salsas"],["Mayonesa","🫙 Aceites y Salsas"],["Orégano","🌿 Especias"],["Pimentón ahumado","🌿 Especias"],["Comino","🌿 Especias"],["Tomate triturado","🥫 Enlatados"],["Caldo de pollo","🥫 Enlatados"]].map(([nombre,categoria],i)=>({id:"seed-"+i,nombre,categoria,comprado:false,precio:"",tienda:""}));
 
@@ -354,6 +359,11 @@ function App(){
   const [transacciones,setTransacciones]=useState([]);
   const [fijos,setFijos]=useState([]);
   const [inversiones,setInversiones]=useState([]);
+  const [provisiones,setProvisiones]=useState([]);
+  const [presupuesto,setPresupuesto]=useState({});
+  const [activos,setActivos]=useState([]);
+  const [patrimonioHist,setPatrimonioHist]=useState([]);
+  const [finanzasCfg,setFinanzasCfg]=useState({tasaAhorroMeta:AHORRO_META_DEFAULT,trm:4000});
   const [metas,setMetas]=useState([]);
   const [entrenos,setEntrenos]=useState([]);
   const [lotes,setLotes]=useState([]);
@@ -377,6 +387,11 @@ function App(){
     setFijos(await load("fijos",[]));
     setInversiones(await load("inversiones",[]));
     setMetas(await load("metas",[]));
+    setProvisiones(await load("provisiones",[]));
+    setPresupuesto(await load("presupuesto",{}));
+    setActivos(await load("activos",[]));
+    setPatrimonioHist(await load("patrimonioHist",[]));
+    setFinanzasCfg(await load("finanzasCfg",{tasaAhorroMeta:AHORRO_META_DEFAULT,trm:4000}));
     setEntrenos(await load("entrenos",[]));
     setLotes(await load("lotes",[]));
     setHorario(await load("horario",{}));
@@ -398,6 +413,11 @@ function App(){
   useEffect(()=>{if(ready)save("fijos",fijos)},[fijos,ready]);
   useEffect(()=>{if(ready)save("inversiones",inversiones)},[inversiones,ready]);
   useEffect(()=>{if(ready)save("metas",metas)},[metas,ready]);
+  useEffect(()=>{if(ready)save("provisiones",provisiones)},[provisiones,ready]);
+  useEffect(()=>{if(ready)save("presupuesto",presupuesto)},[presupuesto,ready]);
+  useEffect(()=>{if(ready)save("activos",activos)},[activos,ready]);
+  useEffect(()=>{if(ready)save("patrimonioHist",patrimonioHist)},[patrimonioHist,ready]);
+  useEffect(()=>{if(ready)save("finanzasCfg",finanzasCfg)},[finanzasCfg,ready]);
   useEffect(()=>{if(ready)save("entrenos",entrenos)},[entrenos,ready]);
   useEffect(()=>{if(ready)save("lotes",lotes)},[lotes,ready]);
   useEffect(()=>{if(ready)save("horario",horario)},[horario,ready]);
@@ -409,14 +429,14 @@ function App(){
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,activos,patrimonioHist,finanzasCfg};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,activos:setActivos,patrimonioHist:setPatrimonioHist,finanzasCfg:setFinanzasCfg};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="lista"&&<ListaCompras {...{lista,setLista}}/>}
-    {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas}}/>}
+    {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,activos,setActivos,patrimonioHist,setPatrimonioHist,finanzasCfg,setFinanzasCfg}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos}}/>}
     {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg}}/>}
     <Nav tab={tab} setTab={setTab}/>
@@ -1266,31 +1286,216 @@ function FormItem({item,onGuardar,onEliminar}){
 }
 
 /* ═══════════ FINANZAS ═══════════ */
+/* ═══════════ HELPERS FINANZAS ═══════════ */
+// Provisión mensual de un fondo: monto anual /12, o repartido en los meses que faltan al vencimiento
+function provisionMensual(p){
+  const anual=num(p.montoAnual); if(anual<=0) return 0;
+  if(p.mesVencimiento){ const m=mesesAlMesObjetivo(p.mesVencimiento); if(m>0&&m<12) return Math.ceil((anual-num(p.saldo))/m); }
+  return Math.ceil(anual/12);
+}
+// meses (1-12) desde el mes actual hasta el mes objetivo (1-12), envolviendo el año
+function mesesAlMesObjetivo(mesObj){ const hoy=new Date().getMonth()+1; let d=mesObj-hoy; if(d<=0) d+=12; return d; }
+function patrimonioNeto(activos,inversiones){
+  const a=(activos||[]).reduce((s,x)=>{const sg=(TIPOS_ACTIVO.find(t=>t.k===x.tipo)||{signo:1}).signo;return s+sg*num(x.valor);},0);
+  const inv=(inversiones||[]).reduce((s,i)=>s+num(i.actual),0);
+  return a+inv;
+}
+// tasa de ahorro del mes = (ingreso - gasto) / ingreso
+function tasaAhorro(transacciones,ym){
+  const t=transacciones.filter(x=>mesDe(x.fecha)===ym);
+  const ing=t.filter(x=>x.tipo==="ingreso").reduce((a,x)=>a+num(x.monto),0);
+  const gas=t.filter(x=>x.tipo==="gasto").reduce((a,x)=>a+num(x.monto),0);
+  return {ing,gas,tasa:ing>0?(ing-gas)/ing*100:0};
+}
+
 function Finanzas(props){
-  const [vista,setVista]=useState("mov");
+  const [vista,setVista]=useState("resumen");
   return <div>
     <Header titulo="Finanzas"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"mov",label:"Mes"},{id:"fijos",label:"Fijos"},{id:"inv",label:"Inversión"},{id:"metas",label:"Metas"}]}/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"resumen",label:"📊 Resumen"},{id:"mov",label:"Mes"},{id:"fijos",label:"Fijos"},{id:"prov",label:"Fondos"},{id:"inv",label:"Inversión"},{id:"metas",label:"Metas"},{id:"patrimonio",label:"Patrimonio"}]}/>
+    {vista==="resumen"&&<FinResumen {...props} ir={setVista}/>}
     {vista==="mov"&&<Movimientos {...props}/>}
     {vista==="fijos"&&<Fijos {...props}/>}
+    {vista==="prov"&&<Provisiones {...props}/>}
     {vista==="inv"&&<Inversiones {...props}/>}
     {vista==="metas"&&<Metas {...props}/>}
+    {vista==="patrimonio"&&<Patrimonio {...props}/>}
   </div>;
 }
 
-function Movimientos({transacciones,setTransacciones}){
-  const [mes,setMes]=useState(MES_ACTUAL); const [editando,setEditando]=useState(null);
+/* ═══════════ FONDOS / PROVISIONES (Fase 1) ═══════════ */
+function Provisiones({provisiones,setProvisiones,setTransacciones}){
+  const [editando,setEditando]=useState(null); const [usar,setUsar]=useState(null); const [toast,setToast]=useState("");
+  const guardar=p=>{const{_nuevo,...limpio}=p;setProvisiones(prev=>prev.some(x=>x.id===p.id)?prev.map(x=>x.id===p.id?limpio:x):[...prev,{...limpio,saldo:num(limpio.saldo)}]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar fondo",texto:"Se borrará este fondo (no afecta gastos ya registrados)."})){ setProvisiones(p=>p.filter(x=>x.id!==id)); setEditando(null);} };
+  const nuevo=()=>setEditando({id:uid(),nombre:"",categoria:"🚗 Carro",montoAnual:"",mesVencimiento:"",saldo:0,_nuevo:true});
+  const apartar=p=>{const m=provisionMensual(p);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:num(x.saldo)+m,_hist:[...(x._hist||[]),{fecha:HOY,tipo:"aporte",monto:m}]}:x));setToast("Apartaste "+money(m)+" en "+p.nombre);setTimeout(()=>setToast(""),2400);};
+  const aplicarUso=(p,monto)=>{const mn=num(monto);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:Math.max(0,num(x.saldo)-mn),_hist:[...(x._hist||[]),{fecha:HOY,tipo:"uso",monto:mn}]}:x));setTransacciones(prev=>[...prev,{id:uid(),tipo:"gasto",categoria:p.categoria,concepto:p.nombre+" (fondo)",monto:mn,fecha:HOY,_fondo:p.id}]);setUsar(null);setToast("Gasto registrado y descontado del fondo");setTimeout(()=>setToast(""),2600);};
+
+  const totalMes=provisiones.reduce((a,p)=>a+provisionMensual(p),0);
+  const totalSaldo=provisiones.reduce((a,p)=>a+num(p.saldo),0);
+  return <div style={{padding:"10px 18px 20px"}}>
+    <Card pad={18}>
+      <p style={{margin:0,...labelStyle}}>A provisionar al mes</p>
+      <p style={{margin:"6px 0 4px",fontFamily:SERIF,fontSize:28,color:C.gold}}>{money(totalMes)}</p>
+      <p style={{margin:0,fontFamily:SANS,fontSize:13,color:C.muted}}>Saldo acumulado en fondos: {money(totalSaldo)}</p>
+    </Card>
+    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"12px 2px 4px",lineHeight:1.5}}>Aparta 1/12 cada mes para los gastos grandes que caen una vez al año (SOAT, seguro, impuestos, renta…). Así no te explotan el mes que llegan.</p>
+    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",margin:"8px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo fondo</button>
+    {provisiones.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Crea fondos para tus gastos anuales: SOAT, seguro del carro, impuesto vehicular, declaración de renta, regalos de navidad…</p>}
+    {provisiones.map(p=>{const mensual=provisionMensual(p);const anual=num(p.montoAnual);const saldo=num(p.saldo);const pct=anual>0?saldo/anual*100:0;const mesesFalta=p.mesVencimiento?mesesAlMesObjetivo(p.mesVencimiento):null;const alerta=mesesFalta!=null&&mesesFalta<=2&&saldo<anual*0.8;
+      return <div key={p.id} style={{background:C.card,borderRadius:14,padding:15,marginBottom:10,border:"1.5px solid "+(alerta?C.red:C.border)}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div onClick={()=>setEditando({...p,_nuevo:false})} style={{flex:1,cursor:"pointer",minWidth:0}}><p style={{margin:0,fontFamily:SERIF,fontSize:17}}>{p.nombre}</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>{p.categoria}{p.mesVencimiento?" · vence "+MESES_CORTOS[p.mesVencimiento-1]:""}</p></div>
+          <span style={{fontFamily:SANS,fontSize:12.5,color:C.gold,fontWeight:700,whiteSpace:"nowrap"}}>{money(mensual)}/mes</span>
+        </div>
+        <div style={{margin:"11px 0 5px"}}><Bar pct={pct} color={pct>=100?C.green:C.gold} h={9}/></div>
+        <p style={{margin:"0 0 10px",fontFamily:SANS,fontSize:13}}><b>{money(saldo)}</b> de {money(anual)} <span style={{color:C.muted}}>({Math.round(pct)}%)</span></p>
+        {alerta&&<p style={{margin:"0 0 8px",fontSize:12,color:C.red,fontFamily:SANS}}>⚠ Vence en {mesesFalta} {mesesFalta===1?"mes":"meses"} y el saldo no alcanza.</p>}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>apartar(p)} style={{flex:1,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>+ Apartar este mes</button>
+          <button onClick={()=>setUsar(p)} disabled={saldo<=0} style={{flex:1,padding:"9px 0",background:saldo<=0?C.borderSoft:C.redSoft,color:saldo<=0?C.muted:C.red,border:"none",borderRadius:9,fontSize:13,fontWeight:700,fontFamily:SANS,cursor:saldo<=0?"default":"pointer"}}>Usar fondo</button>
+        </div>
+      </div>;})}
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo fondo":"Editar fondo"}>{editando&&<FormProvision prov={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={!!usar} onClose={()=>setUsar(null)} title={"Usar fondo · "+(usar?.nombre||"")}>{usar&&<FormUsarFondo prov={usar} onConfirmar={m=>aplicarUso(usar,m)}/>}</Sheet>
+    {toast&&<Toast>{toast}</Toast>}
+  </div>;
+}
+function FormProvision({prov,onGuardar,onEliminar}){
+  const [p,setP]=useState(prov); const set=(k,v)=>setP(x=>({...x,[k]:v})); const ok=p.nombre.trim()&&num(p.montoAnual)>0;
+  const mensual=ok?provisionMensual({...p,saldo:num(p.saldo)}):0;
+  return <div>
+    <Field label="Nombre"><input style={inputStyle} placeholder="Ej. SOAT, Seguro carro, Renta" value={p.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
+    <Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={p.categoria} onChange={e=>set("categoria",e.target.value)}>{CAT_PROVISION.map(c=><option key={c} value={c}>{c}</option>)}</select></Field>
+    <Field label="Costo anual total (COP)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 700000" value={p.montoAnual} onChange={e=>set("montoAnual",e.target.value)}/></Field>
+    <Field label="Mes en que se paga (opcional)"><select style={{...inputStyle,appearance:"none"}} value={p.mesVencimiento} onChange={e=>set("mesVencimiento",e.target.value)}><option value="">— Repartir todo el año —</option>{MESES_CORTOS.map((m,i)=><option key={m} value={i+1}>{m}</option>)}</select></Field>
+    <Field label="Saldo ya acumulado (opcional)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={p.saldo} onChange={e=>set("saldo",e.target.value)}/></Field>
+    {ok&&<div style={{background:C.goldSoft,borderRadius:10,padding:"10px 13px",margin:"2px 0 12px",fontFamily:SANS,fontSize:13.5,color:C.espresso}}>Deberás apartar <b>{money(mensual)}/mes</b>{p.mesVencimiento?" para llegar a tiempo":""}.</div>}
+    <button disabled={!ok} onClick={()=>onGuardar(p)} style={btnP(ok)}>Guardar fondo</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+function FormUsarFondo({prov,onConfirmar}){
+  const [monto,setMonto]=useState(String(num(prov.saldo)||"")); const ok=num(monto)>0;
+  return <div>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 12px",lineHeight:1.5}}>Llegó el gasto de <b>{prov.nombre}</b>. Esto lo descuenta del fondo y lo registra como gasto del mes.</p>
+    <Field label="¿Cuánto pagaste?"><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={monto} onChange={e=>setMonto(e.target.value)} autoFocus/></Field>
+    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 10px"}}>Saldo disponible en el fondo: {money(prov.saldo)}.</p>
+    <button disabled={!ok} onClick={()=>onConfirmar(monto)} style={btnP(ok)}>Registrar gasto</button>
+  </div>;
+}
+
+/* ═══════════ PATRIMONIO (Fase 3) ═══════════ */
+function Patrimonio({activos,setActivos,inversiones,patrimonioHist,setPatrimonioHist}){
+  const [editando,setEditando]=useState(null); const [toast,setToast]=useState("");
+  const guardar=a=>{const{_nuevo,...limpio}=a;setActivos(prev=>prev.some(x=>x.id===a.id)?prev.map(x=>x.id===a.id?limpio:x):[...prev,limpio]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar",texto:"Se borrará esta cuenta/activo/deuda."})){ setActivos(p=>p.filter(x=>x.id!==id)); setEditando(null);} };
+  const nuevo=()=>setEditando({id:uid(),nombre:"",tipo:"cuenta",valor:"",_nuevo:true});
+  const neto=patrimonioNeto(activos,inversiones);
+  const invTotal=(inversiones||[]).reduce((s,i)=>s+num(i.actual),0);
+  const porTipo=t=>(activos||[]).filter(a=>a.tipo===t);
+  const guardarSnapshot=()=>{const ym=MES_ACTUAL;setPatrimonioHist(prev=>{const sin=(prev||[]).filter(s=>s.ym!==ym);return [...sin,{ym,valor:neto}].sort((a,b)=>a.ym.localeCompare(b.ym));});setToast("Snapshot de "+nombreMes(ym)+" guardado");setTimeout(()=>setToast(""),2400);};
+  const hist=[...(patrimonioHist||[])].sort((a,b)=>a.ym.localeCompare(b.ym)).slice(-12);
+
+  return <div style={{padding:"10px 18px 20px"}}>
+    <Card pad={18}>
+      <p style={{margin:0,...labelStyle}}>Patrimonio neto</p>
+      <p style={{margin:"6px 0 4px",fontFamily:SERIF,fontSize:32,color:neto>=0?C.espresso:C.red}}>{money(neto)}</p>
+      <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>Activos + inversiones − deudas</p>
+    </Card>
+
+    {hist.length>=2&&<div style={{marginTop:14}}><p style={{...labelStyle,marginBottom:8}}>Evolución</p><Card pad={16}>
+      <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:100,gap:5}}>{(()=>{const vals=hist.map(h=>h.valor);const max=Math.max(...vals),min=Math.min(...vals,0);const rng=max-min||1;return hist.map((h,i)=>{const ht=12+((h.valor-min)/rng)*78;const ult=i===hist.length-1;return <div key={h.ym} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:8.5,color:C.muted,fontFamily:SANS}}>{moneyShort(h.valor)}</span><div style={{width:"100%",maxWidth:26,height:ht,background:ult?C.espresso:C.goldSoft,borderRadius:4}}/><span style={{fontSize:8,color:C.muted,fontFamily:SANS}}>{MESES_CORTOS[+h.ym.slice(5)-1]}</span></div>;})})()}</div>
+    </Card></div>}
+
+    <button onClick={guardarSnapshot} style={{width:"100%",padding:"11px 0",margin:"14px 0 8px",background:C.espresso,color:C.gold,border:"none",borderRadius:11,fontSize:13.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>📸 Guardar snapshot de este mes</button>
+    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",marginBottom:16,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Cuenta / activo / deuda</button>
+
+    {invTotal>0&&<div style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><p style={{margin:0,fontFamily:SANS,fontSize:14}}>📈 Inversiones</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>desde la pestaña Inversión</p></div><span style={{fontFamily:SERIF,fontSize:16,color:C.green}}>{money(invTotal)}</span></div>}
+    {TIPOS_ACTIVO.map(t=>{const items=porTipo(t.k);if(items.length===0)return null;return <div key={t.k} style={{marginTop:6}}>{items.map(a=><div key={a.id} onClick={()=>setEditando({...a,_nuevo:false})} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}><div><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{a.nombre}</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>{t.label}</p></div><span style={{fontFamily:SERIF,fontSize:16,color:t.signo<0?C.red:C.text,whiteSpace:"nowrap"}}>{t.signo<0?"−":""}{money(a.valor)}</span></div>)}</div>;})}
+    {(activos||[]).length===0&&invTotal===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:6}}>Agrega tus cuentas bancarias, el carro y deudas para ver tu patrimonio neto real.</p>}
+
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo":"Editar"}>{editando&&<FormActivo activo={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    {toast&&<Toast>{toast}</Toast>}
+  </div>;
+}
+function FormActivo({activo,onGuardar,onEliminar}){
+  const [a,setA]=useState(activo); const set=(k,v)=>setA(x=>({...x,[k]:v})); const ok=a.nombre.trim()&&num(a.valor)>0;
+  return <div>
+    <Field label="Nombre"><input style={inputStyle} placeholder="Ej. Cuenta Bancolombia, Mazda 2, Tarjeta" value={a.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
+    <Field label="Tipo"><select style={{...inputStyle,appearance:"none"}} value={a.tipo} onChange={e=>set("tipo",e.target.value)}>{TIPOS_ACTIVO.map(t=><option key={t.k} value={t.k}>{t.label}</option>)}</select></Field>
+    <Field label="Valor (COP)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={a.valor} onChange={e=>set("valor",e.target.value)}/></Field>
+    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 10px"}}>Las deudas se restan del patrimonio. Actualiza estos valores de vez en cuando.</p>
+    <button disabled={!ok} onClick={()=>onGuardar(a)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+
+/* ═══════════ RESUMEN / DASHBOARD (Fase 3) ═══════════ */
+function FinResumen({transacciones,inversiones,activos,metas,provisiones,fijos,finanzasCfg,ir}){
+  const {ing,gas,tasa}=tasaAhorro(transacciones,MES_ACTUAL);
+  const metaTasa=num((finanzasCfg||{}).tasaAhorroMeta)||AHORRO_META_DEFAULT;
+  const neto=patrimonioNeto(activos,inversiones);
+  // fondo de emergencia: meta que se llame así, o la primera; meses cubiertos = saldo / gasto mensual prom
+  const gastoMensualProm=(()=>{const meses={};transacciones.filter(t=>t.tipo==="gasto").forEach(t=>{const m=mesDe(t.fecha);meses[m]=(meses[m]||0)+num(t.monto);});const vals=Object.values(meses);return vals.length?vals.reduce((a,v)=>a+v,0)/vals.length:0;})();
+  const metaAct=m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);return inv?num(inv.actual):num(m.actual);};
+  const fondoEmergencia=(metas||[]).find(m=>/emergencia/i.test(m.nombre));
+  const mesesCubiertos=fondoEmergencia&&gastoMensualProm>0?metaAct(fondoEmergencia)/gastoMensualProm:0;
+  const fijoTotal=(fijos||[]).reduce((a,f)=>a+num(f.monto),0);
+  const provMes=(provisiones||[]).reduce((a,p)=>a+provisionMensual(p),0);
+  const aporteMetasMes=(metas||[]).filter(m=>!m.inversionId&&metaAct(m)<num(m.objetivo)).reduce((a,m)=>{const meses=m.fecha?mesesHasta(m.fecha):0;const falta=num(m.objetivo)-metaAct(m);return a+(meses>0?falta/meses:0);},0);
+  const disponible=ing-fijoTotal-provMes-aporteMetasMes;
+  const metasActivas=[...(metas||[])].filter(m=>metaAct(m)<num(m.objetivo)).sort((a,b)=>(num(a.prioridad)||99)-(num(b.prioridad)||99)).slice(0,3);
+  const colTasa=tasa>=metaTasa?C.green:tasa>=metaTasa*0.6?C.gold:C.red;
+
+  return <div style={{padding:"10px 18px 20px"}}>
+    {/* patrimonio + tasa */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+      <div onClick={()=>ir("patrimonio")} style={{background:C.espresso,borderRadius:14,padding:"14px 15px",cursor:"pointer"}}><p style={{margin:0,fontSize:11,color:C.gold,fontFamily:SANS,textTransform:"uppercase",letterSpacing:1}}>Patrimonio</p><p style={{margin:"6px 0 0",fontFamily:SERIF,fontSize:21,color:"#fff"}}>{moneyShort(neto)}</p></div>
+      <div onClick={()=>ir("mov")} style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:14,padding:"14px 15px",cursor:"pointer"}}><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS,textTransform:"uppercase",letterSpacing:1}}>Tasa ahorro</p><p style={{margin:"6px 0 0",fontFamily:SERIF,fontSize:21,color:colTasa}}>{ing>0?Math.round(tasa)+"%":"—"}</p></div>
+    </div>
+
+    {/* cascada del dinero */}
+    <Card pad={16}>
+      <Mini icon="💧" label="Cascada del mes"/>
+      {[["1. Fijos",fijoTotal,C.red],["2. Provisiones",provMes,C.gold],["3. Metas (ahorro)",Math.round(aporteMetasMes),C.green],["4. Disponible para gastar",disponible,disponible>=0?C.blue:C.red]].map(([l,v,col],i)=><div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<3?"1px solid "+C.borderSoft:"none"}}><span style={{fontFamily:SANS,fontSize:13.5,color:i===3?C.espresso:C.muted,fontWeight:i===3?700:400}}>{l}</span><span style={{fontFamily:SERIF,fontSize:16,color:col}}>{money(v)}</span></div>)}
+      {ing>0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted,textAlign:"center"}}>Sobre tu ingreso del mes ({money(ing)})</p>}
+      {ing===0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,textAlign:"center"}}>Registra tus ingresos del mes para ver el disponible.</p>}
+    </Card>
+
+    {/* fondo de emergencia */}
+    {fondoEmergencia&&<div style={{marginTop:12}}><Card pad={16} onClick={()=>ir("metas")}>
+      <Mini icon="🛟" label="Fondo de emergencia"/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",margin:"8px 0 6px"}}><span style={{fontFamily:SERIF,fontSize:18}}>{money(metaAct(fondoEmergencia))}</span><span style={{fontFamily:SANS,fontSize:13,color:C.muted}}>{mesesCubiertos>0?mesesCubiertos.toFixed(1)+" meses cubiertos":"de "+money(num(fondoEmergencia.objetivo))}</span></div>
+      <Bar pct={num(fondoEmergencia.objetivo)>0?metaAct(fondoEmergencia)/num(fondoEmergencia.objetivo)*100:0} color={C.blue} h={9}/>
+    </Card></div>}
+
+    {/* metas mini */}
+    {metasActivas.length>0&&<div style={{marginTop:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><p style={{...labelStyle,margin:0}}>Metas activas</p><button onClick={()=>ir("metas")} style={{background:"none",border:"none",color:C.gold,fontSize:12.5,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>Ver todas ›</button></div>
+      {metasActivas.map(m=>{const a=metaAct(m),o=num(m.objetivo);return <div key={m.id} onClick={()=>ir("metas")} style={{background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+C.border,cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontFamily:SANS,fontSize:13}}><span>{m.prioridad?"#"+m.prioridad+" ":""}{m.nombre}</span><span style={{color:C.muted}}>{Math.round(o>0?a/o*100:0)}%</span></div><Bar pct={o>0?a/o*100:0} color={C.gold} h={7}/></div>;})}
+    </div>}
+  </div>;
+}
+
+function Movimientos({transacciones,setTransacciones,presupuesto,setPresupuesto,finanzasCfg}){
+  const [mes,setMes]=useState(MES_ACTUAL); const [editando,setEditando]=useState(null); const [editPres,setEditPres]=useState(false);
   const delMes=transacciones.filter(t=>mesDe(t.fecha)===mes).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const ing=delMes.filter(t=>t.tipo==="ingreso").reduce((a,t)=>a+num(t.monto),0);
   const gas=delMes.filter(t=>t.tipo==="gasto").reduce((a,t)=>a+num(t.monto),0);
   const balance=ing-gas;
+  const tasa=ing>0?(ing-gas)/ing*100:0;
+  const metaTasa=num((finanzasCfg||{}).tasaAhorroMeta)||AHORRO_META_DEFAULT;
   const guardar=t=>{setTransacciones(p=>p.some(x=>x.id===t.id)?p.map(x=>x.id===t.id?t:x):[...p,t]);setEditando(null);};
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar movimiento",texto:"Se borrará este movimiento."})){ setTransacciones(p=>p.filter(t=>t.id!==id)); setEditando(null);} };
   const nuevo=tipo=>setEditando({id:uid(),tipo,concepto:"",monto:"",categoria:tipo==="gasto"?"🛒 Mercado":"💼 Salario",fecha:HOY,_nuevo:true});
 
   const porCat={}; delMes.filter(t=>t.tipo==="gasto").forEach(t=>{porCat[t.categoria]=(porCat[t.categoria]||0)+num(t.monto);});
-  const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
-  const maxCat=Math.max(...cats.map(c=>c[1]),1);
+  const plan=presupuesto||{};
+  // categorías a mostrar: las con gasto o con presupuesto
+  const catsPres=[...new Set([...Object.keys(porCat),...Object.keys(plan).filter(k=>num(plan[k])>0)])]
+    .map(cat=>({cat,real:porCat[cat]||0,plan:num(plan[cat])}))
+    .sort((a,b)=>(b.real+b.plan)-(a.real+a.plan));
+  const totalPlan=Object.values(plan).reduce((a,v)=>a+num(v),0);
 
   return <div style={{padding:"10px 18px 20px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><button onClick={()=>setMes(mesAdj(mes,-1))} style={navMesBtn}>‹</button><span style={{fontFamily:SERIF,fontSize:16}}>{nombreMes(mes)}</span><button onClick={()=>setMes(mesAdj(mes,1))} style={navMesBtn}>›</button></div>
@@ -1298,13 +1503,40 @@ function Movimientos({transacciones,setTransacciones}){
       <div style={{display:"flex",gap:10}}><div style={{flex:1,background:C.greenSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.green,fontFamily:SANS}}>Ingresos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.green}}>{money(ing)}</p></div><div style={{flex:1,background:C.redSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.red,fontFamily:SANS}}>Gastos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.red}}>{money(gas)}</p></div></div>
     </Card>
 
+    {/* Tasa de ahorro */}
+    {ing>0&&(()=>{const ok=tasa>=metaTasa;const col=ok?C.green:tasa>=metaTasa*0.6?C.gold:C.red;return <div style={{marginTop:12}}><Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon="🐷" label="Tasa de ahorro del mes"/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>meta {metaTasa}%</span></div>
+      <p style={{margin:"8px 0 6px",fontFamily:SERIF,fontSize:26,color:col}}>{Math.round(tasa)}%</p>
+      <Bar pct={tasa} color={col} h={10}/>
+      <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12.5,color:C.muted}}>{ok?"¡Vas por encima de tu meta! 🎯 Págate primero.":"Ahorraste "+money(balance)+". Apunta a guardar ≥"+metaTasa+"% del ingreso."}</p>
+    </Card></div>;})()}
+
     <div style={{display:"flex",gap:10,margin:"14px 0 18px"}}><button onClick={()=>nuevo("ingreso")} style={{flex:1,padding:"12px 0",background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Ingreso</button><button onClick={()=>nuevo("gasto")} style={{flex:1,padding:"12px 0",background:C.red,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Gasto</button></div>
 
-    {cats.length>0&&<div style={{marginBottom:20}}><p style={{...labelStyle,marginBottom:10}}>¿En qué gastas?</p><Card pad={16}>{cats.map(([cat,val],i)=><div key={cat} style={{marginBottom:i<cats.length-1?12:0}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontFamily:SANS,fontSize:13}}><span>{cat}</span><span style={{color:C.muted}}>{money(val)} · {Math.round(val/gas*100)}%</span></div><Bar pct={val/maxCat*100} color={C.gold}/></div>)}</Card></div>}
+    {/* Presupuesto por categoría: planeado vs real */}
+    <div style={{marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><p style={{...labelStyle,margin:0}}>Presupuesto por categoría</p><button onClick={()=>setEditPres(true)} style={{background:"transparent",border:"1.5px solid "+C.border,borderRadius:20,padding:"4px 11px",fontSize:11.5,color:C.muted,fontFamily:SANS,cursor:"pointer"}}>⚙ Planear</button></div>
+      {catsPres.length===0?<Card pad={16}><p style={{margin:0,fontSize:13,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Toca "Planear" para asignar un tope a cada categoría. Cada peso con un trabajo.</p></Card>:<Card pad={16}>{catsPres.map((c,i)=>{const pl=c.plan,re=c.real;const pct=pl>0?re/pl*100:(re>0?100:0);const col=pl===0?C.gold:pct>100?C.red:pct>80?C.gold:C.green;return <div key={c.cat} style={{marginBottom:i<catsPres.length-1?13:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontFamily:SANS,fontSize:13}}><span>{c.cat}</span><span style={{color:C.muted}}>{money(re)}{pl>0?" / "+money(pl):""}</span></div>
+        <Bar pct={Math.min(100,pct)} color={col}/>
+        {pl>0&&<p style={{margin:"3px 0 0",fontSize:11,color:pct>100?C.red:C.muted,fontFamily:SANS,textAlign:"right"}}>{pct>100?"Te pasaste "+money(re-pl):"Queda "+money(pl-re)}</p>}
+      </div>;})}{totalPlan>0&&<p style={{margin:"12px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Plan total: {money(totalPlan)} · Gastado: {money(gas)}</p>}</Card>}
+    </div>
 
     {delMes.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Sin movimientos este mes.</p>:<div><p style={{...labelStyle,marginBottom:8}}>Movimientos</p>{delMes.map(t=><div key={t.id} onClick={()=>setEditando(t)} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}><div style={{minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{t.categoria}{t.concepto?" · "+t.concepto:""}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{t.fecha}</p></div><span style={{fontFamily:SERIF,fontSize:16,color:t.tipo==="ingreso"?C.green:C.red,whiteSpace:"nowrap"}}>{t.tipo==="ingreso"?"+":"−"}{money(t.monto)}</span></div>)}</div>}
 
     <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?(editando.tipo==="ingreso"?"Ingreso":"Gasto"):""}>{editando&&<FormMov mov={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={editPres} onClose={()=>setEditPres(false)} title="Planear presupuesto">{editPres&&<FormPresupuesto presupuesto={plan} onGuardar={p=>{setPresupuesto(p);setEditPres(false);}}/>}</Sheet>
+  </div>;
+}
+function FormPresupuesto({presupuesto,onGuardar}){
+  const [p,setP]=useState({...presupuesto}); const set=(k,v)=>setP(x=>({...x,[k]:v}));
+  const total=Object.values(p).reduce((a,v)=>a+num(v),0);
+  return <div>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 14px",lineHeight:1.5}}>Asigna un tope mensual a cada categoría de gasto. Deja en blanco las que no quieras controlar. Método base-cero: cada peso con un trabajo.</p>
+    {CAT_GASTO.map(c=><div key={c} style={{display:"flex",alignItems:"center",gap:10,marginBottom:9}}><span style={{flex:1,fontFamily:SANS,fontSize:13.5}}>{c}</span><input style={{...inputStyle,width:120,padding:"8px 10px",textAlign:"right"}} type="number" inputMode="numeric" placeholder="0" value={p[c]||""} onChange={e=>set(c,e.target.value)}/></div>)}
+    <div style={{display:"flex",justifyContent:"space-between",margin:"14px 0",paddingTop:12,borderTop:"1px solid "+C.borderSoft,fontFamily:SANS,fontSize:14}}><span style={{color:C.muted}}>Plan total mensual</span><b style={{fontFamily:SERIF,fontSize:18}}>{money(total)}</b></div>
+    <button onClick={()=>onGuardar(p)} style={btnP(true)}>Guardar presupuesto</button>
   </div>;
 }
 function FormMov({mov,onGuardar,onEliminar}){
@@ -1370,34 +1602,75 @@ function FormAporte({onAportar}){
   return <div><Field label="¿Cuánto vas a aportar?"><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={monto} onChange={e=>setMonto(e.target.value)} autoFocus/></Field><p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 10px"}}>Se suma al monto invertido y al valor actual (dinero nuevo, no rendimiento).</p><button disabled={!ok} onClick={()=>onAportar(monto)} style={btnP(ok)}>Aportar</button></div>;
 }
 
-function Metas({metas,setMetas,inversiones}){
-  const [editando,setEditando]=useState(null); const [abonar,setAbonar]=useState(null);
-  const guardar=m=>{setMetas(p=>p.some(x=>x.id===m.id)?p.map(x=>x.id===m.id?m:x):[...p,m]);setEditando(null);};
+function Metas({metas,setMetas,inversiones,transacciones,finanzasCfg}){
+  const [editando,setEditando]=useState(null); const [abonar,setAbonar]=useState(null); const [repartir,setRepartir]=useState(false);
+  const guardar=m=>{const{_nuevo,...limpio}=m;setMetas(p=>p.some(x=>x.id===m.id)?p.map(x=>x.id===m.id?limpio:x):[...p,limpio]);setEditando(null);};
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar meta",texto:"Se borrará esta meta de ahorro."})){ setMetas(p=>p.filter(m=>m.id!==id)); setEditando(null);} };
   const aplicar=(id,monto)=>{setMetas(p=>p.map(m=>m.id===id?{...m,actual:num(m.actual)+num(monto)}:m));setAbonar(null);};
-  const nueva=()=>setEditando({id:uid(),nombre:"",objetivo:"",actual:"",fecha:"",inversionId:"",_nuevo:true});
+  const aplicarReparto=asign=>{setMetas(p=>p.map(m=>asign[m.id]?{...m,actual:num(m.actual)+num(asign[m.id])}:m));setRepartir(false);};
+  const nextPrioridad=Math.max(0,...metas.map(m=>num(m.prioridad)))+1;
+  const nueva=()=>setEditando({id:uid(),nombre:"",objetivo:"",actual:"",fecha:"",inversionId:"",prioridad:nextPrioridad,moneda:"COP",objetivoUSD:"",_nuevo:true});
+  const metaAct=m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);return inv?num(inv.actual):num(m.actual);};
+  const trm=num((finanzasCfg||{}).trm)||4000;
+  // aporte real reciente: suma de abonos manuales últimos ~2 meses no es rastreable sin log; usamos ritmo requerido vs disponible
+  const ordenadas=[...metas].sort((a,b)=>(num(a.prioridad)||99)-(num(b.prioridad)||99));
+  const haySinLograr=metas.some(m=>metaAct(m)<num(m.objetivo)&&!m.inversionId);
   return <div style={{padding:"10px 18px 20px"}}>
-    <button onClick={nueva} style={{width:"100%",padding:"12px 0",marginBottom:16,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva meta</button>
-    {metas.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Crea tu primera meta (maestría, viaje, fondo de emergencia…).</p>}
-    {metas.map(m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);const obj=num(m.objetivo),act=inv?num(inv.actual):num(m.actual);const falta=Math.max(0,obj-act);const pct=obj>0?act/obj*100:0;const meses=m.fecha?mesesHasta(m.fecha):0;const mensual=falta>0&&meses>0?falta/meses:0;const lograda=act>=obj&&obj>0;
+    <button onClick={nueva} style={{width:"100%",padding:"12px 0",marginBottom:10,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva meta</button>
+    {haySinLograr&&<button onClick={()=>setRepartir(true)} style={{width:"100%",padding:"11px 0",marginBottom:16,background:C.greenSoft,color:C.green,border:"none",borderRadius:11,fontSize:13.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>🎁 Repartir un ingreso extra (prima/bono)</button>}
+    {metas.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Crea tu primera meta (fondo de emergencia, maestría, finca…). Asigna prioridad para financiarlas en orden.</p>}
+    {ordenadas.map(m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);const obj=num(m.objetivo),act=metaAct(m);const falta=Math.max(0,obj-act);const pct=obj>0?act/obj*100:0;const meses=m.fecha?mesesHasta(m.fecha):0;const mensual=falta>0&&meses>0?falta/meses:0;const lograda=act>=obj&&obj>0;const usd=m.moneda==="USD"&&num(m.objetivoUSD)>0;
+      // en ruta: si tiene fecha, ¿el % de avance va acorde al % de tiempo transcurrido? (heurística simple sin log de aportes)
+      let ruta=null;
+      if(!lograda&&m.fecha&&m.creada){const tot=mesesHasta(m.fecha)+mesesDesde(m.creada);const transc=mesesDesde(m.creada);if(tot>0){const espPct=transc/tot*100;ruta=pct>=espPct*0.9?{t:"En ruta",c:C.green}:{t:"Atrasada",c:C.red};}}
       return <div key={m.id} style={{background:C.card,borderRadius:16,padding:18,marginBottom:12,border:"1.5px solid "+(lograda?C.green:C.border)}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div><h3 style={{margin:0,fontFamily:SERIF,fontSize:19,fontWeight:"normal"}}>{m.nombre}</h3>{m.fecha&&<p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>Para {m.fecha}{meses>0?" · "+meses+" meses":""}</p>}{inv&&<p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>📈 Vinculada a {inv.nombre}</p>}</div><button onClick={()=>setEditando(m)} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>✎</button></div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div style={{minWidth:0}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:19,fontWeight:"normal"}}>{num(m.prioridad)>0&&<span style={{color:C.gold,fontSize:15}}>#{m.prioridad} </span>}{m.nombre}</h3>{m.fecha&&<p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>Para {m.fecha}{meses>0?" · "+meses+" meses":""}</p>}{usd&&<p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:12,color:C.blue,fontWeight:600}}>💵 {num(m.objetivoUSD).toLocaleString("en-US")} USD · TRM {money(trm)}</p>}{inv&&<p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>📈 Vinculada a {inv.nombre}</p>}</div><div style={{display:"flex",alignItems:"center",gap:8}}>{ruta&&<span style={{fontSize:10.5,fontWeight:700,color:ruta.c,background:ruta.c===C.green?C.greenSoft:C.redSoft,padding:"3px 8px",borderRadius:10,whiteSpace:"nowrap"}}>{ruta.t}</span>}<button onClick={()=>setEditando(m)} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>✎</button></div></div>
         <div style={{margin:"14px 0 8px"}}><Bar pct={pct} color={lograda?C.green:C.gold} h={12}/></div>
         <div style={{display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13}}><span style={{fontWeight:600}}>{Math.round(pct)}%</span><span style={{color:C.muted}}>{money(act)} / {money(obj)}</span></div>
         {lograda?<div style={{marginTop:14,background:C.greenSoft,borderRadius:10,padding:12,fontFamily:SANS,fontSize:14,color:C.green,textAlign:"center"}}>🎉 ¡Meta cumplida!</div>:<div style={{marginTop:14,background:C.borderSoft,borderRadius:12,padding:14}}><div style={{display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13,marginBottom:mensual>0?8:0}}><span style={{color:C.muted}}>Te falta</span><span style={{fontWeight:600}}>{money(falta)}</span></div>{mensual>0&&<div style={{display:"flex",justifyContent:"space-between",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>Ahorra al mes</span><span style={{color:C.espresso,fontWeight:700}}>{money(Math.ceil(mensual))}/mes</span></div>}{m.fecha&&meses===0&&falta>0&&<p style={{margin:"6px 0 0",fontSize:12,color:C.red,fontFamily:SANS}}>⚠ La fecha objetivo ya pasó o es este mes.</p>}</div>}
         {!lograda&&(inv?<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,textAlign:"center"}}>El avance se actualiza con los aportes de la inversión.</p>:<button onClick={()=>setAbonar(m)} style={{width:"100%",marginTop:10,padding:"11px 0",background:C.espresso,color:C.bg,border:"none",borderRadius:10,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Abonar</button>)}
       </div>;})}
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nueva meta":"Editar meta"}>{editando&&<FormMeta meta={editando} inversiones={inversiones} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nueva meta":"Editar meta"}>{editando&&<FormMeta meta={editando} inversiones={inversiones} trm={trm} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
     <Sheet open={!!abonar} onClose={()=>setAbonar(null)} title={"Abonar a "+(abonar?.nombre||"")}>{abonar&&<FormAbono onAbonar={monto=>aplicar(abonar.id,monto)}/>}</Sheet>
+    <Sheet open={repartir} onClose={()=>setRepartir(false)} title="Repartir ingreso extra">{repartir&&<FormReparto metas={ordenadas.filter(m=>metaAct(m)<num(m.objetivo)&&!m.inversionId)} onAplicar={aplicarReparto}/>}</Sheet>
   </div>;
 }
-function FormMeta({meta,onGuardar,onEliminar,inversiones}){
-  const [m,setM]=useState(meta); const set=(k,v)=>setM(p=>({...p,[k]:v})); const ok=m.nombre.trim()&&num(m.objetivo)>0;
+function FormMeta({meta,onGuardar,onEliminar,inversiones,trm}){
+  const [m,setM]=useState(meta.creada?meta:{...meta,creada:meta.creada||HOY}); const set=(k,v)=>setM(p=>({...p,[k]:v})); const usd=m.moneda==="USD";
+  const objCalc=usd?Math.round(num(m.objetivoUSD)*num(trm||4000)):num(m.objetivo);
+  const ok=m.nombre.trim()&&objCalc>0;
   const invs=inversiones||[]; const ligada=!!m.inversionId;
-  return <div><Field label="Nombre de la meta"><input style={inputStyle} placeholder="Ej. Maestría" value={m.nombre} onChange={e=>set("nombre",e.target.value)}/></Field><Field label="Monto objetivo"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 20000000" value={m.objetivo} onChange={e=>set("objetivo",e.target.value)}/></Field>
+  const guardarMeta=()=>onGuardar({...m,objetivo:objCalc});
+  return <div><Field label="Nombre de la meta"><input style={inputStyle} placeholder="Ej. Fondo de emergencia" value={m.nombre} onChange={e=>set("nombre",e.target.value)}/></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <Field label="Prioridad"><input style={inputStyle} type="number" inputMode="numeric" placeholder="1" value={m.prioridad} onChange={e=>set("prioridad",e.target.value)}/></Field>
+      <Field label="Moneda"><select style={{...inputStyle,appearance:"none"}} value={m.moneda||"COP"} onChange={e=>set("moneda",e.target.value)}><option value="COP">COP</option><option value="USD">USD</option></select></Field>
+    </div>
+    {usd?<div><Field label="Monto objetivo (USD)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 10000" value={m.objetivoUSD} onChange={e=>set("objetivoUSD",e.target.value)}/></Field><p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 12px"}}>≈ {money(objCalc)} a TRM {money(trm)}. Ajusta la TRM en Resumen ⚙ si cambia.</p></div>:<Field label="Monto objetivo (COP)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 10000000" value={m.objetivo} onChange={e=>set("objetivo",e.target.value)}/></Field>}
     {invs.length>0&&<Field label="Vincular a una inversión (opcional)"><select style={{...inputStyle,appearance:"none"}} value={m.inversionId||""} onChange={e=>set("inversionId",e.target.value)}><option value="">— Ahorro manual (sin inversión) —</option>{invs.map(i=>(<option key={i.id} value={i.id}>{i.nombre}</option>))}</select></Field>}
-    {ligada?<p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 12px"}}>El avance de la meta tomará el valor actual de la inversión. Aporta desde Finanzas → Inversión.</p>:<Field label="Ya tengo ahorrado"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={m.actual} onChange={e=>set("actual",e.target.value)}/></Field>}
-    <Field label="Fecha objetivo"><input style={inputStyle} type="date" value={m.fecha} onChange={e=>set("fecha",e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(m)} style={btnP(ok)}>Guardar meta</button>{onEliminar&&btnDel(onEliminar)}</div>;
+    {ligada?<p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 12px"}}>El avance de la meta tomará el valor actual de la inversión.</p>:<Field label="Ya tengo ahorrado (COP)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={m.actual} onChange={e=>set("actual",e.target.value)}/></Field>}
+    <Field label="Fecha objetivo"><input style={inputStyle} type="date" value={m.fecha} onChange={e=>set("fecha",e.target.value)}/></Field><button disabled={!ok} onClick={guardarMeta} style={btnP(ok)}>Guardar meta</button>{onEliminar&&btnDel(onEliminar)}</div>;
+}
+function FormReparto({metas,onAplicar}){
+  const [total,setTotal]=useState(""); const t=num(total);
+  // sugerencia: 60% a la #1, 30% a la #2, 10% libre/3ra
+  const sugerencia={};
+  if(metas[0])sugerencia[metas[0].id]=Math.round(t*0.6);
+  if(metas[1])sugerencia[metas[1].id]=Math.round(t*0.3);
+  if(metas[2])sugerencia[metas[2].id]=Math.round(t*0.1);
+  const [asign,setAsign]=useState({});
+  const usarSug=()=>setAsign(sugerencia);
+  const setA=(id,v)=>setAsign(p=>({...p,[id]:v}));
+  const sumAsig=Object.values(asign).reduce((a,v)=>a+num(v),0);
+  return <div>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 12px",lineHeight:1.5}}>Te llegó una prima o bono. Repártelo entre tus metas por orden de prioridad (págate primero).</p>
+    <Field label="Monto del ingreso extra (COP)"><input style={{...inputStyle,fontSize:20,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={total} onChange={e=>setTotal(e.target.value)} autoFocus/></Field>
+    {t>0&&<button onClick={usarSug} style={{width:"100%",padding:"9px 0",margin:"0 0 12px",background:C.goldSoft,color:C.espresso,border:"none",borderRadius:9,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>✨ Usar reparto sugerido (60/30/10 por prioridad)</button>}
+    {metas.map(m=><div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:9}}><span style={{flex:1,fontFamily:SANS,fontSize:13.5}}>{m.prioridad?"#"+m.prioridad+" ":""}{m.nombre}</span><input style={{...inputStyle,width:120,padding:"8px 10px",textAlign:"right"}} type="number" inputMode="numeric" placeholder="0" value={asign[m.id]||""} onChange={e=>setA(m.id,e.target.value)}/></div>)}
+    <div style={{display:"flex",justifyContent:"space-between",margin:"12px 0",paddingTop:10,borderTop:"1px solid "+C.borderSoft,fontFamily:SANS,fontSize:13.5}}><span style={{color:C.muted}}>Asignado</span><b style={{color:sumAsig>t?C.red:C.espresso}}>{money(sumAsig)}{t>0?" / "+money(t):""}</b></div>
+    {sumAsig>t&&<p style={{fontSize:12,color:C.red,fontFamily:SANS,margin:"0 0 8px"}}>Estás asignando más de lo que te llegó.</p>}
+    <button disabled={sumAsig<=0||sumAsig>t} onClick={()=>onAplicar(asign)} style={btnP(sumAsig>0&&sumAsig<=t)}>Aplicar a metas</button>
+  </div>;
 }
 function FormAbono({onAbonar}){
   const [monto,setMonto]=useState(""); const ok=num(monto)>0;
