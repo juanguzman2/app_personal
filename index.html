@@ -163,60 +163,76 @@ const CAT_INGRESO=["💼 Salario","💵 Freelance","🎁 Extra","📈 Rendimient
 const SEED_LISTA=[["Papa criolla","🥦 Frutas y Verduras"],["Zanahoria","🥦 Frutas y Verduras"],["Lechuga","🥦 Frutas y Verduras"],["Tomate cherry","🥦 Frutas y Verduras"],["Cebolla blanca","🥦 Frutas y Verduras"],["Champiñones","🥦 Frutas y Verduras"],["Limones","🥦 Frutas y Verduras"],["Ajo","🥦 Frutas y Verduras"],["Huevos","🧀 Lácteos y Huevos"],["Queso crema","🧀 Lácteos y Huevos"],["Crema de leche","🧀 Lácteos y Huevos"],["Mantequilla","🧀 Lácteos y Huevos"],["Parmesano en bloque","🧀 Lácteos y Huevos"],["Pechuga de pollo","🍖 Carnes y Fríos"],["Carne de res molida","🍖 Carnes y Fríos"],["Pepperoni","🍖 Carnes y Fríos"],["Harina de trigo","🌾 Despensa"],["Levadura seca","🌾 Despensa"],["Arroz blanco","🌾 Despensa"],["Pasta","🌾 Despensa"],["Granola","🌾 Despensa"],["Gelatina sin sabor","🌾 Despensa"],["Leche condensada","🌾 Despensa"],["Aceite de oliva","🫙 Aceites y Salsas"],["Salsa de soya","🫙 Aceites y Salsas"],["Mostaza Dijon","🫙 Aceites y Salsas"],["Mayonesa","🫙 Aceites y Salsas"],["Orégano","🌿 Especias"],["Pimentón ahumado","🌿 Especias"],["Comino","🌿 Especias"],["Tomate triturado","🥫 Enlatados"],["Caldo de pollo","🥫 Enlatados"]].map(([nombre,categoria],i)=>({id:"seed-"+i,nombre,categoria,comprado:false,precio:"",tienda:""}));
 
 /* ───── GYM: investigación PPL x2 (hipertrofia) ───── */
-const MUSCULOS=["Pecho","Espalda","Hombros","Bíceps","Tríceps","Cuádriceps","Isquios","Glúteos","Gemelos","Abdomen","Otro"];
-// Volumen semanal recomendado (series) por músculo — Schoenfeld / RP MEV→MAV
+const MUSCULOS=["Pecho","Espalda","Hombros","Bíceps","Tríceps","Trapecio","Antebrazo","Cuádriceps","Isquios","Glúteos","Gemelos","Abdomen","Otro"];
+// Volumen semanal recomendado (series) por músculo — plan: énfasis en hombro, gemelo y abdomen
 const VOL_MUSCULO=[
-  {m:"Pecho",min:14,max:18},{m:"Espalda",min:16,max:20},{m:"Hombros",min:12,max:18},
-  {m:"Bíceps",min:12,max:16},{m:"Tríceps",min:12,max:16},{m:"Cuádriceps",min:14,max:18},
-  {m:"Isquios",min:12,max:16},{m:"Glúteos",min:10,max:14},{m:"Gemelos",min:12,max:16},{m:"Abdomen",min:8,max:12},
+  {m:"Pecho",min:12,max:16},{m:"Espalda",min:14,max:18},{m:"Hombros",min:14,max:20},
+  {m:"Bíceps",min:8,max:14},{m:"Tríceps",min:8,max:14},{m:"Cuádriceps",min:12,max:16},
+  {m:"Isquios",min:10,max:16},{m:"Glúteos",min:8,max:12},{m:"Gemelos",min:16,max:20},{m:"Abdomen",min:10,max:14},
 ];
-// Plantillas de sesión del split PPL x2 (énfasis en posición estirada)
+// Plan 5 días: Upper A / Lower A / Upper B / Lower B / Complementario. ★ = punto débil
 const PLANTILLAS={
-  "Push":[
-    {nombre:"Press de banca",musculo:"Pecho",sets:4,reps:"6–10",nota:"Mayor activación pectoral"},
-    {nombre:"Press inclinado mancuerna",musculo:"Pecho",sets:3,reps:"8–12",nota:"Pecho superior + estiramiento"},
-    {nombre:"Aperturas (mancuerna/polea)",musculo:"Pecho",sets:3,reps:"12–15",nota:"Estiramiento profundo abajo"},
-    {nombre:"Press militar",musculo:"Hombros",sets:3,reps:"6–10",nota:"Deltoides anterior"},
-    {nombre:"Elevaciones laterales",musculo:"Hombros",sets:4,reps:"12–20",nota:"Clave para la anchura"},
-    {nombre:"Extensión tríceps overhead",musculo:"Tríceps",sets:3,reps:"10–15",nota:"Cabeza larga estirada (superior)"},
-    {nombre:"Pushdown en polea",musculo:"Tríceps",sets:3,reps:"12–20",nota:"Carga + bombeo"},
+  "Upper A":[
+    {nombre:"Press banca",musculo:"Pecho",sets:4,reps:"6–8",nota:"Compuesto, RIR 2–3, descanso 2–3 min"},
+    {nombre:"Press inclinado mancuernas",musculo:"Pecho",sets:3,reps:"8–10",nota:"Pecho superior"},
+    {nombre:"Dominadas / Jalón al pecho",musculo:"Espalda",sets:4,reps:"8–10",nota:"Anchura dorsal"},
+    {nombre:"Remo con barra",musculo:"Espalda",sets:4,reps:"8–10",nota:"Grosor de espalda"},
+    {nombre:"Press militar",musculo:"Hombros",sets:4,reps:"8–10",nota:"Deltoides anterior"},
+    {nombre:"Elevaciones laterales ★",musculo:"Hombros",sets:4,reps:"12–15",nota:"Punto débil — anchura"},
+    {nombre:"Curl bíceps barra",musculo:"Bíceps",sets:3,reps:"8–12",nota:"RIR 1–2"},
+    {nombre:"Extensión tríceps polea",musculo:"Tríceps",sets:3,reps:"10–12",nota:"RIR 1–2"},
   ],
-  "Pull":[
-    {nombre:"Dominadas / Jalón al pecho",musculo:"Espalda",sets:4,reps:"6–12",nota:"Dorsales, estiramiento arriba"},
-    {nombre:"Remo con barra",musculo:"Espalda",sets:4,reps:"8–12",nota:"Grosor de espalda"},
-    {nombre:"Pullover / Jalón brazos rectos",musculo:"Espalda",sets:3,reps:"12–15",nota:"Estiramiento del dorsal"},
-    {nombre:"Face pull / Aperturas posteriores",musculo:"Hombros",sets:3,reps:"15–20",nota:"Deltoides posterior + salud del hombro"},
-    {nombre:"Curl inclinado",musculo:"Bíceps",sets:3,reps:"10–15",nota:"Posición alargada (porción proximal)"},
-    {nombre:"Curl predicador",musculo:"Bíceps",sets:3,reps:"10–15",nota:"Crecimiento distal"},
-    {nombre:"Curl martillo",musculo:"Bíceps",sets:2,reps:"10–15",nota:"Braquial / braquiorradial"},
+  "Lower A":[
+    {nombre:"Sentadilla",musculo:"Cuádriceps",sets:4,reps:"6–8",nota:"Compuesto, descanso 2–3 min"},
+    {nombre:"Prensa",musculo:"Cuádriceps",sets:3,reps:"10–12",nota:"Volumen de cuádriceps"},
+    {nombre:"Extensión de cuádriceps",musculo:"Cuádriceps",sets:3,reps:"12–15",nota:"Tensión en estiramiento"},
+    {nombre:"Zancadas mancuernas",musculo:"Cuádriceps",sets:3,reps:"10/pierna",nota:"Unilateral"},
+    {nombre:"Gemelo de pie (gastrocnemio)",musculo:"Gemelos",sets:4,reps:"8–12",nota:"Punto débil ★"},
+    {nombre:"Gemelo en prensa ★",musculo:"Gemelos",sets:3,reps:"12–15",nota:"Segundo estímulo de gemelo"},
+    {nombre:"Crunch en polea ★",musculo:"Abdomen",sets:4,reps:"12–15",nota:"Abdomen con carga"},
+    {nombre:"Plancha / vacío abdominal",musculo:"Abdomen",sets:3,reps:"máx",nota:"Antiflexión"},
   ],
-  "Legs A":[
-    {nombre:"Sentadilla profunda",musculo:"Cuádriceps",sets:4,reps:"5–8",nota:"Recluta vastos y glúteos"},
-    {nombre:"Prensa / Hack squat",musculo:"Cuádriceps",sets:3,reps:"8–12",nota:"Volumen de cuádriceps"},
-    {nombre:"Extensión de cuádriceps",musculo:"Cuádriceps",sets:3,reps:"12–20",nota:"Buena tensión en estiramiento"},
-    {nombre:"Sentadilla búlgara",musculo:"Cuádriceps",sets:3,reps:"8–12",nota:"Unilateral, recto femoral"},
-    {nombre:"Gemelo de pie",musculo:"Gemelos",sets:4,reps:"8–15",nota:"Parciales en posición larga"},
-    {nombre:"Crunch en polea",musculo:"Abdomen",sets:3,reps:"12–20",nota:"Carga progresiva"},
+  "Upper B":[
+    {nombre:"Press inclinado barra",musculo:"Pecho",sets:4,reps:"6–8",nota:"Pecho superior, compuesto"},
+    {nombre:"Aperturas / pec deck",musculo:"Pecho",sets:3,reps:"12–15",nota:"Estiramiento del pectoral"},
+    {nombre:"Remo en máquina o polea",musculo:"Espalda",sets:4,reps:"10–12",nota:"Grosor"},
+    {nombre:"Pull-over / jalón agarre neutro",musculo:"Espalda",sets:3,reps:"10–12",nota:"Estiramiento dorsal"},
+    {nombre:"Press hombro mancuernas",musculo:"Hombros",sets:4,reps:"8–10",nota:"Deltoides anterior"},
+    {nombre:"Elevaciones laterales ★",musculo:"Hombros",sets:4,reps:"15–20",nota:"Punto débil — más reps"},
+    {nombre:"Pájaros / face pull ★",musculo:"Hombros",sets:4,reps:"15–20",nota:"Deltoides posterior"},
+    {nombre:"Curl martillo + tríceps superserie",musculo:"Bíceps",sets:3,reps:"10–12",nota:"Brazo/antebrazo"},
   ],
-  "Legs B":[
-    {nombre:"Peso muerto rumano",musculo:"Isquios",sets:4,reps:"8–12",nota:"Cadera, estiramiento"},
-    {nombre:"Curl femoral sentado",musculo:"Isquios",sets:4,reps:"10–15",nota:"Superior al tumbado (posición larga)"},
-    {nombre:"Hip thrust",musculo:"Glúteos",sets:4,reps:"8–12",nota:"Hipertrofia glútea"},
-    {nombre:"Curl femoral tumbado",musculo:"Isquios",sets:2,reps:"12–15",nota:"Complemento"},
-    {nombre:"Gemelo sentado",musculo:"Gemelos",sets:4,reps:"12–20",nota:"Sóleo"},
-    {nombre:"Elevación de piernas colgado",musculo:"Abdomen",sets:3,reps:"12–20",nota:"Abdomen inferior"},
+  "Lower B":[
+    {nombre:"Peso muerto rumano",musculo:"Isquios",sets:4,reps:"8–10",nota:"Cadera, estiramiento"},
+    {nombre:"Hip thrust",musculo:"Glúteos",sets:3,reps:"10–12",nota:"Hipertrofia glútea"},
+    {nombre:"Curl femoral tumbado",musculo:"Isquios",sets:4,reps:"10–12",nota:"Aislamiento isquios"},
+    {nombre:"Prensa pies altos",musculo:"Isquios",sets:3,reps:"12–15",nota:"Glúteo/femoral"},
+    {nombre:"Extensión de cuádriceps",musculo:"Cuádriceps",sets:3,reps:"12–15",nota:"Equilibrio"},
+    {nombre:"Gemelo sentado (sóleo)",musculo:"Gemelos",sets:4,reps:"12–15",nota:"Punto débil ★"},
+    {nombre:"Gemelo de pie ★",musculo:"Gemelos",sets:3,reps:"10–15",nota:"Gastrocnemio"},
+    {nombre:"Elevación de piernas ★",musculo:"Abdomen",sets:4,reps:"12–15",nota:"Abdomen inferior"},
+  ],
+  "Complementario":[
+    {nombre:"Press hombro máquina",musculo:"Hombros",sets:4,reps:"10–12",nota:"Deltoides anterior"},
+    {nombre:"Elevaciones laterales cable (dropset final) ★",musculo:"Hombros",sets:4,reps:"12–20",nota:"Machaque lateral"},
+    {nombre:"Pájaros / deltoide posterior ★",musculo:"Hombros",sets:4,reps:"15–20",nota:"Posterior"},
+    {nombre:"Encogimientos (trapecio)",musculo:"Trapecio",sets:3,reps:"12–15",nota:"Trapecio superior"},
+    {nombre:"Gemelo de pie ★",musculo:"Gemelos",sets:4,reps:"10–15",nota:"Gastrocnemio"},
+    {nombre:"Gemelo sentado ★",musculo:"Gemelos",sets:3,reps:"15–20",nota:"Sóleo"},
+    {nombre:"Curl de muñeca + agarre",musculo:"Antebrazo",sets:3,reps:"15–20",nota:"Antebrazo"},
+    {nombre:"Rueda + crunch ★",musculo:"Abdomen",sets:4,reps:"12–15",nota:"Antiflexión + flexión"},
   ],
 };
-const DIAS_ENTRENO=["Push","Pull","Legs A","Legs B","Otro"];
-// Calendario semanal recomendado
+const DIAS_ENTRENO=["Upper A","Lower A","Upper B","Lower B","Complementario","Otro"];
+// Calendario semanal del plan (5 días pesas + 2 carreras)
 const CALENDARIO=[
-  {d:"Lun",s:"Push",x:"Pecho · Hombros · Tríceps"},
-  {d:"Mar",s:"Pull",x:"Espalda · Bíceps"},
-  {d:"Mié",s:"Legs A",x:"Cuádriceps + cardio (noche)"},
-  {d:"Jue",s:"Push",x:"Pecho · Hombros · Tríceps"},
-  {d:"Vie",s:"Pull",x:"Espalda · Bíceps"},
-  {d:"Sáb",s:"Legs B",x:"Isquios · Glúteos"},
-  {d:"Dom",s:"Carrera",x:"15 km zona 2 (solo cardio)"},
+  {d:"Dom",s:"Carrera",x:"Carrera larga 20 km"},
+  {d:"Lun",s:"Upper A",x:"Pecho · Espalda · Hombro"},
+  {d:"Mar",s:"Lower A",x:"Cuádriceps · Gemelo · Abdomen"},
+  {d:"Mié",s:"Upper B",x:"Pecho · Espalda · Hombro"},
+  {d:"Jue",s:"Carrera",x:"Carrera suave 7 km (sin pesas)"},
+  {d:"Vie",s:"Lower B",x:"Femoral/Glúteo · Gemelo · Abdomen"},
+  {d:"Sáb",s:"Complementario",x:"Hombro · Gemelo · Abdomen · Antebrazo"},
 ];
 // Inferir músculo a partir del nombre escrito a mano
 const _MAP_MUS=[["press banca","Pecho"],["banca","Pecho"],["pecho","Pecho"],["apertura","Pecho"],["pec deck","Pecho"],["press inclinad","Pecho"],
@@ -227,20 +243,63 @@ const _MAP_MUS=[["press banca","Pecho"],["banca","Pecho"],["pecho","Pecho"],["ap
   ["sentadilla","Cuádriceps"],["prensa","Cuádriceps"],["hack","Cuádriceps"],["extension cuad","Cuádriceps"],["extensión cuad","Cuádriceps"],["bulgara","Cuádriceps"],["búlgara","Cuádriceps"],["zancada","Cuádriceps"],["cuadricep","Cuádriceps"],
   ["rumano","Isquios"],["femoral","Isquios"],["isquio","Isquios"],["peso muerto","Isquios"],
   ["hip thrust","Glúteos"],["gluteo","Glúteos"],["glúteo","Glúteos"],["patada","Glúteos"],
-  ["gemelo","Gemelos"],["soleo","Gemelos"],["sóleo","Gemelos"],["pantorrilla","Gemelos"],
-  ["crunch","Abdomen"],["abdomen","Abdomen"],["plancha","Abdomen"],["elevacion de pierna","Abdomen"],["elevación de pierna","Abdomen"],["pallof","Abdomen"]];
+  ["gemelo","Gemelos"],["soleo","Gemelos"],["sóleo","Gemelos"],["pantorrilla","Gemelos"],["gastrocnemio","Gemelos"],
+  ["encogimiento","Trapecio"],["trapecio","Trapecio"],["shrug","Trapecio"],
+  ["muñeca","Antebrazo"],["antebrazo","Antebrazo"],["agarre","Antebrazo"],
+  ["crunch","Abdomen"],["abdomen","Abdomen"],["plancha","Abdomen"],["rueda","Abdomen"],["vacío","Abdomen"],["vacio","Abdomen"],["elevacion de pierna","Abdomen"],["elevación de pierna","Abdomen"],["pallof","Abdomen"]];
 function inferMusculo(nombre){ const n=(nombre||"").toLowerCase(); for(const[k,m]of _MAP_MUS){ if(n.includes(k)) return m; } return "Otro"; }
 function musculoDe(ej){ return ej.musculo&&ej.musculo!=="Otro"?ej.musculo:inferMusculo(ej.nombre); }
 // 1RM estimado (Epley) para seguir progresión
 function e1rm(reps,peso){ const r=num(reps),p=num(peso); if(!p) return 0; return Math.round(p*(1+r/30)); }
 
-/* ───── NUTRICIÓN: presets de fase (datos del usuario: 73 kg, 174 cm, 12% BF, avanzado) ───── */
+/* ───── NUTRICIÓN: presets del plan de recomposición (3 fases por peso) ───── */
 const PRESETS_NUTRI={
-  mantenimiento:{titulo:"Mantenimiento",sub:"Semanas 1–4 (post-cut)",kcal:2800,proteina:150,carbos:355,grasa:75,quemadaDiaria:2800,
-    desc:"Recupera el metabolismo tras el cut. ~2,0 g/kg de proteína. Arranca el split en MEV."},
-  bulk:{titulo:"Lean Bulk",sub:"Semanas 5–16+",kcal:3050,proteina:150,carbos:420,grasa:85,quemadaDiaria:2800,
-    desc:"Superávit de +250 kcal. Meta de ganancia ~180–360 g/semana. Carbos altos para la carrera."},
+  // FASE 1 — Mantenimiento / recuperación (76 → 78 kg), dieta inversa en rampa
+  m1:{titulo:"Mant. · Sem 1–2",fase:"Mantenimiento",sub:"Recuperación, rampa baja",kcal:2450,proteina:165,carbos:290,grasa:65,quemadaDiaria:2450,
+    desc:"Arranque de la dieta inversa tras el corte. Sube tranquilo hacia 78 kg."},
+  m2:{titulo:"Mant. · Sem 3–4",fase:"Mantenimiento",sub:"Rampa media",kcal:2650,proteina:165,carbos:340,grasa:70,quemadaDiaria:2650,
+    desc:"Segundo escalón de la dieta inversa."},
+  m3:{titulo:"Mant. · Sem 5–6",fase:"Mantenimiento",sub:"Rampa alta",kcal:2850,proteina:165,carbos:390,grasa:75,quemadaDiaria:2850,
+    desc:"Tercer escalón. Energía y fuerza deberían mejorar."},
+  m4:{titulo:"Mant. · Sem 7–12",fase:"Mantenimiento",sub:"Mantenimiento pleno",kcal:3050,proteina:165,carbos:420,grasa:80,quemadaDiaria:3050,
+    desc:"Mantenimiento completo. Espera libido/sueño/HRV recuperados antes de cortar."},
+  // FASE 2 — Corte limpio y suave (78 → 72 kg), proteína alta
+  c1:{titulo:"Corte · Inicio",fase:"Corte",sub:"~76–77 kg",kcal:2550,proteina:185,carbos:250,grasa:65,quemadaDiaria:2850,
+    desc:"Déficit suave. Objetivo 0,3–0,4 kg/sem. Entrena igual de pesado."},
+  c2:{titulo:"Corte · Medio",fase:"Corte",sub:"~74 kg",kcal:2450,proteina:180,carbos:230,grasa:62,quemadaDiaria:2850,
+    desc:"Si te estancas 2 semanas, −150 kcal de carbos."},
+  c3:{titulo:"Corte · Final",fase:"Corte",sub:"~72 kg",kcal:2350,proteina:180,carbos:210,grasa:60,quemadaDiaria:2850,
+    desc:"Llegada a base seca ~8–9%. Apenas la alcances, arranca el volumen."},
+  // FASE 3 — Volumen largo desde 72 kg
+  v1:{titulo:"Volumen",fase:"Volumen",sub:"Superávit pequeño",kcal:3200,proteina:170,carbos:450,grasa:80,quemadaDiaria:2900,
+    desc:"Superávit 10–15%. Meta ~0,2 kg/sem. Sube +100–150 kcal si te estancas 2 sem."},
+  vmc:{titulo:"Mini-corte",fase:"Volumen",sub:"Cuando llegues a ~15% grasa",kcal:2450,proteina:185,carbos:230,grasa:65,quemadaDiaria:2900,
+    desc:"4–6 semanas en déficit suave para volver a ~12%. Luego sigues construyendo."},
 };
+
+/* ───── FASES DEL PLAN POR PESO ─────
+   La fase se detecta según el peso actual y la dirección del progreso:
+   - Mantenimiento: subiendo de ~76 hacia 78 kg (meta 78, sentido +).
+   - Corte: bajando de 78 hacia 72 kg (meta 72, sentido −).
+   - Volumen: desde 72 kg construyendo hacia ~78 kg (meta 78, sentido +).
+   Como 76–78 se solapa entre fases, usamos la fase previa para desempatar (histéresis). */
+const FASES_PLAN={
+  Mantenimiento:{nombre:"Mantenimiento",emoji:"🌱",inicio:76,meta:78,sentido:1,ritmoMin:0.1,ritmoMax:0.5,col:C.green,colSoft:C.greenSoft,
+    nota:"Sube tranquilo hasta 78 kg recuperando hormonas. Subir 1–2 kg al inicio es agua/glucógeno, normal."},
+  Corte:{nombre:"Corte",emoji:"🔻",inicio:78,meta:72,sentido:-1,ritmoMin:0.3,ritmoMax:0.5,col:C.blue,colSoft:C.blueSoft,
+    nota:"Baja suave hasta 72 kg (base seca ~8–9%). Ritmo 0,3–0,4 kg/sem, proteína alta, entrena pesado."},
+  Volumen:{nombre:"Volumen",emoji:"📈",inicio:72,meta:78,sentido:1,ritmoMin:0.1,ritmoMax:0.3,col:C.gold,colSoft:C.goldSoft,
+    nota:"Construye músculo ~0,2 kg/sem. Mini-corte si cintura >84 cm o grasa >15%."},
+};
+// Detecta la fase según peso actual y la fase previa (histéresis en la zona 72–78)
+function detectarFase(peso, fasePrev){
+  const p=num(peso); if(!p) return fasePrev||"Mantenimiento";
+  if(p>=78) return "Corte";        // tocó el techo → toca cortar
+  if(p<=72) return "Volumen";      // tocó la base seca → toca construir
+  // zona intermedia 72–78: mantener la fase previa; si no hay, inferir por defecto
+  if(fasePrev==="Corte"||fasePrev==="Volumen"||fasePrev==="Mantenimiento") return fasePrev;
+  return "Mantenimiento";
+}
 
 /* ───── UI BÁSICA ───── */
 const inputStyle={width:"100%",padding:"11px 13px",borderRadius:10,border:"1.5px solid "+C.border,background:C.card,fontSize:15,fontFamily:SANS,color:C.text,outline:"none"};
@@ -730,7 +789,9 @@ function FormReceta({receta,onGuardar}){
   </div>;
 }
 
-function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes}){
+function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes,seguimiento,perfil}){
+  const regsPeso=[...(seguimiento||[])].filter(r=>num(r.peso)>0).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const faseActual=regsPeso.length?detectarFase(regsPeso[0].peso,(perfil||{}).fasePrev):null;
   const [editLim,setEditLim]=useState(false);
   const [addQuem,setAddQuem]=useState(false);
   const [addRapido,setAddRapido]=useState(false);
@@ -843,7 +904,7 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
       {metrica==="kcal"&&refEstado>0&&<div style={{marginTop:10,textAlign:"center",fontFamily:SANS,fontSize:13,fontWeight:700,color:netoSem>0?C.red:C.green}}>Balance semanal: {netoSem>=0?"+":""}{netoSem} kcal · {netoSem>(refEstado*0.05+50)*1?"Superávit":netoSem<-(refEstado*0.05+50)?"Déficit":"Mantenimiento"}</div>}
     </Card>
 
-    <Sheet open={editLim} onClose={()=>setEditLim(false)} title="Metas y quemadas"><FormLimites limites={limites} onGuardar={l=>{setLimites(l);setEditLim(false);}}/></Sheet>
+    <Sheet open={editLim} onClose={()=>setEditLim(false)} title="Metas y quemadas"><FormLimites limites={limites} faseActual={faseActual} onGuardar={l=>{setLimites(l);setEditLim(false);}}/></Sheet>
     <Sheet open={addQuem} onClose={()=>setAddQuem(false)} title="Registrar quemadas"><FormQuemada onGuardar={(nombre,kcal)=>{setQuemadas(p=>[...p,{id:uid(),fecha:HOY,nombre,kcal:num(kcal)}]);setAddQuem(false);}}/></Sheet>
     <Sheet open={addRapido} onClose={()=>setAddRapido(false)} title="Registrar kcal (sin receta)"><FormRapido onGuardar={(c)=>{setConsumo(p=>[...p,{id:uid(),fecha:c.fecha,nombre:c.nombre||"Comida rápida",porciones:1,kcal:num(c.kcal),proteina:num(c.proteina),carbos:num(c.carbos),grasa:num(c.grasa)}]);setAddRapido(false);setToast("Registrado ✓");setTimeout(()=>setToast(""),2000);}}/></Sheet>
     {toast&&<Toast>{toast}</Toast>}
@@ -869,20 +930,25 @@ function FormRapido({onGuardar}){
   </div>;
 }
 
-function FormLimites({limites,onGuardar}){
+function FormLimites({limites,onGuardar,faseActual}){
   const [l,setL]=useState(limites); const set=(k,v)=>setL(p=>({...p,[k]:v}));
+  const [faseSel,setFaseSel]=useState(faseActual||"Mantenimiento");
   const aplicarPreset=p=>setL({kcal:p.kcal,proteina:p.proteina,carbos:p.carbos,grasa:p.grasa,quemadaDiaria:p.quemadaDiaria});
+  const fases=["Mantenimiento","Corte","Volumen"];
+  const presetsFase=Object.values(PRESETS_NUTRI).filter(p=>p.fase===faseSel);
+  const meta=FASES_PLAN[faseSel];
   return <div>
-    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 12px"}}>Define tus metas diarias y tu gasto calórico fijo. Déjalo en blanco si no quieres seguir alguno.</p>
-    <p style={labelStyle}>Presets para tu fase</p>
-    <div style={{display:"flex",gap:10,margin:"4px 0 8px"}}>
-      {Object.values(PRESETS_NUTRI).map(p=><button key={p.titulo} onClick={()=>aplicarPreset(p)} style={{flex:1,textAlign:"left",background:C.card,border:"1.5px solid "+C.gold,borderRadius:12,padding:"11px 12px",cursor:"pointer",fontFamily:SANS}}>
-        <span style={{display:"block",fontFamily:SERIF,fontSize:15,color:C.espresso}}>{p.titulo}</span>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 10px"}}>Elige tu fase del plan y el escalón actual. Rellena tus metas y ajústalas si quieres.</p>
+    <div style={{display:"flex",gap:6,marginBottom:8}}>{fases.map(f=>{const a=f===faseSel;const sug=f===faseActual;return <button key={f} onClick={()=>setFaseSel(f)} style={{flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(a?C.espresso:C.border),background:a?C.espresso:"transparent",color:a?C.bg:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:a?700:500,cursor:"pointer",position:"relative"}}>{FASES_PLAN[f].emoji} {f}{sug&&<span style={{position:"absolute",top:-5,right:-3,fontSize:9,background:C.gold,color:C.espresso,borderRadius:8,padding:"1px 5px",fontWeight:700}}>tú</span>}</button>;})}</div>
+    {meta&&<p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"0 0 8px",lineHeight:1.4}}>{meta.nota}</p>}
+    <div style={{display:"flex",gap:8,overflowX:"auto",margin:"4px 0 8px",paddingBottom:4}}>
+      {presetsFase.map(p=><button key={p.titulo} onClick={()=>aplicarPreset(p)} style={{flexShrink:0,width:150,textAlign:"left",background:l.kcal==p.kcal?C.goldSoft:C.card,border:"1.5px solid "+C.gold,borderRadius:12,padding:"11px 12px",cursor:"pointer",fontFamily:SANS}}>
+        <span style={{display:"block",fontFamily:SERIF,fontSize:14.5,color:C.espresso}}>{p.titulo}</span>
         <span style={{display:"block",fontSize:11,color:C.muted,marginTop:2}}>{p.sub}</span>
         <span style={{display:"block",fontSize:12,color:C.gold,marginTop:6,fontWeight:600}}>{p.kcal} kcal · {p.proteina}g P</span>
       </button>)}
     </div>
-    <p style={{fontFamily:SANS,fontSize:11,color:C.muted,margin:"0 0 16px",lineHeight:1.4}}>Basados en tu plan (73 kg, avanzado, 6 días + carrera). Toca uno para rellenar y ajústalo si quieres.</p>
+    <p style={{fontFamily:SANS,fontSize:11,color:C.muted,margin:"0 0 16px",lineHeight:1.4}}>Toca un escalón para rellenar kcal y macros. La fase se ajusta sola en Seguimiento según tu peso.</p>
     <Field label="Calorías objetivo (kcal/día)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 2800" value={l.kcal} onChange={e=>set("kcal",e.target.value)}/></Field>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Field label="Proteína (g)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 150" value={l.proteina} onChange={e=>set("proteina",e.target.value)}/></Field><Field label="Carbos (g)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 320" value={l.carbos} onChange={e=>set("carbos",e.target.value)}/></Field></div>
     <Field label="Grasa (g)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 80" value={l.grasa} onChange={e=>set("grasa",e.target.value)}/></Field>
@@ -901,10 +967,13 @@ function Seguimiento({seguimiento,setSeguimiento,perfil,setPerfil}){
   const [editando,setEditando]=useState(null);
   const [editPerfil,setEditPerfil]=useState(false);
   const [ver,setVer]=useState(null);
+  const [detalle,setDetalle]=useState(false);
   const [vista,setVista]=useState("resumen"); // resumen | proyeccion
   const regs=[...(seguimiento||[])].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
   const ultimo=regs[0]||null;
   const previo=regs[1]||null;
+  const faseActual=ultimo&&num(ultimo.peso)>0?detectarFase(ultimo.peso,(perfil||{}).fasePrev):null;
+  const faseInfo=faseActual?FASES_PLAN[faseActual]:null;
   const guardar=r=>{const grasaPl=grasaJP7(r.pliegues||{},perfil.edad);const rr={...r,grasaPliegues:grasaPl};setSeguimiento(p=>p.some(x=>x.id===r.id)?p.map(x=>x.id===r.id?rr:x):[...p,rr]);setEditando(null);setVer(null);};
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar registro",texto:"Se borrará este registro semanal."})){ setSeguimiento(p=>p.filter(x=>x.id!==id)); setVer(null);} };
   const nuevo=()=>{const pl={};PLIEGUES.forEach(p=>pl[p.k]="");const md={};MEDIDAS_CORP.forEach(m=>md[m.k]="");setEditando({id:uid(),fecha:HOY,peso:"",grasaBascula:"",pliegues:pl,medidas:md,nota:""});};
@@ -930,22 +999,31 @@ function Seguimiento({seguimiento,setSeguimiento,perfil,setPerfil}){
     {!ultimo&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:16}}>Aún no tienes registros. Crea el primero con tu peso, % de grasa, pliegues y medidas.</p>}
 
     {ultimo&&vista==="resumen"&&<div>
+      {/* FASE + gráfica de peso con objetivo */}
+      {faseInfo&&<GraficaFase regs={regs} fase={faseActual} info={faseInfo} ultimo={ultimo}/>}
+      {!faseInfo&&<div><p style={{...labelStyle,margin:"6px 0 8px"}}>Peso · últimos registros</p><MiniSerie regs={regs} campo="peso" color={C.gold} unit="kg"/></div>}
+
       {/* tarjetas clave */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"14px 0 4px"}}>
         <MetricCard label="Peso" value={ultimo.peso?ultimo.peso+" kg":"—"} delta={delta("peso")} unit="kg" invert={false}/>
-        <MetricCard label="% Grasa (báscula)" value={ultimo.grasaBascula?ultimo.grasaBascula+"%":"—"} delta={delta("grasaBascula")} unit="%" invert={true}/>
         <MetricCard label="% Grasa (pliegues)" value={ultimo.grasaPliegues?ultimo.grasaPliegues+"%":"—"} delta={delta("grasaPliegues")} unit="%" invert={true}/>
-        <MetricCard label="Masa magra" value={ultimo.peso&&ultimo.grasaPliegues?mlg(ultimo.peso,ultimo.grasaPliegues)+" kg":(ultimo.peso&&ultimo.grasaBascula?mlg(ultimo.peso,ultimo.grasaBascula)+" kg":"—")} delta={null} unit="kg" invert={false}/>
       </div>
 
-      {/* gráfica de peso */}
-      <p style={{...labelStyle,margin:"6px 0 8px"}}>Peso · últimos registros</p>
-      <MiniSerie regs={regs} campo="peso" color={C.gold} unit="kg"/>
-
-      {/* medidas */}
-      {ultimo.medidas&&Object.values(ultimo.medidas).some(v=>num(v)>0)&&<div style={{marginTop:18}}>
-        <p style={{...labelStyle,marginBottom:8}}>Medidas (cm)</p>
-        <Card pad={14}>{MEDIDAS_CORP.filter(m=>num(ultimo.medidas[m.k])>0).map((m,i,arr)=>{const d=delta("medidas")?null:(previo&&previo.medidas?num(ultimo.medidas[m.k])-num(previo.medidas[m.k]):null);return <div key={m.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<arr.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13.5}}><span style={{color:C.muted}}>{m.label}</span><span><b>{ultimo.medidas[m.k]}</b> cm {d!=null&&d!==0&&<span style={{fontSize:11,color:d>0?C.green:C.red,marginLeft:4}}>{d>0?"+":""}{Math.round(d*10)/10}</span>}</span></div>;})}</Card>
+      {/* detalle desplegable: %grasa báscula, masa magra, pliegues y medidas */}
+      <button onClick={()=>setDetalle(d=>!d)} style={{width:"100%",margin:"10px 0 0",padding:"11px 0",background:"transparent",border:"1.5px solid "+C.border,borderRadius:10,fontSize:13.5,color:C.espresso,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>{detalle?"▲ Ocultar detalle":"▼ Ver detalle (pliegues y medidas)"}</button>
+      {detalle&&<div style={{marginTop:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          <MetricCard label="% Grasa (báscula)" value={ultimo.grasaBascula?ultimo.grasaBascula+"%":"—"} delta={delta("grasaBascula")} unit="%" invert={true}/>
+          <MetricCard label="Masa magra" value={ultimo.peso&&ultimo.grasaPliegues?mlg(ultimo.peso,ultimo.grasaPliegues)+" kg":(ultimo.peso&&ultimo.grasaBascula?mlg(ultimo.peso,ultimo.grasaBascula)+" kg":"—")} delta={null} unit="kg" invert={false}/>
+        </div>
+        {ultimo.pliegues&&Object.values(ultimo.pliegues).some(v=>num(v)>0)&&<div style={{marginBottom:12}}>
+          <p style={{...labelStyle,marginBottom:8}}>Pliegues (mm)</p>
+          <Card pad={14}>{PLIEGUES.filter(p=>num(ultimo.pliegues[p.k])>0).map((p,i,arr)=>{const d=previo&&previo.pliegues?num(ultimo.pliegues[p.k])-num(previo.pliegues[p.k]):null;return <div key={p.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<arr.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13.5}}><span style={{color:C.muted}}>{p.label}{p.calc&&<span style={{color:C.gold}}> *</span>}</span><span><b>{ultimo.pliegues[p.k]}</b> mm {d!=null&&d!==0&&<span style={{fontSize:11,color:d<0?C.green:C.red,marginLeft:4}}>{d>0?"+":""}{Math.round(d*10)/10}</span>}</span></div>;})}</Card>
+        </div>}
+        {ultimo.medidas&&Object.values(ultimo.medidas).some(v=>num(v)>0)&&<div>
+          <p style={{...labelStyle,marginBottom:8}}>Medidas (cm)</p>
+          <Card pad={14}>{MEDIDAS_CORP.filter(m=>num(ultimo.medidas[m.k])>0).map((m,i,arr)=>{const d=previo&&previo.medidas?num(ultimo.medidas[m.k])-num(previo.medidas[m.k]):null;return <div key={m.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<arr.length-1?"1px solid "+C.borderSoft:"none",fontFamily:SANS,fontSize:13.5}}><span style={{color:C.muted}}>{m.label}</span><span><b>{ultimo.medidas[m.k]}</b> cm {d!=null&&d!==0&&<span style={{fontSize:11,color:d>0?C.green:C.red,marginLeft:4}}>{d>0?"+":""}{Math.round(d*10)/10}</span>}</span></div>;})}</Card>
+        </div>}
       </div>}
 
       {/* historial */}
@@ -979,6 +1057,55 @@ function MiniSerie({regs,campo,color,unit}){
   if(datos.length===0) return <Card pad={16}><p style={{margin:0,fontSize:13,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Sin datos suficientes.</p></Card>;
   const vals=datos.map(d=>d.v); const max=Math.max(...vals),min=Math.min(...vals);const rng=max-min||1;
   return <Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:90,gap:5}}>{datos.map((d,i)=>{const h=20+((d.v-min)/rng)*60;const ult=i===datos.length-1;return <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:9,color:C.muted,fontFamily:SANS}}>{d.v}</span><div style={{width:"100%",maxWidth:26,height:h,background:ult?color:C.goldSoft,borderRadius:4}}/><span style={{fontSize:8.5,color:C.muted,fontFamily:SANS}}>{d.f.slice(5)}</span></div>;})}</div></Card>;
+}
+
+// Gráfica de peso con línea-objetivo de la fase + veredicto de si vas bien
+function GraficaFase({regs,fase,info,ultimo}){
+  const datos=[...regs].filter(r=>num(r.peso)>0).sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||"")).map(r=>({f:r.fecha,v:num(r.peso)})).slice(-10);
+  const pesoAct=num(ultimo.peso);
+  const meta=info.meta;
+  // rango vertical de la gráfica: incluye datos + meta
+  const todos=[...datos.map(d=>d.v),meta,info.inicio];
+  const max=Math.max(...todos)+0.5, min=Math.min(...todos)-0.5; const rng=max-min||1;
+  const yPct=v=>100-((v-min)/rng)*100; // 0% arriba, 100% abajo
+  const W=300,H=120;
+  // ritmo real (kg/sem) entre primer y último dato
+  let ritmo=null,semanas=0;
+  if(datos.length>=2){ const d1=new Date(datos[0].f),d2=new Date(datos[datos.length-1].f); semanas=Math.max(1,Math.round((d2-d1)/(7*864e5))); ritmo=Math.round((datos[datos.length-1].v-datos[0].v)/semanas*100)/100; }
+  // veredicto según sentido de la fase
+  let veredicto=null;
+  if(ritmo!=null){
+    const r=ritmo*info.sentido; // progreso en la dirección correcta (+ = avanza hacia meta)
+    if(r<info.ritmoMin*0.5) veredicto={t:info.sentido>0?"Vas muy lento":"Bajas muy lento",c:C.blue,bg:C.blueSoft,msg:info.sentido>0?"Casi no avanzas hacia tu meta. Sube un poco las calorías.":"El corte está casi parado. Resta ~150 kcal o suma cardio."};
+    else if(r>info.ritmoMax*1.3) veredicto={t:info.sentido>0?"Subes muy rápido":"Bajas muy rápido",c:C.red,bg:C.redSoft,msg:info.sentido>0?"Ganas más rápido de lo ideal = más grasa. Baja ~200 kcal.":"Bajas demasiado rápido, riesgo de perder músculo. Sube ~150 kcal."};
+    else veredicto={t:"Ritmo ideal ✓",c:C.green,bg:C.greenSoft,msg:"Vas en el rango óptimo de esta fase. Mantén así."};
+  }
+  const faltante=Math.round((meta-pesoAct)*10)/10;
+  // puntos de la línea de datos
+  const pts=datos.map((d,i)=>({x:datos.length>1?(i/(datos.length-1))*W:W/2,y:(yPct(d.v)/100)*H}));
+  const linePath=pts.map((p,i)=>(i?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1)).join(" ");
+  const yMeta=(yPct(meta)/100)*H, yIni=(yPct(info.inicio)/100)*H;
+  return <Card pad={16} bd={info.col}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+      <div><span style={{fontFamily:SANS,fontSize:11,letterSpacing:1.5,textTransform:"uppercase",color:info.col,fontWeight:700}}>{info.emoji} Fase: {info.nombre}</span><p style={{margin:"4px 0 0",fontFamily:SERIF,fontSize:24}}>{pesoAct} kg <span style={{fontSize:14,color:C.muted}}>→ meta {meta} kg</span></p></div>
+    </div>
+    <p style={{margin:"0 0 10px",fontFamily:SANS,fontSize:12,color:C.muted}}>{faltante>0?"Te faltan +"+faltante+" kg":faltante<0?"Te faltan "+faltante+" kg":"¡Estás en la meta!"} · ritmo ideal {info.ritmoMin}–{info.ritmoMax} kg/sem</p>
+    <svg viewBox={"0 0 "+W+" "+H} width="100%" height={H} style={{overflow:"visible"}}>
+      {/* línea meta */}
+      <line x1="0" y1={yMeta} x2={W} y2={yMeta} stroke={info.col} strokeWidth="1.5" strokeDasharray="5 4" opacity="0.7"/>
+      <text x={W-2} y={yMeta-4} textAnchor="end" fontSize="9" fill={info.col} fontFamily="system-ui">meta {meta}</text>
+      {/* línea inicio fase */}
+      <line x1="0" y1={yIni} x2={W} y2={yIni} stroke={C.border} strokeWidth="1" strokeDasharray="2 3"/>
+      {/* serie de peso */}
+      {pts.length>1&&<path d={linePath} fill="none" stroke={info.col} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>}
+      {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={i===pts.length-1?4.5:3} fill={i===pts.length-1?info.col:C.card} stroke={info.col} strokeWidth="2"/>)}
+    </svg>
+    {veredicto&&<div style={{marginTop:12,background:veredicto.bg,borderRadius:10,padding:"10px 13px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontFamily:SANS,fontSize:14,fontWeight:700,color:veredicto.c}}>{veredicto.t}</span>{ritmo!=null&&<span style={{fontFamily:SANS,fontSize:12,color:veredicto.c}}>{ritmo>0?"+":""}{ritmo} kg/sem</span>}</div>
+      <p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12.5,color:veredicto.c,lineHeight:1.4}}>{veredicto.msg}</p>
+    </div>}
+    {ritmo==null&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,textAlign:"center"}}>Con 2+ registros verás tu ritmo y si vas bien.</p>}
+  </Card>;
 }
 
 function FormPerfil({perfil,onGuardar}){
@@ -1371,8 +1498,8 @@ function GymPlan(){
   return <div style={{paddingBottom:20}}>
     <div style={bloque}><Card pad={16}>
       <Mini icon="📋" label="Tu split"/>
-      <p style={{margin:"8px 0 4px",fontFamily:SERIF,fontSize:20}}>Push / Pull / Legs ×2</p>
-      <p style={{margin:0,fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>6 días. Cada músculo 2×/semana (lo óptimo según la evidencia). Las dos piernas caen lejos de la carrera larga del domingo para minimizar la interferencia.</p>
+      <p style={{margin:"8px 0 4px",fontFamily:SERIF,fontSize:20}}>Upper / Lower · 5 días</p>
+      <p style={{margin:0,fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>2 Upper + 2 Lower + 1 Complementario, con alta frecuencia en tus puntos débiles: hombro, gemelo y abdomen (3×/semana). Carrera larga el domingo y suave el jueves, lejos de la pierna pesada.</p>
     </Card></div>
 
     <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Calendario semanal</p><Card pad={14}>
@@ -1389,7 +1516,7 @@ function GymPlan(){
     </Card></div>
 
     <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Cómo entrenar</p><Card pad={16}>
-      {[["Reps","6–10 en compuestos · 12–20 en aislamientos"],["Cerca del fallo","1–3 RIR (deja el fallo para la última serie)"],["Descanso","2–3 min en básicos · 60–90 s en aislamientos"],["Progresión","Doble progresión: sube reps hasta el techo, luego +2,5 kg"],["Deload","Cada 4–6 semanas baja el volumen 40–50% una semana"],["Posición estirada","Prioriza curl femoral sentado, tríceps overhead, sentadilla profunda, parciales de gemelo"]].map(([k,v],i)=><div key={k} style={{padding:"8px 0",borderBottom:i<5?"1px solid "+C.borderSoft:"none"}}><p style={{margin:0,fontFamily:SANS,fontSize:13,fontWeight:700,color:C.espresso}}>{k}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.45}}>{v}</p></div>)}
+      {[["Reps","5–8 en compuestos (RIR 2–3) · 8–15 en accesorios (RIR 1–2)"],["Descanso","2–3 min en compuestos · 60–90 s en aislados"],["Progresión","Doble progresión: sube reps hasta el techo del rango, luego sube peso"],["Descarga","Cada 5–6 semanas baja el volumen una semana"],["Puntos débiles ★","Hombro lateral/posterior ~12 series · Gemelos 18–20 (3 días) · Abdomen 3 días/sem"]].map(([k,v],i)=><div key={k} style={{padding:"8px 0",borderBottom:i<4?"1px solid "+C.borderSoft:"none"}}><p style={{margin:0,fontFamily:SANS,fontSize:13,fontWeight:700,color:C.espresso}}>{k}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.45}}>{v}</p></div>)}
     </Card></div>
 
     <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Ejercicios recomendados por sesión</p>
@@ -1405,7 +1532,7 @@ function GymPlan(){
 
     <div style={bloque}><Card pad={16} bd={C.gold}>
       <Mini icon="🏃" label="Carrera e interferencia"/>
-      <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>Nunca pongas pierna pesada justo antes o después de los 15 km. Corre después de las pesas si coinciden y mantén el domingo en zona 2. Si las piernas no progresan, cambia parte de la carrera por bici.</p>
+      <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>20 km el domingo → lunes Upper, así la pierna descansa ~2 días antes del martes (cuádriceps). 7 km el jueves, sin pesas. Si el muslo o el gemelo se estancan, recorta los 20 km a 12–15 km o pásalos a bici/zona 2 (menos daño excéntrico). Carbos antes del run largo; carbos + proteína después.</p>
     </Card></div>
   </div>;
 }

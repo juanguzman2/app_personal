@@ -1,4 +1,4 @@
-const CACHE = "mvo-v10";
+const CACHE = "mvo-v11";
 const ASSETS = [
   "./",
   "./index.html",
