@@ -1312,57 +1312,15 @@ function Finanzas(props){
   const [vista,setVista]=useState("resumen");
   return <div>
     <Header titulo="Finanzas"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"resumen",label:"📊 Resumen"},{id:"mov",label:"Mes"},{id:"fijos",label:"Fijos"},{id:"prov",label:"Fondos"},{id:"inv",label:"Inversión"},{id:"metas",label:"Metas"},{id:"patrimonio",label:"Patrimonio"}]}/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"resumen",label:"📊 Resumen"},{id:"inv",label:"💰 Inversión"},{id:"metas",label:"🎯 Metas"}]}/>
     {vista==="resumen"&&<FinResumen {...props} ir={setVista}/>}
-    {vista==="mov"&&<Movimientos {...props}/>}
-    {vista==="fijos"&&<Fijos {...props}/>}
-    {vista==="prov"&&<Provisiones {...props}/>}
-    {vista==="inv"&&<Inversiones {...props}/>}
+    {vista==="inv"&&<InversionFondos {...props}/>}
     {vista==="metas"&&<Metas {...props}/>}
-    {vista==="patrimonio"&&<Patrimonio {...props}/>}
   </div>;
 }
 
-/* ═══════════ FONDOS / PROVISIONES (Fase 1) ═══════════ */
-function Provisiones({provisiones,setProvisiones,setTransacciones}){
-  const [editando,setEditando]=useState(null); const [usar,setUsar]=useState(null); const [toast,setToast]=useState("");
-  const guardar=p=>{const{_nuevo,...limpio}=p;setProvisiones(prev=>prev.some(x=>x.id===p.id)?prev.map(x=>x.id===p.id?limpio:x):[...prev,{...limpio,saldo:num(limpio.saldo)}]);setEditando(null);};
-  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar fondo",texto:"Se borrará este fondo (no afecta gastos ya registrados)."})){ setProvisiones(p=>p.filter(x=>x.id!==id)); setEditando(null);} };
-  const nuevo=()=>setEditando({id:uid(),nombre:"",categoria:"🚗 Carro",montoAnual:"",mesVencimiento:"",saldo:0,_nuevo:true});
-  const apartar=p=>{const m=provisionMensual(p);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:num(x.saldo)+m,_hist:[...(x._hist||[]),{fecha:HOY,tipo:"aporte",monto:m}]}:x));setToast("Apartaste "+money(m)+" en "+p.nombre);setTimeout(()=>setToast(""),2400);};
-  const aplicarUso=(p,monto)=>{const mn=num(monto);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:Math.max(0,num(x.saldo)-mn),_hist:[...(x._hist||[]),{fecha:HOY,tipo:"uso",monto:mn}]}:x));setTransacciones(prev=>[...prev,{id:uid(),tipo:"gasto",categoria:p.categoria,concepto:p.nombre+" (fondo)",monto:mn,fecha:HOY,_fondo:p.id}]);setUsar(null);setToast("Gasto registrado y descontado del fondo");setTimeout(()=>setToast(""),2600);};
-
-  const totalMes=provisiones.reduce((a,p)=>a+provisionMensual(p),0);
-  const totalSaldo=provisiones.reduce((a,p)=>a+num(p.saldo),0);
-  return <div style={{padding:"10px 18px 20px"}}>
-    <Card pad={18}>
-      <p style={{margin:0,...labelStyle}}>A provisionar al mes</p>
-      <p style={{margin:"6px 0 4px",fontFamily:SERIF,fontSize:28,color:C.gold}}>{money(totalMes)}</p>
-      <p style={{margin:0,fontFamily:SANS,fontSize:13,color:C.muted}}>Saldo acumulado en fondos: {money(totalSaldo)}</p>
-    </Card>
-    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"12px 2px 4px",lineHeight:1.5}}>Aparta 1/12 cada mes para los gastos grandes que caen una vez al año (SOAT, seguro, impuestos, renta…). Así no te explotan el mes que llegan.</p>
-    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",margin:"8px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo fondo</button>
-    {provisiones.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Crea fondos para tus gastos anuales: SOAT, seguro del carro, impuesto vehicular, declaración de renta, regalos de navidad…</p>}
-    {provisiones.map(p=>{const mensual=provisionMensual(p);const anual=num(p.montoAnual);const saldo=num(p.saldo);const pct=anual>0?saldo/anual*100:0;const mesesFalta=p.mesVencimiento?mesesAlMesObjetivo(p.mesVencimiento):null;const alerta=mesesFalta!=null&&mesesFalta<=2&&saldo<anual*0.8;
-      return <div key={p.id} style={{background:C.card,borderRadius:14,padding:15,marginBottom:10,border:"1.5px solid "+(alerta?C.red:C.border)}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div onClick={()=>setEditando({...p,_nuevo:false})} style={{flex:1,cursor:"pointer",minWidth:0}}><p style={{margin:0,fontFamily:SERIF,fontSize:17}}>{p.nombre}</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>{p.categoria}{p.mesVencimiento?" · vence "+MESES_CORTOS[p.mesVencimiento-1]:""}</p></div>
-          <span style={{fontFamily:SANS,fontSize:12.5,color:C.gold,fontWeight:700,whiteSpace:"nowrap"}}>{money(mensual)}/mes</span>
-        </div>
-        <div style={{margin:"11px 0 5px"}}><Bar pct={pct} color={pct>=100?C.green:C.gold} h={9}/></div>
-        <p style={{margin:"0 0 10px",fontFamily:SANS,fontSize:13}}><b>{money(saldo)}</b> de {money(anual)} <span style={{color:C.muted}}>({Math.round(pct)}%)</span></p>
-        {alerta&&<p style={{margin:"0 0 8px",fontSize:12,color:C.red,fontFamily:SANS}}>⚠ Vence en {mesesFalta} {mesesFalta===1?"mes":"meses"} y el saldo no alcanza.</p>}
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>apartar(p)} style={{flex:1,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>+ Apartar este mes</button>
-          <button onClick={()=>setUsar(p)} disabled={saldo<=0} style={{flex:1,padding:"9px 0",background:saldo<=0?C.borderSoft:C.redSoft,color:saldo<=0?C.muted:C.red,border:"none",borderRadius:9,fontSize:13,fontWeight:700,fontFamily:SANS,cursor:saldo<=0?"default":"pointer"}}>Usar fondo</button>
-        </div>
-      </div>;})}
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo fondo":"Editar fondo"}>{editando&&<FormProvision prov={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
-    <Sheet open={!!usar} onClose={()=>setUsar(null)} title={"Usar fondo · "+(usar?.nombre||"")}>{usar&&<FormUsarFondo prov={usar} onConfirmar={m=>aplicarUso(usar,m)}/>}</Sheet>
-    {toast&&<Toast>{toast}</Toast>}
-  </div>;
-}
-function FormProvision({prov,onGuardar,onEliminar}){
+/* ═══════════ FONDOS / PROVISIONES (forms reusados en Inversión+Fondos) ═══════════ */
+function FormProvision({prov,onGuardar,onEliminar,inversiones}){
   const [p,setP]=useState(prov); const set=(k,v)=>setP(x=>({...x,[k]:v})); const ok=p.nombre.trim()&&num(p.montoAnual)>0;
   const mensual=ok?provisionMensual({...p,saldo:num(p.saldo)}):0;
   return <div>
@@ -1370,6 +1328,8 @@ function FormProvision({prov,onGuardar,onEliminar}){
     <Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={p.categoria} onChange={e=>set("categoria",e.target.value)}>{CAT_PROVISION.map(c=><option key={c} value={c}>{c}</option>)}</select></Field>
     <Field label="Costo anual total (COP)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="Ej. 700000" value={p.montoAnual} onChange={e=>set("montoAnual",e.target.value)}/></Field>
     <Field label="Mes en que se paga (opcional)"><select style={{...inputStyle,appearance:"none"}} value={p.mesVencimiento} onChange={e=>set("mesVencimiento",e.target.value)}><option value="">— Repartir todo el año —</option>{MESES_CORTOS.map((m,i)=><option key={m} value={i+1}>{m}</option>)}</select></Field>
+    {(inversiones||[]).length>0&&<Field label="¿Dónde guardas este fondo? (opcional)"><select style={{...inputStyle,appearance:"none"}} value={p.inversionId||""} onChange={e=>set("inversionId",e.target.value)}><option value="">— Aparte (no en una inversión) —</option>{inversiones.map(i=>(<option key={i.id} value={i.id}>{i.nombre}</option>))}</select></Field>}
+    {p.inversionId&&<p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"-6px 0 12px",lineHeight:1.4}}>Lo que apartes se sumará al valor de esa inversión (ej. tu fiducuenta), junto al fondo de emergencia.</p>}
     <Field label="Saldo ya acumulado (opcional)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={p.saldo} onChange={e=>set("saldo",e.target.value)}/></Field>
     {ok&&<div style={{background:C.goldSoft,borderRadius:10,padding:"10px 13px",margin:"2px 0 12px",fontFamily:SANS,fontSize:13.5,color:C.espresso}}>Deberás apartar <b>{money(mensual)}/mes</b>{p.mesVencimiento?" para llegar a tiempo":""}.</div>}
     <button disabled={!ok} onClick={()=>onGuardar(p)} style={btnP(ok)}>Guardar fondo</button>{onEliminar&&btnDel(onEliminar)}
@@ -1385,82 +1345,74 @@ function FormUsarFondo({prov,onConfirmar}){
   </div>;
 }
 
-/* ═══════════ PATRIMONIO (Fase 3) ═══════════ */
-function Patrimonio({activos,setActivos,inversiones,patrimonioHist,setPatrimonioHist}){
-  const [editando,setEditando]=useState(null); const [toast,setToast]=useState("");
-  const guardar=a=>{const{_nuevo,...limpio}=a;setActivos(prev=>prev.some(x=>x.id===a.id)?prev.map(x=>x.id===a.id?limpio:x):[...prev,limpio]);setEditando(null);};
-  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar",texto:"Se borrará esta cuenta/activo/deuda."})){ setActivos(p=>p.filter(x=>x.id!==id)); setEditando(null);} };
-  const nuevo=()=>setEditando({id:uid(),nombre:"",tipo:"cuenta",valor:"",_nuevo:true});
-  const neto=patrimonioNeto(activos,inversiones);
-  const invTotal=(inversiones||[]).reduce((s,i)=>s+num(i.actual),0);
-  const porTipo=t=>(activos||[]).filter(a=>a.tipo===t);
-  const guardarSnapshot=()=>{const ym=MES_ACTUAL;setPatrimonioHist(prev=>{const sin=(prev||[]).filter(s=>s.ym!==ym);return [...sin,{ym,valor:neto}].sort((a,b)=>a.ym.localeCompare(b.ym));});setToast("Snapshot de "+nombreMes(ym)+" guardado");setTimeout(()=>setToast(""),2400);};
-  const hist=[...(patrimonioHist||[])].sort((a,b)=>a.ym.localeCompare(b.ym)).slice(-12);
-
-  return <div style={{padding:"10px 18px 20px"}}>
-    <Card pad={18}>
-      <p style={{margin:0,...labelStyle}}>Patrimonio neto</p>
-      <p style={{margin:"6px 0 4px",fontFamily:SERIF,fontSize:32,color:neto>=0?C.espresso:C.red}}>{money(neto)}</p>
-      <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>Activos + inversiones − deudas</p>
-    </Card>
-
-    {hist.length>=2&&<div style={{marginTop:14}}><p style={{...labelStyle,marginBottom:8}}>Evolución</p><Card pad={16}>
-      <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:100,gap:5}}>{(()=>{const vals=hist.map(h=>h.valor);const max=Math.max(...vals),min=Math.min(...vals,0);const rng=max-min||1;return hist.map((h,i)=>{const ht=12+((h.valor-min)/rng)*78;const ult=i===hist.length-1;return <div key={h.ym} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:8.5,color:C.muted,fontFamily:SANS}}>{moneyShort(h.valor)}</span><div style={{width:"100%",maxWidth:26,height:ht,background:ult?C.espresso:C.goldSoft,borderRadius:4}}/><span style={{fontSize:8,color:C.muted,fontFamily:SANS}}>{MESES_CORTOS[+h.ym.slice(5)-1]}</span></div>;})})()}</div>
-    </Card></div>}
-
-    <button onClick={guardarSnapshot} style={{width:"100%",padding:"11px 0",margin:"14px 0 8px",background:C.espresso,color:C.gold,border:"none",borderRadius:11,fontSize:13.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>📸 Guardar snapshot de este mes</button>
-    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",marginBottom:16,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Cuenta / activo / deuda</button>
-
-    {invTotal>0&&<div style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><p style={{margin:0,fontFamily:SANS,fontSize:14}}>📈 Inversiones</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>desde la pestaña Inversión</p></div><span style={{fontFamily:SERIF,fontSize:16,color:C.green}}>{money(invTotal)}</span></div>}
-    {TIPOS_ACTIVO.map(t=>{const items=porTipo(t.k);if(items.length===0)return null;return <div key={t.k} style={{marginTop:6}}>{items.map(a=><div key={a.id} onClick={()=>setEditando({...a,_nuevo:false})} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}><div><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{a.nombre}</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>{t.label}</p></div><span style={{fontFamily:SERIF,fontSize:16,color:t.signo<0?C.red:C.text,whiteSpace:"nowrap"}}>{t.signo<0?"−":""}{money(a.valor)}</span></div>)}</div>;})}
-    {(activos||[]).length===0&&invTotal===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:6}}>Agrega tus cuentas bancarias, el carro y deudas para ver tu patrimonio neto real.</p>}
-
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo":"Editar"}>{editando&&<FormActivo activo={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
-    {toast&&<Toast>{toast}</Toast>}
-  </div>;
-}
-function FormActivo({activo,onGuardar,onEliminar}){
-  const [a,setA]=useState(activo); const set=(k,v)=>setA(x=>({...x,[k]:v})); const ok=a.nombre.trim()&&num(a.valor)>0;
-  return <div>
-    <Field label="Nombre"><input style={inputStyle} placeholder="Ej. Cuenta Bancolombia, Mazda 2, Tarjeta" value={a.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
-    <Field label="Tipo"><select style={{...inputStyle,appearance:"none"}} value={a.tipo} onChange={e=>set("tipo",e.target.value)}>{TIPOS_ACTIVO.map(t=><option key={t.k} value={t.k}>{t.label}</option>)}</select></Field>
-    <Field label="Valor (COP)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={a.valor} onChange={e=>set("valor",e.target.value)}/></Field>
-    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"-6px 0 10px"}}>Las deudas se restan del patrimonio. Actualiza estos valores de vez en cuando.</p>
-    <button disabled={!ok} onClick={()=>onGuardar(a)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}
-  </div>;
-}
-
-/* ═══════════ RESUMEN / DASHBOARD (Fase 3) ═══════════ */
-function FinResumen({transacciones,inversiones,activos,metas,provisiones,fijos,finanzasCfg,ir}){
-  const {ing,gas,tasa}=tasaAhorro(transacciones,MES_ACTUAL);
+/* ═══════════ RESUMEN (todo el mes en una sola pestaña) ═══════════ */
+function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,setPresupuesto,inversiones,metas,provisiones,finanzasCfg,ir}){
+  const [mes,setMes]=useState(MES_ACTUAL);
+  const [editando,setEditando]=useState(null); const [editPres,setEditPres]=useState(false); const [editFijo,setEditFijo]=useState(null);
+  const delMes=transacciones.filter(t=>mesDe(t.fecha)===mes).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const ing=delMes.filter(t=>t.tipo==="ingreso").reduce((a,t)=>a+num(t.monto),0);
+  const gas=delMes.filter(t=>t.tipo==="gasto").reduce((a,t)=>a+num(t.monto),0);
+  const balance=ing-gas; const tasa=ing>0?(ing-gas)/ing*100:0;
   const metaTasa=num((finanzasCfg||{}).tasaAhorroMeta)||AHORRO_META_DEFAULT;
-  const neto=patrimonioNeto(activos,inversiones);
-  // fondo de emergencia: meta que se llame así, o la primera; meses cubiertos = saldo / gasto mensual prom
-  const gastoMensualProm=(()=>{const meses={};transacciones.filter(t=>t.tipo==="gasto").forEach(t=>{const m=mesDe(t.fecha);meses[m]=(meses[m]||0)+num(t.monto);});const vals=Object.values(meses);return vals.length?vals.reduce((a,v)=>a+v,0)/vals.length:0;})();
+  const colTasa=tasa>=metaTasa?C.green:tasa>=metaTasa*0.6?C.gold:C.red;
+  const guardarMov=t=>{setTransacciones(p=>p.some(x=>x.id===t.id)?p.map(x=>x.id===t.id?t:x):[...p,t]);setEditando(null);};
+  const eliminarMov=async id=>{ if(await pedirConfirm({titulo:"Eliminar movimiento",texto:"Se borrará este movimiento."})){ setTransacciones(p=>p.filter(t=>t.id!==id)); setEditando(null);} };
+  const nuevoMov=tipo=>setEditando({id:uid(),tipo,concepto:"",monto:"",categoria:tipo==="gasto"?"🛒 Mercado":"💼 Salario",fecha:HOY,_nuevo:true});
+
+  // fijos
+  const guardarFijo=f=>{setFijos(p=>p.some(x=>x.id===f.id)?p.map(x=>x.id===f.id?f:x):[...p,f]);setEditFijo(null);};
+  const eliminarFijo=async id=>{ if(await pedirConfirm({titulo:"Eliminar gasto fijo",texto:"Se borrará este gasto fijo."})){ setFijos(p=>p.filter(f=>f.id!==id)); setEditFijo(null);} };
+  const nuevoFijo=()=>setEditFijo({id:uid(),nombre:"",monto:"",categoria:"💡 Servicios",pagos:{},_nuevo:true});
+  const togglePagado=f=>{const pagado=f.pagos&&f.pagos[mes];const tid="fijo-"+f.id+"-"+mes;
+    setFijos(p=>p.map(x=>x.id===f.id?{...x,pagos:{...(x.pagos||{}),[mes]:!pagado}}:x));
+    if(!pagado){ setTransacciones(p=>[...p,{id:tid,tipo:"gasto",categoria:f.categoria,concepto:f.nombre+" (fijo)",monto:num(f.monto),fecha:mes+"-"+String(new Date().getDate()).padStart(2,"0"),_fijo:tid}]); }
+    else { setTransacciones(p=>p.filter(t=>t.id!==tid)); }
+  };
+  const fijoTotal=fijos.reduce((a,f)=>a+num(f.monto),0);
+  const fijoPagado=fijos.filter(f=>f.pagos&&f.pagos[mes]).reduce((a,f)=>a+num(f.monto),0);
+
+  // presupuesto
+  const porCat={}; delMes.filter(t=>t.tipo==="gasto").forEach(t=>{porCat[t.categoria]=(porCat[t.categoria]||0)+num(t.monto);});
+  const plan=presupuesto||{};
+  const catsPres=[...new Set([...Object.keys(porCat),...Object.keys(plan).filter(k=>num(plan[k])>0)])].map(cat=>({cat,real:porCat[cat]||0,plan:num(plan[cat])})).sort((a,b)=>(b.real+b.plan)-(a.real+a.plan));
+  const totalPlan=Object.values(plan).reduce((a,v)=>a+num(v),0);
+
+  // dashboard
   const metaAct=m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);return inv?num(inv.actual):num(m.actual);};
+  const gastoMensualProm=(()=>{const meses={};transacciones.filter(t=>t.tipo==="gasto").forEach(t=>{const m=mesDe(t.fecha);meses[m]=(meses[m]||0)+num(t.monto);});const vals=Object.values(meses);return vals.length?vals.reduce((a,v)=>a+v,0)/vals.length:0;})();
   const fondoEmergencia=(metas||[]).find(m=>/emergencia/i.test(m.nombre));
   const mesesCubiertos=fondoEmergencia&&gastoMensualProm>0?metaAct(fondoEmergencia)/gastoMensualProm:0;
-  const fijoTotal=(fijos||[]).reduce((a,f)=>a+num(f.monto),0);
   const provMes=(provisiones||[]).reduce((a,p)=>a+provisionMensual(p),0);
+  const provSaldo=(provisiones||[]).reduce((a,p)=>a+num(p.saldo),0);
   const aporteMetasMes=(metas||[]).filter(m=>!m.inversionId&&metaAct(m)<num(m.objetivo)).reduce((a,m)=>{const meses=m.fecha?mesesHasta(m.fecha):0;const falta=num(m.objetivo)-metaAct(m);return a+(meses>0?falta/meses:0);},0);
-  const disponible=ing-fijoTotal-provMes-aporteMetasMes;
+  // disponible: las provisiones se restan AL FINAL (puedes pagarlas de golpe), no como gasto mensual obligatorio
+  const disponible=ing-fijoTotal-aporteMetasMes-provMes;
   const metasActivas=[...(metas||[])].filter(m=>metaAct(m)<num(m.objetivo)).sort((a,b)=>(num(a.prioridad)||99)-(num(b.prioridad)||99)).slice(0,3);
-  const colTasa=tasa>=metaTasa?C.green:tasa>=metaTasa*0.6?C.gold:C.red;
 
   return <div style={{padding:"10px 18px 20px"}}>
-    {/* patrimonio + tasa */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-      <div onClick={()=>ir("patrimonio")} style={{background:C.espresso,borderRadius:14,padding:"14px 15px",cursor:"pointer"}}><p style={{margin:0,fontSize:11,color:C.gold,fontFamily:SANS,textTransform:"uppercase",letterSpacing:1}}>Patrimonio</p><p style={{margin:"6px 0 0",fontFamily:SERIF,fontSize:21,color:"#fff"}}>{moneyShort(neto)}</p></div>
-      <div onClick={()=>ir("mov")} style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:14,padding:"14px 15px",cursor:"pointer"}}><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS,textTransform:"uppercase",letterSpacing:1}}>Tasa ahorro</p><p style={{margin:"6px 0 0",fontFamily:SERIF,fontSize:21,color:colTasa}}>{ing>0?Math.round(tasa)+"%":"—"}</p></div>
-    </div>
+    {/* navegación de mes */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><button onClick={()=>setMes(mesAdj(mes,-1))} style={navMesBtn}>‹</button><span style={{fontFamily:SERIF,fontSize:16}}>{nombreMes(mes)}</span><button onClick={()=>setMes(mesAdj(mes,1))} style={navMesBtn}>›</button></div>
 
-    {/* cascada del dinero */}
-    <Card pad={16}>
-      <Mini icon="💧" label="Cascada del mes"/>
-      {[["1. Fijos",fijoTotal,C.red],["2. Provisiones",provMes,C.gold],["3. Metas (ahorro)",Math.round(aporteMetasMes),C.green],["4. Disponible para gastar",disponible,disponible>=0?C.blue:C.red]].map(([l,v,col],i)=><div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<3?"1px solid "+C.borderSoft:"none"}}><span style={{fontFamily:SANS,fontSize:13.5,color:i===3?C.espresso:C.muted,fontWeight:i===3?700:400}}>{l}</span><span style={{fontFamily:SERIF,fontSize:16,color:col}}>{money(v)}</span></div>)}
-      {ing>0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted,textAlign:"center"}}>Sobre tu ingreso del mes ({money(ing)})</p>}
-      {ing===0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,textAlign:"center"}}>Registra tus ingresos del mes para ver el disponible.</p>}
+    {/* balance del mes */}
+    <Card pad={18}><p style={{margin:0,...labelStyle}}>Balance del mes</p><p style={{margin:"6px 0 14px",fontFamily:SERIF,fontSize:30,color:balance>=0?C.green:C.red}}>{money(balance)}</p>
+      <div style={{display:"flex",gap:10}}><div style={{flex:1,background:C.greenSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.green,fontFamily:SANS}}>Ingresos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.green}}>{money(ing)}</p></div><div style={{flex:1,background:C.redSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.red,fontFamily:SANS}}>Gastos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.red}}>{money(gas)}</p></div></div>
     </Card>
+
+    {/* tasa de ahorro */}
+    {ing>0&&<div style={{marginTop:12}}><Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon="🐷" label="Tasa de ahorro del mes"/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>meta {metaTasa}%</span></div>
+      <p style={{margin:"8px 0 6px",fontFamily:SERIF,fontSize:26,color:colTasa}}>{Math.round(tasa)}%</p>
+      <Bar pct={tasa} color={colTasa} h={10}/>
+      <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12.5,color:C.muted}}>{tasa>=metaTasa?"¡Vas por encima de tu meta! 🎯 Págate primero.":"Ahorraste "+money(balance)+". Apunta a ≥"+metaTasa+"% del ingreso."}</p>
+    </Card></div>}
+
+    {/* cascada del dinero (provisión al final) */}
+    <div style={{marginTop:12}}><Card pad={16}>
+      <Mini icon="💧" label="Cascada del mes"/>
+      {[["1. Fijos",fijoTotal,C.red],["2. Metas (ahorro)",Math.round(aporteMetasMes),C.green],["3. Disponible para gastar",disponible,disponible>=0?C.blue:C.red],["4. Provisión a apartar",provMes,C.gold]].map(([l,v,col],i)=><div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<3?"1px solid "+C.borderSoft:"none"}}><span style={{fontFamily:SANS,fontSize:13.5,color:i===2?C.espresso:C.muted,fontWeight:i===2?700:400}}>{l}</span><span style={{fontFamily:SERIF,fontSize:16,color:col}}>{money(v)}</span></div>)}
+      {provMes>0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted,textAlign:"center",lineHeight:1.4}}>La provisión va al final: apártala cuando puedas (incluso de golpe). Saldo en fondos: {money(provSaldo)}.</p>}
+      {ing===0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,textAlign:"center"}}>Registra tus ingresos del mes para ver el disponible.</p>}
+    </Card></div>}
 
     {/* fondo de emergencia */}
     {fondoEmergencia&&<div style={{marginTop:12}}><Card pad={16} onClick={()=>ir("metas")}>
@@ -1474,61 +1426,40 @@ function FinResumen({transacciones,inversiones,activos,metas,provisiones,fijos,f
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><p style={{...labelStyle,margin:0}}>Metas activas</p><button onClick={()=>ir("metas")} style={{background:"none",border:"none",color:C.gold,fontSize:12.5,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>Ver todas ›</button></div>
       {metasActivas.map(m=>{const a=metaAct(m),o=num(m.objetivo);return <div key={m.id} onClick={()=>ir("metas")} style={{background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+C.border,cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontFamily:SANS,fontSize:13}}><span>{m.prioridad?"#"+m.prioridad+" ":""}{m.nombre}</span><span style={{color:C.muted}}>{Math.round(o>0?a/o*100:0)}%</span></div><Bar pct={o>0?a/o*100:0} color={C.gold} h={7}/></div>;})}
     </div>}
-  </div>;
-}
 
-function Movimientos({transacciones,setTransacciones,presupuesto,setPresupuesto,finanzasCfg}){
-  const [mes,setMes]=useState(MES_ACTUAL); const [editando,setEditando]=useState(null); const [editPres,setEditPres]=useState(false);
-  const delMes=transacciones.filter(t=>mesDe(t.fecha)===mes).sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  const ing=delMes.filter(t=>t.tipo==="ingreso").reduce((a,t)=>a+num(t.monto),0);
-  const gas=delMes.filter(t=>t.tipo==="gasto").reduce((a,t)=>a+num(t.monto),0);
-  const balance=ing-gas;
-  const tasa=ing>0?(ing-gas)/ing*100:0;
-  const metaTasa=num((finanzasCfg||{}).tasaAhorroMeta)||AHORRO_META_DEFAULT;
-  const guardar=t=>{setTransacciones(p=>p.some(x=>x.id===t.id)?p.map(x=>x.id===t.id?t:x):[...p,t]);setEditando(null);};
-  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar movimiento",texto:"Se borrará este movimiento."})){ setTransacciones(p=>p.filter(t=>t.id!==id)); setEditando(null);} };
-  const nuevo=tipo=>setEditando({id:uid(),tipo,concepto:"",monto:"",categoria:tipo==="gasto"?"🛒 Mercado":"💼 Salario",fecha:HOY,_nuevo:true});
+    {/* añadir movimiento */}
+    <div style={{display:"flex",gap:10,margin:"18px 0 18px"}}><button onClick={()=>nuevoMov("ingreso")} style={{flex:1,padding:"12px 0",background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Ingreso</button><button onClick={()=>nuevoMov("gasto")} style={{flex:1,padding:"12px 0",background:C.red,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Gasto</button></div>
 
-  const porCat={}; delMes.filter(t=>t.tipo==="gasto").forEach(t=>{porCat[t.categoria]=(porCat[t.categoria]||0)+num(t.monto);});
-  const plan=presupuesto||{};
-  // categorías a mostrar: las con gasto o con presupuesto
-  const catsPres=[...new Set([...Object.keys(porCat),...Object.keys(plan).filter(k=>num(plan[k])>0)])]
-    .map(cat=>({cat,real:porCat[cat]||0,plan:num(plan[cat])}))
-    .sort((a,b)=>(b.real+b.plan)-(a.real+a.plan));
-  const totalPlan=Object.values(plan).reduce((a,v)=>a+num(v),0);
+    {/* gastos fijos */}
+    <div style={{marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><p style={{...labelStyle,margin:0}}>Gastos fijos · {money(fijoPagado)}/{money(fijoTotal)}</p><button onClick={nuevoFijo} style={{background:"transparent",border:"1.5px solid "+C.border,borderRadius:20,padding:"4px 11px",fontSize:11.5,color:C.muted,fontFamily:SANS,cursor:"pointer"}}>+ Fijo</button></div>
+      {fijos.length>0&&<div style={{marginBottom:10}}><Bar pct={fijoTotal>0?fijoPagado/fijoTotal*100:0} color={C.green} h={8}/></div>}
+      {fijos.map(f=>{const p=f.pagos&&f.pagos[mes];return <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+(p?C.green:C.border)}}>
+        <div onClick={()=>togglePagado(f)} style={{width:24,height:24,borderRadius:8,flexShrink:0,cursor:"pointer",border:p?"none":"1.5px solid "+C.gold,background:p?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{p&&<svg width="13" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+        <div style={{flex:1,minWidth:0}} onClick={()=>setEditFijo(f)}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:p?C.muted:C.text,textDecoration:p?"line-through":"none"}}>{f.nombre}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{f.categoria}</p></div>
+        <span style={{fontFamily:SERIF,fontSize:15,whiteSpace:"nowrap"}}>{money(f.monto)}</span>
+      </div>;})}
+    </div>
 
-  return <div style={{padding:"10px 18px 20px"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><button onClick={()=>setMes(mesAdj(mes,-1))} style={navMesBtn}>‹</button><span style={{fontFamily:SERIF,fontSize:16}}>{nombreMes(mes)}</span><button onClick={()=>setMes(mesAdj(mes,1))} style={navMesBtn}>›</button></div>
-    <Card pad={18}><p style={{margin:0,...labelStyle}}>Balance del mes</p><p style={{margin:"6px 0 14px",fontFamily:SERIF,fontSize:30,color:balance>=0?C.green:C.red}}>{money(balance)}</p>
-      <div style={{display:"flex",gap:10}}><div style={{flex:1,background:C.greenSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.green,fontFamily:SANS}}>Ingresos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.green}}>{money(ing)}</p></div><div style={{flex:1,background:C.redSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.red,fontFamily:SANS}}>Gastos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.red}}>{money(gas)}</p></div></div>
-    </Card>
-
-    {/* Tasa de ahorro */}
-    {ing>0&&(()=>{const ok=tasa>=metaTasa;const col=ok?C.green:tasa>=metaTasa*0.6?C.gold:C.red;return <div style={{marginTop:12}}><Card pad={16}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon="🐷" label="Tasa de ahorro del mes"/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>meta {metaTasa}%</span></div>
-      <p style={{margin:"8px 0 6px",fontFamily:SERIF,fontSize:26,color:col}}>{Math.round(tasa)}%</p>
-      <Bar pct={tasa} color={col} h={10}/>
-      <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12.5,color:C.muted}}>{ok?"¡Vas por encima de tu meta! 🎯 Págate primero.":"Ahorraste "+money(balance)+". Apunta a guardar ≥"+metaTasa+"% del ingreso."}</p>
-    </Card></div>;})()}
-
-    <div style={{display:"flex",gap:10,margin:"14px 0 18px"}}><button onClick={()=>nuevo("ingreso")} style={{flex:1,padding:"12px 0",background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Ingreso</button><button onClick={()=>nuevo("gasto")} style={{flex:1,padding:"12px 0",background:C.red,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Gasto</button></div>
-
-    {/* Presupuesto por categoría: planeado vs real */}
+    {/* presupuesto por categoría */}
     <div style={{marginBottom:20}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><p style={{...labelStyle,margin:0}}>Presupuesto por categoría</p><button onClick={()=>setEditPres(true)} style={{background:"transparent",border:"1.5px solid "+C.border,borderRadius:20,padding:"4px 11px",fontSize:11.5,color:C.muted,fontFamily:SANS,cursor:"pointer"}}>⚙ Planear</button></div>
-      {catsPres.length===0?<Card pad={16}><p style={{margin:0,fontSize:13,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Toca "Planear" para asignar un tope a cada categoría. Cada peso con un trabajo.</p></Card>:<Card pad={16}>{catsPres.map((c,i)=>{const pl=c.plan,re=c.real;const pct=pl>0?re/pl*100:(re>0?100:0);const col=pl===0?C.gold:pct>100?C.red:pct>80?C.gold:C.green;return <div key={c.cat} style={{marginBottom:i<catsPres.length-1?13:0}}>
+      {catsPres.length===0?<Card pad={16}><p style={{margin:0,fontSize:13,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Toca "Planear" para asignar un tope a cada categoría.</p></Card>:<Card pad={16}>{catsPres.map((c,i)=>{const pl=c.plan,re=c.real;const pct=pl>0?re/pl*100:(re>0?100:0);const col=pl===0?C.gold:pct>100?C.red:pct>80?C.gold:C.green;return <div key={c.cat} style={{marginBottom:i<catsPres.length-1?13:0}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontFamily:SANS,fontSize:13}}><span>{c.cat}</span><span style={{color:C.muted}}>{money(re)}{pl>0?" / "+money(pl):""}</span></div>
         <Bar pct={Math.min(100,pct)} color={col}/>
         {pl>0&&<p style={{margin:"3px 0 0",fontSize:11,color:pct>100?C.red:C.muted,fontFamily:SANS,textAlign:"right"}}>{pct>100?"Te pasaste "+money(re-pl):"Queda "+money(pl-re)}</p>}
       </div>;})}{totalPlan>0&&<p style={{margin:"12px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Plan total: {money(totalPlan)} · Gastado: {money(gas)}</p>}</Card>}
     </div>
 
-    {delMes.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Sin movimientos este mes.</p>:<div><p style={{...labelStyle,marginBottom:8}}>Movimientos</p>{delMes.map(t=><div key={t.id} onClick={()=>setEditando(t)} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}><div style={{minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{t.categoria}{t.concepto?" · "+t.concepto:""}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{t.fecha}</p></div><span style={{fontFamily:SERIF,fontSize:16,color:t.tipo==="ingreso"?C.green:C.red,whiteSpace:"nowrap"}}>{t.tipo==="ingreso"?"+":"−"}{money(t.monto)}</span></div>)}</div>}
+    {/* movimientos del mes */}
+    {delMes.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Sin movimientos este mes.</p>:<div><p style={{...labelStyle,marginBottom:8}}>Movimientos</p>{delMes.map(t=><div key={t.id} onClick={()=>!t._fijo&&!t._fondo&&setEditando(t)} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:t._fijo||t._fondo?"default":"pointer"}}><div style={{minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{t.categoria}{t.concepto?" · "+t.concepto:""}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{t.fecha}</p></div><span style={{fontFamily:SERIF,fontSize:16,color:t.tipo==="ingreso"?C.green:C.red,whiteSpace:"nowrap"}}>{t.tipo==="ingreso"?"+":"−"}{money(t.monto)}</span></div>)}</div>}
 
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?(editando.tipo==="ingreso"?"Ingreso":"Gasto"):""}>{editando&&<FormMov mov={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?(editando.tipo==="ingreso"?"Ingreso":"Gasto"):""}>{editando&&<FormMov mov={editando} onGuardar={guardarMov} onEliminar={editando._nuevo?null:()=>eliminarMov(editando.id)}/>}</Sheet>
+    <Sheet open={!!editFijo} onClose={()=>setEditFijo(null)} title={editFijo?._nuevo?"Nuevo gasto fijo":"Editar gasto fijo"}>{editFijo&&<FormFijo fijo={editFijo} onGuardar={guardarFijo} onEliminar={editFijo._nuevo?null:()=>eliminarFijo(editFijo.id)}/>}</Sheet>
     <Sheet open={editPres} onClose={()=>setEditPres(false)} title="Planear presupuesto">{editPres&&<FormPresupuesto presupuesto={plan} onGuardar={p=>{setPresupuesto(p);setEditPres(false);}}/>}</Sheet>
   </div>;
 }
+
 function FormPresupuesto({presupuesto,onGuardar}){
   const [p,setP]=useState({...presupuesto}); const set=(k,v)=>setP(x=>({...x,[k]:v}));
   const total=Object.values(p).reduce((a,v)=>a+num(v),0);
@@ -1544,53 +1475,74 @@ function FormMov({mov,onGuardar,onEliminar}){
   return <div><Field label="Monto"><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={m.monto} onChange={e=>set("monto",e.target.value)}/></Field><Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={m.categoria} onChange={e=>set("categoria",e.target.value)}>{cats.map(c=><option key={c} value={c}>{c}</option>)}</select></Field><Field label="Concepto (opcional)"><input style={inputStyle} placeholder="Ej. Mercado del mes" value={m.concepto} onChange={e=>set("concepto",e.target.value)}/></Field><Field label="Fecha"><input style={inputStyle} type="date" value={m.fecha} onChange={e=>set("fecha",e.target.value)}/></Field><button disabled={!ok} onClick={()=>onGuardar(m)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}</div>;
 }
 
-function Fijos({fijos,setFijos,setTransacciones}){
-  const [mes,setMes]=useState(MES_ACTUAL); const [editando,setEditando]=useState(null);
-  const guardar=f=>{setFijos(p=>p.some(x=>x.id===f.id)?p.map(x=>x.id===f.id?f:x):[...p,f]);setEditando(null);};
-  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar gasto fijo",texto:"Se borrará este gasto fijo."})){ setFijos(p=>p.filter(f=>f.id!==id)); setEditando(null);} };
-  const nuevo=()=>setEditando({id:uid(),nombre:"",monto:"",categoria:"💡 Servicios",pagos:{},_nuevo:true});
-  const togglePagado=f=>{
-    const pagado=f.pagos&&f.pagos[mes]; const tid="fijo-"+f.id+"-"+mes;
-    setFijos(p=>p.map(x=>x.id===f.id?{...x,pagos:{...(x.pagos||{}),[mes]:!pagado}}:x));
-    if(!pagado){ setTransacciones(p=>[...p,{id:tid,tipo:"gasto",categoria:f.categoria,concepto:f.nombre+" (fijo)",monto:num(f.monto),fecha:mes+"-"+String(new Date().getDate()).padStart(2,"0"),_fijo:tid}]); }
-    else { setTransacciones(p=>p.filter(t=>t.id!==tid)); }
-  };
-  const total=fijos.reduce((a,f)=>a+num(f.monto),0);
-  const pagado=fijos.filter(f=>f.pagos&&f.pagos[mes]).reduce((a,f)=>a+num(f.monto),0);
-  return <div style={{padding:"10px 18px 20px"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><button onClick={()=>setMes(mesAdj(mes,-1))} style={navMesBtn}>‹</button><span style={{fontFamily:SERIF,fontSize:16}}>{nombreMes(mes)}</span><button onClick={()=>setMes(mesAdj(mes,1))} style={navMesBtn}>›</button></div>
-    <Card pad={18}><div style={{display:"flex",justifyContent:"space-between"}}><div><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>Pagado</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:20,color:C.green}}>{money(pagado)}</p></div><div style={{textAlign:"right"}}><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>Falta</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:20,color:C.red}}>{money(total-pagado)}</p></div></div><div style={{marginTop:12}}><Bar pct={total>0?pagado/total*100:0} color={C.green} h={10}/></div></Card>
-    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",margin:"14px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo gasto fijo</button>
-    {fijos.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Agrega tus fijos: arriendo, internet, servicios, deudas…</p>}
-    {fijos.map(f=>{const p=f.pagos&&f.pagos[mes];return <div key={f.id} style={{display:"flex",alignItems:"center",gap:12,background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+(p?C.green:C.border)}}>
-      <div onClick={()=>togglePagado(f)} style={{width:24,height:24,borderRadius:8,flexShrink:0,cursor:"pointer",border:p?"none":"1.5px solid "+C.gold,background:p?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{p&&<svg width="13" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
-      <div style={{flex:1,minWidth:0}} onClick={()=>setEditando(f)}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:p?C.muted:C.text,textDecoration:p?"line-through":"none"}}>{f.nombre}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{f.categoria}</p></div>
-      <span style={{fontFamily:SERIF,fontSize:15,whiteSpace:"nowrap"}}>{money(f.monto)}</span>
-    </div>;})}
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo gasto fijo":"Editar gasto fijo"}>{editando&&<FormFijo fijo={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
-  </div>;
-}
 function FormFijo({fijo,onGuardar,onEliminar}){
   const [f,setF]=useState(fijo); const set=(k,v)=>setF(p=>({...p,[k]:v})); const ok=f.nombre.trim()&&num(f.monto)>0;
   return <div><Field label="Nombre"><input style={inputStyle} placeholder="Ej. Internet" value={f.nombre} onChange={e=>set("nombre",e.target.value)}/></Field><Field label="Monto mensual"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={f.monto} onChange={e=>set("monto",e.target.value)}/></Field><Field label="Categoría"><select style={{...inputStyle,appearance:"none"}} value={f.categoria} onChange={e=>set("categoria",e.target.value)}>{CAT_GASTO.map(c=><option key={c} value={c}>{c}</option>)}</select></Field><p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 8px"}}>Al marcarlo como pagado se suma a tus gastos del mes automáticamente.</p><button disabled={!ok} onClick={()=>onGuardar(f)} style={btnP(ok)}>Guardar</button>{onEliminar&&btnDel(onEliminar)}</div>;
 }
 
-function Inversiones({inversiones,setInversiones,metas}){
-  const [editando,setEditando]=useState(null);
-  const [aportar,setAportar]=useState(null);
+/* ═══════════ INVERSIÓN + FONDOS (fusionadas) ═══════════ */
+function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvisiones,setTransacciones}){
+  const [editando,setEditando]=useState(null); const [aportar,setAportar]=useState(null);
+  const [editFondo,setEditFondo]=useState(null); const [usar,setUsar]=useState(null); const [toast,setToast]=useState("");
+  // saldo de fondos asociado a cada inversión (la fiducuenta) — para mostrar inversión = base + fondos
+  const fondosDe=invId=>(provisiones||[]).filter(p=>p.inversionId===invId);
+  const saldoFondosDe=invId=>fondosDe(invId).reduce((a,p)=>a+num(p.saldo),0);
   const invertido=inversiones.reduce((a,i)=>a+num(i.invertido),0);
   const actual=inversiones.reduce((a,i)=>a+num(i.actual),0);
   const gan=actual-invertido; const rend=invertido>0?gan/invertido*100:0;
-  const guardar=i=>{setInversiones(p=>p.some(x=>x.id===i.id)?p.map(x=>x.id===i.id?i:x):[...p,i]);setEditando(null);};
-  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar inversión",texto:"Se borrará esta inversión."})){ setInversiones(p=>p.filter(i=>i.id!==id)); setEditando(null);} };
+  const guardarInv=i=>{const{_nuevo,...l}=i;setInversiones(p=>p.some(x=>x.id===i.id)?p.map(x=>x.id===i.id?l:x):[...p,l]);setEditando(null);};
+  const eliminarInv=async id=>{ if(await pedirConfirm({titulo:"Eliminar inversión",texto:"Se borrará esta inversión."})){ setInversiones(p=>p.filter(i=>i.id!==id)); setEditando(null);} };
   const aplicarAporte=(id,monto)=>{setInversiones(p=>p.map(x=>x.id===id?{...x,invertido:num(x.invertido)+num(monto),actual:num(x.actual)+num(monto)}:x));setAportar(null);};
-  const nueva=()=>setEditando({id:uid(),nombre:"",invertido:"",actual:"",_nuevo:true});
+  const nuevaInv=()=>setEditando({id:uid(),nombre:"",invertido:"",actual:"",_nuevo:true});
+
+  // fondos / provisiones
+  const guardarFondo=p=>{const{_nuevo,...l}=p;setProvisiones(prev=>prev.some(x=>x.id===p.id)?prev.map(x=>x.id===p.id?l:x):[...prev,{...l,saldo:num(l.saldo)}]);setEditFondo(null);};
+  const eliminarFondo=async id=>{ if(await pedirConfirm({titulo:"Eliminar fondo",texto:"Se borrará este fondo (no afecta gastos ya registrados)."})){ setProvisiones(p=>p.filter(x=>x.id!==id)); setEditFondo(null);} };
+  const nuevoFondo=()=>setEditFondo({id:uid(),nombre:"",categoria:"🚗 Carro",montoAnual:"",mesVencimiento:"",inversionId:"",saldo:0,_nuevo:true});
+  // apartar suma al saldo del fondo Y al valor de la inversión asociada (la fiducuenta)
+  const apartar=(p,monto)=>{const m=monto!=null?num(monto):provisionMensual(p);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:num(x.saldo)+m,_hist:[...(x._hist||[]),{fecha:HOY,tipo:"aporte",monto:m}]}:x));if(p.inversionId)setInversiones(prev=>prev.map(x=>x.id===p.inversionId?{...x,invertido:num(x.invertido)+m,actual:num(x.actual)+m}:x));setToast("Apartaste "+money(m)+" en "+p.nombre);setTimeout(()=>setToast(""),2400);};
+  const aplicarUso=(p,monto)=>{const mn=num(monto);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:Math.max(0,num(x.saldo)-mn),_hist:[...(x._hist||[]),{fecha:HOY,tipo:"uso",monto:mn}]}:x));if(p.inversionId)setInversiones(prev=>prev.map(x=>x.id===p.inversionId?{...x,invertido:Math.max(0,num(x.invertido)-mn),actual:Math.max(0,num(x.actual)-mn)}:x));setTransacciones(prev=>[...prev,{id:uid(),tipo:"gasto",categoria:p.categoria,concepto:p.nombre+" (fondo)",monto:mn,fecha:HOY,_fondo:p.id}]);setUsar(null);setToast("Gasto registrado y descontado del fondo");setTimeout(()=>setToast(""),2600);};
+  const provMesTotal=(provisiones||[]).reduce((a,p)=>a+provisionMensual(p),0);
+  const provSaldoTotal=(provisiones||[]).reduce((a,p)=>a+num(p.saldo),0);
+  const apartarTodos=()=>{(provisiones||[]).forEach(p=>{const m=provisionMensual(p);if(m>0)apartar(p,m);});};
+
   return <div style={{padding:"10px 18px 20px"}}>
+    {/* ─── INVERSIONES ─── */}
     <Card pad={18}><p style={{margin:0,...labelStyle}}>Portafolio total</p><p style={{margin:"6px 0 4px",fontFamily:SERIF,fontSize:30}}>{money(actual)}</p><p style={{margin:0,fontFamily:SANS,fontSize:14,color:gan>=0?C.green:C.red}}>{gan>=0?"▲":"▼"} {money(Math.abs(gan))} ({rend>=0?"+":""}{rend.toFixed(1)}%)</p><p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>Invertido: {money(invertido)}</p></Card>
-    <button onClick={nueva} style={{width:"100%",padding:"12px 0",margin:"14px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Agregar inversión</button>
-    {inversiones.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Sin inversiones registradas.</p>:inversiones.map(i=>{const g=num(i.actual)-num(i.invertido);const r=num(i.invertido)>0?g/num(i.invertido)*100:0;const meta=(metas||[]).find(m=>m.inversionId===i.id);return <div key={i.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:8,border:"1.5px solid "+C.border}}><div onClick={()=>setEditando(i)} style={{cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><span style={{fontFamily:SERIF,fontSize:16}}>{i.nombre}</span><span style={{fontFamily:SANS,fontSize:13,color:g>=0?C.green:C.red,fontWeight:600}}>{r>=0?"+":""}{r.toFixed(1)}%</span></div><div style={{display:"flex",justifyContent:"space-between",marginTop:8,fontFamily:SANS,fontSize:13,color:C.muted}}><span>Actual {money(i.actual)}</span><span>Invertido {money(i.invertido)}</span></div>{meta&&<p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>🎯 {meta.nombre}</p>}</div><button onClick={()=>setAportar(i)} style={{width:"100%",marginTop:11,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Aportar dinero</button></div>;})}
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title="Inversión">{editando&&<FormInv inv={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <button onClick={nuevaInv} style={{width:"100%",padding:"12px 0",margin:"14px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Agregar inversión</button>
+    {inversiones.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Sin inversiones registradas.</p>:inversiones.map(i=>{const g=num(i.actual)-num(i.invertido);const r=num(i.invertido)>0?g/num(i.invertido)*100:0;const meta=(metas||[]).find(m=>m.inversionId===i.id);const sf=saldoFondosDe(i.id);return <div key={i.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:8,border:"1.5px solid "+C.border}}><div onClick={()=>setEditando({...i,_nuevo:false})} style={{cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><span style={{fontFamily:SERIF,fontSize:16}}>{i.nombre}</span><span style={{fontFamily:SANS,fontSize:13,color:g>=0?C.green:C.red,fontWeight:600}}>{r>=0?"+":""}{r.toFixed(1)}%</span></div><div style={{display:"flex",justifyContent:"space-between",marginTop:8,fontFamily:SANS,fontSize:13,color:C.muted}}><span>Actual {money(i.actual)}</span><span>Invertido {money(i.invertido)}</span></div>{meta&&<p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>🎯 {meta.nombre}</p>}{sf>0&&<p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12,color:C.blue,fontWeight:600}}>🏦 Incluye {money(sf)} de fondos provisionados</p>}</div><button onClick={()=>setAportar(i)} style={{width:"100%",marginTop:11,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Aportar dinero</button></div>;})}
+
+    {/* ─── FONDOS / PROVISIONES ─── */}
+    <div style={{height:1,background:C.borderSoft,margin:"22px 0 16px"}}/>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:19,fontWeight:"normal"}}>🏦 Fondos para gastos anuales</h3></div>
+    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 12px",lineHeight:1.5}}>Aparta 1/12 al mes para SOAT, seguro, impuestos, renta… Si lo asocias a una inversión, el saldo vive ahí (junto a tu fondo de emergencia).</p>
+    {provisiones&&provisiones.length>0&&<Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted}}>A provisionar al mes</span><b style={{fontFamily:SERIF,fontSize:17,color:C.gold}}>{money(provMesTotal)}</b></div>
+      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted}}>Saldo total acumulado</span><b style={{fontFamily:SERIF,fontSize:15}}>{money(provSaldoTotal)}</b></div>
+      {provMesTotal>0&&<button onClick={apartarTodos} style={{width:"100%",marginTop:12,padding:"10px 0",background:C.green,color:"#fff",border:"none",borderRadius:9,fontSize:13.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>+ Apartar TODOS este mes ({money(provMesTotal)})</button>}
+    </Card>}
+    <button onClick={nuevoFondo} style={{width:"100%",padding:"12px 0",margin:"12px 0 14px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo fondo</button>
+    {(!provisiones||provisiones.length===0)&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Crea fondos: SOAT, seguro del carro, impuesto, declaración de renta, regalos…</p>}
+    {(provisiones||[]).map(p=>{const mensual=provisionMensual(p);const anual=num(p.montoAnual);const saldo=num(p.saldo);const pct=anual>0?saldo/anual*100:0;const mesesFalta=p.mesVencimiento?mesesAlMesObjetivo(p.mesVencimiento):null;const alerta=mesesFalta!=null&&mesesFalta<=2&&saldo<anual*0.8;const inv=p.inversionId&&inversiones.find(x=>x.id===p.inversionId);
+      return <div key={p.id} style={{background:C.card,borderRadius:14,padding:15,marginBottom:10,border:"1.5px solid "+(alerta?C.red:C.border)}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div onClick={()=>setEditFondo({...p,_nuevo:false})} style={{flex:1,cursor:"pointer",minWidth:0}}><p style={{margin:0,fontFamily:SERIF,fontSize:17}}>{p.nombre}</p><p style={{margin:"2px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>{p.categoria}{p.mesVencimiento?" · vence "+MESES_CORTOS[p.mesVencimiento-1]:""}{inv?" · en "+inv.nombre:""}</p></div>
+          <span style={{fontFamily:SANS,fontSize:12.5,color:C.gold,fontWeight:700,whiteSpace:"nowrap"}}>{money(mensual)}/mes</span>
+        </div>
+        <div style={{margin:"11px 0 5px"}}><Bar pct={pct} color={pct>=100?C.green:C.gold} h={9}/></div>
+        <p style={{margin:"0 0 10px",fontFamily:SANS,fontSize:13}}><b>{money(saldo)}</b> de {money(anual)} <span style={{color:C.muted}}>({Math.round(pct)}%)</span></p>
+        {alerta&&<p style={{margin:"0 0 8px",fontSize:12,color:C.red,fontFamily:SANS}}>⚠ Vence en {mesesFalta} {mesesFalta===1?"mes":"meses"} y el saldo no alcanza.</p>}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>apartar(p)} style={{flex:1,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>+ Apartar mes</button>
+          <button onClick={()=>setUsar(p)} disabled={saldo<=0} style={{flex:1,padding:"9px 0",background:saldo<=0?C.borderSoft:C.redSoft,color:saldo<=0?C.muted:C.red,border:"none",borderRadius:9,fontSize:13,fontWeight:700,fontFamily:SANS,cursor:saldo<=0?"default":"pointer"}}>Usar fondo</button>
+        </div>
+      </div>;})}
+
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title="Inversión">{editando&&<FormInv inv={editando} onGuardar={guardarInv} onEliminar={editando._nuevo?null:()=>eliminarInv(editando.id)}/>}</Sheet>
     <Sheet open={!!aportar} onClose={()=>setAportar(null)} title={"Aportar a "+(aportar?.nombre||"")}>{aportar&&<FormAporte onAportar={monto=>aplicarAporte(aportar.id,monto)}/>}</Sheet>
+    <Sheet open={!!editFondo} onClose={()=>setEditFondo(null)} title={editFondo?._nuevo?"Nuevo fondo":"Editar fondo"}>{editFondo&&<FormProvision prov={editFondo} inversiones={inversiones} onGuardar={guardarFondo} onEliminar={editFondo._nuevo?null:()=>eliminarFondo(editFondo.id)}/>}</Sheet>
+    <Sheet open={!!usar} onClose={()=>setUsar(null)} title={"Usar fondo · "+(usar?.nombre||"")}>{usar&&<FormUsarFondo prov={usar} onConfirmar={m=>aplicarUso(usar,m)}/>}</Sheet>
+    {toast&&<Toast>{toast}</Toast>}
   </div>;
 }
 function FormInv({inv,onGuardar,onEliminar}){
