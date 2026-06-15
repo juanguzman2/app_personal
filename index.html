@@ -161,7 +161,6 @@ const CAT_GUIA=["Marinados","Carnes","Almacenamiento","Técnicas","Tips","Otro"]
 const CAT_GASTO=["🍽️ Alimentación","🛒 Mercado","🏠 Vivienda","🚗 Transporte","🎓 Educación","🎉 Ocio","💊 Salud","💡 Servicios","💳 Deudas","🛍️ Compras","📦 Otros"];
 const CAT_INGRESO=["💼 Salario","💵 Freelance","🎁 Extra","📈 Rendimientos","📦 Otros"];
 const CAT_PROVISION=["🚗 Carro","🏛️ Impuestos","🛡️ Seguros","🎄 Regalos/Navidad","🏥 Salud","✈️ Viajes","🔧 Mantenimiento","📦 Otros"];
-const TIPOS_ACTIVO=[{k:"cuenta",label:"💵 Cuenta/Efectivo",signo:1},{k:"activo",label:"🚗 Activo (carro, etc.)",signo:1},{k:"deuda",label:"💳 Deuda",signo:-1}];
 const AHORRO_META_DEFAULT=40; // % objetivo de tasa de ahorro
 const MESES_CORTOS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
@@ -361,8 +360,6 @@ function App(){
   const [inversiones,setInversiones]=useState([]);
   const [provisiones,setProvisiones]=useState([]);
   const [presupuesto,setPresupuesto]=useState({});
-  const [activos,setActivos]=useState([]);
-  const [patrimonioHist,setPatrimonioHist]=useState([]);
   const [finanzasCfg,setFinanzasCfg]=useState({tasaAhorroMeta:AHORRO_META_DEFAULT,trm:4000});
   const [metas,setMetas]=useState([]);
   const [entrenos,setEntrenos]=useState([]);
@@ -373,6 +370,7 @@ function App(){
   const [pomoCfg,setPomoCfg]=useState(POMO_DEFAULT);
   const [seguimiento,setSeguimiento]=useState([]);
   const [perfil,setPerfil]=useState(PERFIL_DEFAULT);
+  const [plantillas,setPlantillas]=useState(PLANTILLAS);
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
 
@@ -389,8 +387,6 @@ function App(){
     setMetas(await load("metas",[]));
     setProvisiones(await load("provisiones",[]));
     setPresupuesto(await load("presupuesto",{}));
-    setActivos(await load("activos",[]));
-    setPatrimonioHist(await load("patrimonioHist",[]));
     setFinanzasCfg(await load("finanzasCfg",{tasaAhorroMeta:AHORRO_META_DEFAULT,trm:4000}));
     setEntrenos(await load("entrenos",[]));
     setLotes(await load("lotes",[]));
@@ -400,6 +396,7 @@ function App(){
     setPomoCfg(await load("pomoCfg",POMO_DEFAULT));
     setSeguimiento(await load("seguimiento",[]));
     setPerfil(await load("perfil",PERFIL_DEFAULT));
+    setPlantillas(await load("plantillas",PLANTILLAS));
     setReady(true);
   })();},[]);
 
@@ -415,8 +412,6 @@ function App(){
   useEffect(()=>{if(ready)save("metas",metas)},[metas,ready]);
   useEffect(()=>{if(ready)save("provisiones",provisiones)},[provisiones,ready]);
   useEffect(()=>{if(ready)save("presupuesto",presupuesto)},[presupuesto,ready]);
-  useEffect(()=>{if(ready)save("activos",activos)},[activos,ready]);
-  useEffect(()=>{if(ready)save("patrimonioHist",patrimonioHist)},[patrimonioHist,ready]);
   useEffect(()=>{if(ready)save("finanzasCfg",finanzasCfg)},[finanzasCfg,ready]);
   useEffect(()=>{if(ready)save("entrenos",entrenos)},[entrenos,ready]);
   useEffect(()=>{if(ready)save("lotes",lotes)},[lotes,ready]);
@@ -426,18 +421,19 @@ function App(){
   useEffect(()=>{if(ready)save("pomoCfg",pomoCfg)},[pomoCfg,ready]);
   useEffect(()=>{if(ready)save("seguimiento",seguimiento)},[seguimiento,ready]);
   useEffect(()=>{if(ready)save("perfil",perfil)},[perfil,ready]);
+  useEffect(()=>{if(ready)save("plantillas",plantillas)},[plantillas,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,activos,patrimonioHist,finanzasCfg};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,activos:setActivos,patrimonioHist:setPatrimonioHist,finanzasCfg:setFinanzasCfg};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="lista"&&<ListaCompras {...{lista,setLista}}/>}
-    {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,activos,setActivos,patrimonioHist,setPatrimonioHist,finanzasCfg,setFinanzasCfg}}/>}
-    {tab==="gym"&&<Gym {...{entrenos,setEntrenos}}/>}
+    {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
+    {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
     {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg}}/>}
     <Nav tab={tab} setTab={setTab}/>
     <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters}/>
@@ -519,7 +515,7 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
   const ing=tMes.filter(x=>x.tipo==="ingreso").reduce((a,x)=>a+num(x.monto),0);
   const gas=tMes.filter(x=>x.tipo==="gasto").reduce((a,x)=>a+num(x.monto),0);
 
-  const metaAct=m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);return inv?num(inv.actual):num(m.actual);};
+  const metaAct=m=>metaActual(m,inversiones);
   const metaProx=[...metas].filter(m=>metaAct(m)<num(m.objetivo)).sort((a,b)=>new Date(a.fecha||"2999")-new Date(b.fecha||"2999"))[0];
   const entSem=entrenos.filter(e=>ultimos7().includes(e.fecha)).length;
 
@@ -662,7 +658,7 @@ function Recetas({recetas,setRecetas,setLista,setConsumo,lotes,setLotes,irADiari
       {(ver.pasos||[]).filter(s=>s.texto&&s.texto.trim()).length>0&&<button onClick={()=>{setCocina(ver);setVer(null);}} style={{width:"100%",padding:"14px 0",marginTop:18,background:C.espresso,color:C.gold,border:"none",borderRadius:11,fontSize:15,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>👨‍🍳 Modo cocina</button>}
       {setLotes&&<button onClick={()=>setCocinar(ver)} style={{width:"100%",padding:"13px 0",marginTop:10,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>🍳 Cociné este plato (lote)</button>}
       <button onClick={()=>setRegistrar(ver)} style={{width:"100%",padding:"13px 0",marginTop:10,background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>🍽️ Comí ahora (sin lote)</button>
-      <div style={{display:"flex",gap:10,marginTop:10}}><button onClick={()=>enviarALista(ver)} style={{flex:1,padding:"11px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:SANS,cursor:"pointer"}}>🛒 A la lista</button><button onClick={()=>{setEditando(ver);setVer(null);}} style={{flex:1,padding:"11px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Editar</button></div>
+      <div style={{display:"flex",gap:10,marginTop:10}}><button onClick={()=>enviarALista(ver)} style={{flex:1,padding:"11px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:SANS,cursor:"pointer"}}>🛒 A la lista</button><button onClick={()=>{setEditando({...ver,id:uid(),nombre:ver.nombre+" (copia)",pasos:(ver.pasos||[]).map(p=>({...p,id:uid()}))});setVer(null);}} style={{flex:1,padding:"11px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:SANS,cursor:"pointer"}}>⧉ Duplicar</button><button onClick={()=>{setEditando(ver);setVer(null);}} style={{flex:1,padding:"11px 0",background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Editar</button></div>
       <button onClick={()=>eliminar(ver.id)} style={{width:"100%",marginTop:10,padding:"8px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar receta</button>
     </div>}</Sheet>
 
@@ -821,6 +817,8 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
   const comerLote=(l,p)=>{const real=Math.min(num(p),num(l.porcionesRest));if(real<=0)return;setConsumo(prev=>[...prev,{id:uid(),fecha:HOY,nombre:l.nombre,porciones:real,kcal:Math.round(num(l.kcal)*real),proteina:Math.round(num(l.proteina)*real),carbos:Math.round(num(l.carbos)*real),grasa:Math.round(num(l.grasa)*real)}]);setLotes(prev=>prev.map(x=>x.id===l.id?{...x,porcionesRest:+(num(x.porcionesRest)-real).toFixed(2)}:x));setToast("Registrado: "+real+" porción"+(real===1?"":"es")+" 🍽️");setTimeout(()=>setToast(""),2200);};
   const delLote=async id=>{ if(await pedirConfirm({titulo:"Eliminar lote",texto:"Se borra lo que sobró. No afecta lo ya registrado."})) setLotes(prev=>prev.filter(x=>x.id!==id)); };
   const hoy=consumo.filter(c=>c.fecha===HOY);
+  // racha: días consecutivos registrando comida (termina hoy, o ayer si hoy aún no registras)
+  const racha=(()=>{const dias=new Set(consumo.map(c=>c.fecha));let n=0;const d=new Date();if(!dias.has(fechaLocal(d)))d.setDate(d.getDate()-1);while(dias.has(fechaLocal(d))){n++;d.setDate(d.getDate()-1);}return n;})();
   const t=totDia(consumo,HOY);
   const quemHoy=quemadoDia(quemadas,HOY,limites.quemadaDiaria);
   const neto=t.kcal-quemHoy;
@@ -856,7 +854,7 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
   const netoSem=sem.reduce((a,s)=>a+s.neto,0);
 
   return <div style={{padding:"10px 18px 20px"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontFamily:SERIF,fontSize:17}}>Hoy</span><button onClick={()=>setEditLim(true)} style={{background:"transparent",border:"1.5px solid "+C.border,borderRadius:20,padding:"5px 12px",fontSize:12,color:C.muted,fontFamily:SANS,cursor:"pointer"}}>⚙ Metas y quemadas</button></div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontFamily:SERIF,fontSize:17}}>Hoy{racha>=2&&<span style={{marginLeft:8,fontFamily:SANS,fontSize:12.5,fontWeight:700,color:C.gold}}>🔥 {racha} días seguidos</span>}</span><button onClick={()=>setEditLim(true)} style={{background:"transparent",border:"1.5px solid "+C.border,borderRadius:20,padding:"5px 12px",fontSize:12,color:C.muted,fontFamily:SANS,cursor:"pointer"}}>⚙ Metas y quemadas</button></div>
 
     {/* balanza semanal Lun–Dom */}
     {metaDiaria>0&&idxHoy>=0&&(()=>{const sobreObjetivo=promRedistribuido<metaDiaria;const col=sobreObjetivo?C.red:C.green;return <div style={{marginBottom:12}}><Card pad={16}>
@@ -926,17 +924,20 @@ function Diario({consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lote
 
     <Sheet open={editLim} onClose={()=>setEditLim(false)} title="Metas y quemadas"><FormLimites limites={limites} faseActual={faseActual} onGuardar={l=>{setLimites(l);setEditLim(false);}}/></Sheet>
     <Sheet open={addQuem} onClose={()=>setAddQuem(false)} title="Registrar quemadas"><FormQuemada onGuardar={(nombre,kcal)=>{setQuemadas(p=>[...p,{id:uid(),fecha:HOY,nombre,kcal:num(kcal)}]);setAddQuem(false);}}/></Sheet>
-    <Sheet open={addRapido} onClose={()=>setAddRapido(false)} title="Registrar kcal (sin receta)"><FormRapido onGuardar={(c)=>{setConsumo(p=>[...p,{id:uid(),fecha:c.fecha,nombre:c.nombre||"Comida rápida",porciones:1,kcal:num(c.kcal),proteina:num(c.proteina),carbos:num(c.carbos),grasa:num(c.grasa)}]);setAddRapido(false);setToast("Registrado ✓");setTimeout(()=>setToast(""),2000);}}/></Sheet>
+    <Sheet open={addRapido} onClose={()=>setAddRapido(false)} title="Registrar kcal (sin receta)"><FormRapido consumo={consumo} onGuardar={(c)=>{setConsumo(p=>[...p,{id:uid(),fecha:c.fecha,nombre:c.nombre||"Comida rápida",porciones:1,kcal:num(c.kcal),proteina:num(c.proteina),carbos:num(c.carbos),grasa:num(c.grasa),_rapido:true}]);setAddRapido(false);setToast("Registrado ✓");setTimeout(()=>setToast(""),2000);}}/></Sheet>
     {toast&&<Toast>{toast}</Toast>}
   </div>;
 }
 
-function FormRapido({onGuardar}){
+function FormRapido({onGuardar,consumo}){
   const [c,setC]=useState({nombre:"",kcal:"",proteina:"",carbos:"",grasa:"",fecha:HOY});
   const set=(k,v)=>setC(p=>({...p,[k]:v}));
   const ok=num(c.kcal)>0;
+  // frecuentes: últimas comidas rápidas distintas (la versión más reciente de cada nombre)
+  const frecuentes=(()=>{const vistas={};[...(consumo||[])].filter(x=>x._rapido&&x.nombre).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")).forEach(x=>{const k=x.nombre.toLowerCase();if(!vistas[k])vistas[k]=x;});return Object.values(vistas).slice(0,6);})();
   return <div>
     <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 12px",lineHeight:1.5}}>Para algo que comiste fuera o sin receta. Solo las kcal son obligatorias; los macros son opcionales.</p>
+    {frecuentes.length>0&&<div style={{marginBottom:14}}><p style={{...labelStyle,marginBottom:6}}>Repetir una reciente</p><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{frecuentes.map(f=><button key={f.id} onClick={()=>setC(p=>({...p,nombre:f.nombre,kcal:String(f.kcal),proteina:f.proteina?String(f.proteina):"",carbos:f.carbos?String(f.carbos):"",grasa:f.grasa?String(f.grasa):""}))} style={{padding:"7px 12px",background:C.goldSoft,border:"none",borderRadius:18,fontSize:12.5,color:C.espresso,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>{f.nombre} · {f.kcal}</button>)}</div></div>}
     <Field label="¿Qué comiste? (opcional)"><input style={inputStyle} placeholder="Ej. Empanada, café con leche" value={c.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
     <Field label="Calorías (kcal)"><input style={{...inputStyle,fontSize:20,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={c.kcal} onChange={e=>set("kcal",e.target.value)}/></Field>
     <p style={{...labelStyle,marginTop:4}}>Macros (opcional)</p>
@@ -1245,7 +1246,7 @@ function ListaCompras({lista,setLista}){
   const guardarItem=it=>{setLista(p=>p.some(x=>x.id===it.id)?p.map(x=>x.id===it.id?it:x):[...p,it]);setEditando(null);};
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar artículo",texto:"Se quitará de la lista."})){ setLista(p=>p.filter(i=>i.id!==id)); setEditando(null);} };
   const pendientes=lista.filter(i=>!i.comprado).length;
-  const costo=lista.reduce((a,i)=>a+num(i.precio),0);
+  const costo=lista.filter(i=>!i.comprado).reduce((a,i)=>a+num(i.precio),0); // solo lo que falta comprar
   const nuevoItem=()=>setEditando({id:uid(),nombre:"",categoria:"📦 Otros",comprado:false,precio:"",tienda:"",_nuevo:true});
 
   const filtrada=lista.filter(i=>estado==="todas"?true:estado==="pendientes"?!i.comprado:i.comprado);
@@ -1295,18 +1296,8 @@ function provisionMensual(p){
 }
 // meses (1-12) desde el mes actual hasta el mes objetivo (1-12), envolviendo el año
 function mesesAlMesObjetivo(mesObj){ const hoy=new Date().getMonth()+1; let d=mesObj-hoy; if(d<=0) d+=12; return d; }
-function patrimonioNeto(activos,inversiones){
-  const a=(activos||[]).reduce((s,x)=>{const sg=(TIPOS_ACTIVO.find(t=>t.k===x.tipo)||{signo:1}).signo;return s+sg*num(x.valor);},0);
-  const inv=(inversiones||[]).reduce((s,i)=>s+num(i.actual),0);
-  return a+inv;
-}
-// tasa de ahorro del mes = (ingreso - gasto) / ingreso
-function tasaAhorro(transacciones,ym){
-  const t=transacciones.filter(x=>mesDe(x.fecha)===ym);
-  const ing=t.filter(x=>x.tipo==="ingreso").reduce((a,x)=>a+num(x.monto),0);
-  const gas=t.filter(x=>x.tipo==="gasto").reduce((a,x)=>a+num(x.monto),0);
-  return {ing,gas,tasa:ing>0?(ing-gas)/ing*100:0};
-}
+// avance real de una meta: si está vinculada a una inversión, vale lo que valga la inversión
+function metaActual(m,inversiones){ const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId); return inv?num(inv.actual):num(m.actual); }
 
 function Finanzas(props){
   const [vista,setVista]=useState("resumen");
@@ -1378,7 +1369,7 @@ function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,s
   const totalPlan=Object.values(plan).reduce((a,v)=>a+num(v),0);
 
   // dashboard
-  const metaAct=m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);return inv?num(inv.actual):num(m.actual);};
+  const metaAct=m=>metaActual(m,inversiones);
   const gastoMensualProm=(()=>{const meses={};transacciones.filter(t=>t.tipo==="gasto").forEach(t=>{const m=mesDe(t.fecha);meses[m]=(meses[m]||0)+num(t.monto);});const vals=Object.values(meses);return vals.length?vals.reduce((a,v)=>a+v,0)/vals.length:0;})();
   const fondoEmergencia=(metas||[]).find(m=>/emergencia/i.test(m.nombre));
   const mesesCubiertos=fondoEmergencia&&gastoMensualProm>0?metaAct(fondoEmergencia)/gastoMensualProm:0;
@@ -1451,6 +1442,11 @@ function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,s
       </div>;})}{totalPlan>0&&<p style={{margin:"12px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Plan total: {money(totalPlan)} · Gastado: {money(gas)}</p>}</Card>}
     </div>
 
+    {/* gasto últimos 6 meses */}
+    {(()=>{const meses6=[...Array(6)].map((_,i)=>mesAdj(mes,i-5));const datos=meses6.map(ym=>({ym,gasto:transacciones.filter(t=>t.tipo==="gasto"&&mesDe(t.fecha)===ym).reduce((a,t)=>a+num(t.monto),0)}));const maxG=Math.max(...datos.map(d=>d.gasto),1);if(datos.every(d=>d.gasto===0))return null;return <div style={{marginBottom:20}}><p style={{...labelStyle,marginBottom:8}}>Gasto · últimos 6 meses</p><Card pad={16}>
+      <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:100,gap:6}}>{datos.map(d=>{const h=12+(d.gasto/maxG)*76;const act=d.ym===mes;return <div key={d.ym} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:9,color:C.muted,fontFamily:SANS}}>{d.gasto?moneyShort(d.gasto):""}</span><div style={{width:"100%",maxWidth:30,height:d.gasto?h:3,background:act?C.red:C.redSoft,borderRadius:5,transition:"height .4s"}}/><span style={{fontSize:10,color:act?C.espresso:C.muted,fontFamily:SANS,fontWeight:act?700:400}}>{MESES_CORTOS[+d.ym.slice(5)-1]}</span></div>;})}</div>
+    </Card></div>;})()}
+
     {/* movimientos del mes */}
     {delMes.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10}}>Sin movimientos este mes.</p>:<div><p style={{...labelStyle,marginBottom:8}}>Movimientos</p>{delMes.map(t=><div key={t.id} onClick={()=>!t._fijo&&!t._fondo&&setEditando(t)} style={{background:C.card,borderRadius:12,padding:"12px 14px",marginBottom:8,border:"1.5px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:t._fijo||t._fondo?"default":"pointer"}}><div style={{minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14}}>{t.categoria}{t.concepto?" · "+t.concepto:""}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{t.fecha}</p></div><span style={{fontFamily:SERIF,fontSize:16,color:t.tipo==="ingreso"?C.green:C.red,whiteSpace:"nowrap"}}>{t.tipo==="ingreso"?"+":"−"}{money(t.monto)}</span></div>)}</div>}
 
@@ -1500,8 +1496,8 @@ function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvis
   const eliminarFondo=async id=>{ if(await pedirConfirm({titulo:"Eliminar fondo",texto:"Se borrará este fondo (no afecta gastos ya registrados)."})){ setProvisiones(p=>p.filter(x=>x.id!==id)); setEditFondo(null);} };
   const nuevoFondo=()=>setEditFondo({id:uid(),nombre:"",categoria:"🚗 Carro",montoAnual:"",mesVencimiento:"",inversionId:"",saldo:0,_nuevo:true});
   // apartar suma al saldo del fondo Y al valor de la inversión asociada (la fiducuenta)
-  const apartar=(p,monto)=>{const m=monto!=null?num(monto):provisionMensual(p);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:num(x.saldo)+m,_hist:[...(x._hist||[]),{fecha:HOY,tipo:"aporte",monto:m}]}:x));if(p.inversionId)setInversiones(prev=>prev.map(x=>x.id===p.inversionId?{...x,invertido:num(x.invertido)+m,actual:num(x.actual)+m}:x));setToast("Apartaste "+money(m)+" en "+p.nombre);setTimeout(()=>setToast(""),2400);};
-  const aplicarUso=(p,monto)=>{const mn=num(monto);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:Math.max(0,num(x.saldo)-mn),_hist:[...(x._hist||[]),{fecha:HOY,tipo:"uso",monto:mn}]}:x));if(p.inversionId)setInversiones(prev=>prev.map(x=>x.id===p.inversionId?{...x,invertido:Math.max(0,num(x.invertido)-mn),actual:Math.max(0,num(x.actual)-mn)}:x));setTransacciones(prev=>[...prev,{id:uid(),tipo:"gasto",categoria:p.categoria,concepto:p.nombre+" (fondo)",monto:mn,fecha:HOY,_fondo:p.id}]);setUsar(null);setToast("Gasto registrado y descontado del fondo");setTimeout(()=>setToast(""),2600);};
+  const apartar=(p,monto)=>{const m=monto!=null?num(monto):provisionMensual(p);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:num(x.saldo)+m,_hist:[...(x._hist||[]),{fecha:HOY,tipo:"aporte",monto:m}].slice(-50)}:x));if(p.inversionId)setInversiones(prev=>prev.map(x=>x.id===p.inversionId?{...x,invertido:num(x.invertido)+m,actual:num(x.actual)+m}:x));setToast("Apartaste "+money(m)+" en "+p.nombre);setTimeout(()=>setToast(""),2400);};
+  const aplicarUso=(p,monto)=>{const mn=num(monto);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:Math.max(0,num(x.saldo)-mn),_hist:[...(x._hist||[]),{fecha:HOY,tipo:"uso",monto:mn}].slice(-50)}:x));if(p.inversionId)setInversiones(prev=>prev.map(x=>x.id===p.inversionId?{...x,invertido:Math.max(0,num(x.invertido)-mn),actual:Math.max(0,num(x.actual)-mn)}:x));setTransacciones(prev=>[...prev,{id:uid(),tipo:"gasto",categoria:p.categoria,concepto:p.nombre+" (fondo)",monto:mn,fecha:HOY,_fondo:p.id}]);setUsar(null);setToast("Gasto registrado y descontado del fondo");setTimeout(()=>setToast(""),2600);};
   const provMesTotal=(provisiones||[]).reduce((a,p)=>a+provisionMensual(p),0);
   const provSaldoTotal=(provisiones||[]).reduce((a,p)=>a+num(p.saldo),0);
   const apartarTodos=()=>{(provisiones||[]).forEach(p=>{const m=provisionMensual(p);if(m>0)apartar(p,m);});};
@@ -1562,7 +1558,7 @@ function Metas({metas,setMetas,inversiones,transacciones,finanzasCfg}){
   const aplicarReparto=asign=>{setMetas(p=>p.map(m=>asign[m.id]?{...m,actual:num(m.actual)+num(asign[m.id])}:m));setRepartir(false);};
   const nextPrioridad=Math.max(0,...metas.map(m=>num(m.prioridad)))+1;
   const nueva=()=>setEditando({id:uid(),nombre:"",objetivo:"",actual:"",fecha:"",inversionId:"",prioridad:nextPrioridad,moneda:"COP",objetivoUSD:"",_nuevo:true});
-  const metaAct=m=>{const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId);return inv?num(inv.actual):num(m.actual);};
+  const metaAct=m=>metaActual(m,inversiones);
   const trm=num((finanzasCfg||{}).trm)||4000;
   // aporte real reciente: suma de abonos manuales últimos ~2 meses no es rastreable sin log; usamos ritmo requerido vs disponible
   const ordenadas=[...metas].sort((a,b)=>(num(a.prioridad)||99)-(num(b.prioridad)||99));
@@ -1639,9 +1635,10 @@ function seriesSemana(entrenos){
   }));
   return c;
 }
-function entrenoDesdePlantilla(dia){
+function entrenoDesdePlantilla(dia,plantillas){
+  const pls=plantillas||PLANTILLAS;
   const base={id:uid(),fecha:HOY,nombre:dia==="Otro"?"":dia,dia,ejercicios:[],notas:""};
-  if(dia!=="Otro"&&PLANTILLAS[dia]) base.ejercicios=PLANTILLAS[dia].map(p=>({id:uid(),nombre:p.nombre,musculo:p.musculo,reps:p.reps,sets:Array.from({length:p.sets},()=>({reps:"",peso:""}))}));
+  if(dia!=="Otro"&&pls[dia]) base.ejercicios=pls[dia].map(p=>({id:uid(),nombre:p.nombre,musculo:p.musculo,reps:p.reps,sets:Array.from({length:p.sets},()=>({reps:"",peso:""}))}));
   else base.ejercicios=[{id:uid(),nombre:"",musculo:"Otro",sets:[{reps:"",peso:""}]}];
   return base;
 }
@@ -1652,12 +1649,12 @@ function Gym(props){
     <Header titulo="Gimnasio"/>
     <Segmented value={vista} onChange={setVista} options={[{id:"entrenos",label:"🏋️ Entrenos"},{id:"plan",label:"📋 Plan"},{id:"progreso",label:"📈 Progreso"}]}/>
     {vista==="entrenos"&&<GymEntrenos {...props}/>}
-    {vista==="plan"&&<GymPlan/>}
+    {vista==="plan"&&<GymPlan plantillas={props.plantillas} setPlantillas={props.setPlantillas}/>}
     {vista==="progreso"&&<GymProgreso {...props}/>}
   </div>;
 }
 
-function GymEntrenos({entrenos,setEntrenos}){
+function GymEntrenos({entrenos,setEntrenos,plantillas}){
   const [editando,setEditando]=useState(null); const [ver,setVer]=useState(null); const [eligiendo,setEligiendo]=useState(false);
   const guardar=e=>{
     const limpio={...e,ejercicios:e.ejercicios.map(ej=>({...ej,sets:ej.sets.filter(s=>num(s.reps)>0||num(s.peso)>0)})).filter(ej=>ej.nombre.trim()&&ej.sets.length>0)};
@@ -1665,7 +1662,7 @@ function GymEntrenos({entrenos,setEntrenos}){
     setEntrenos(p=>p.some(x=>x.id===limpio.id)?p.map(x=>x.id===limpio.id?limpio:x):[...p,limpio]);setEditando(null);setVer(null);
   };
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar entreno",texto:"Se borrará este entreno y sus series."})){ setEntrenos(p=>p.filter(x=>x.id!==id)); setVer(null);} };
-  const elegir=dia=>{ setEligiendo(false); setEditando(entrenoDesdePlantilla(dia)); };
+  const elegir=dia=>{ setEligiendo(false); setEditando(entrenoDesdePlantilla(dia,plantillas)); };
   const ordenados=[...entrenos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const dias=ultimos7();
   const semVol=dias.map(f=>({f,vol:entrenos.filter(e=>e.fecha===f).reduce((a,e)=>a+volumen(e),0)}));
@@ -1698,7 +1695,7 @@ function GymEntrenos({entrenos,setEntrenos}){
 
     <Sheet open={eligiendo} onClose={()=>setEligiendo(false)} title="¿Qué entrenas hoy?">
       <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 14px"}}>Elige una sesión del plan y se cargan los ejercicios recomendados, o empieza en blanco.</p>
-      {DIAS_ENTRENO.map(d=>{const pl=PLANTILLAS[d];return <button key={d} onClick={()=>elegir(d)} style={{width:"100%",textAlign:"left",background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"13px 15px",marginBottom:10,cursor:"pointer",fontFamily:SANS}}>
+      {DIAS_ENTRENO.map(d=>{const pl=(plantillas||PLANTILLAS)[d];return <button key={d} onClick={()=>elegir(d)} style={{width:"100%",textAlign:"left",background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"13px 15px",marginBottom:10,cursor:"pointer",fontFamily:SANS}}>
         <span style={{fontFamily:SERIF,fontSize:17,color:C.espresso}}>{d==="Otro"?"Entreno libre":d}</span>
         {pl&&<span style={{display:"block",fontSize:12,color:C.muted,marginTop:3}}>{pl.length} ejercicios · {pl.reduce((a,x)=>a+x.sets,0)} series</span>}
         {d==="Otro"&&<span style={{display:"block",fontSize:12,color:C.muted,marginTop:3}}>Sin plantilla, lo armas tú</span>}
@@ -1713,12 +1710,18 @@ function GymEntrenos({entrenos,setEntrenos}){
       <button onClick={()=>eliminar(ver.id)} style={{width:"100%",marginTop:8,padding:"8px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Eliminar</button>
     </div>}</Sheet>
 
-    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando&&entrenos.some(x=>x.id===editando.id)?"Editar entreno":"Nuevo entreno"}>{editando&&<FormEntreno entreno={editando} onGuardar={guardar}/>}</Sheet>
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando&&entrenos.some(x=>x.id===editando.id)?"Editar entreno":"Nuevo entreno"}>{editando&&<FormEntreno entreno={editando} entrenos={entrenos} onGuardar={guardar}/>}</Sheet>
   </div>;
 }
 
-function GymPlan(){
+function GymPlan({plantillas,setPlantillas}){
   const [musAbierto,setMusAbierto]=useState(null);
+  const [editEj,setEditEj]=useState(null); // {dia, idx|null, ej}
+  const pls=plantillas||PLANTILLAS;
+  const guardarEj=(dia,idx,ej)=>{ setPlantillas(p=>{const arr=[...(p[dia]||[])]; if(idx==null) arr.push(ej); else arr[idx]=ej; return {...p,[dia]:arr};}); setEditEj(null); };
+  const quitarEj=async(dia,idx)=>{ if(await pedirConfirm({titulo:"Quitar ejercicio",texto:"Se quita del plan (tus entrenos pasados no cambian)."})){ setPlantillas(p=>({...p,[dia]:p[dia].filter((_,i)=>i!==idx)})); setEditEj(null);} };
+  const restaurar=async dia=>{ if(await pedirConfirm({titulo:"Restaurar "+dia,texto:"Vuelve a los ejercicios originales del plan. Tus cambios en esta sesión se pierden."})) setPlantillas(p=>({...p,[dia]:PLANTILLAS[dia].map(x=>({...x}))})); };
+  const modificado=dia=>JSON.stringify(pls[dia])!==JSON.stringify(PLANTILLAS[dia]);
   const bloque={padding:"14px 18px 0"};
   return <div style={{paddingBottom:20}}>
     <div style={bloque}><Card pad={16}>
@@ -1744,21 +1747,46 @@ function GymPlan(){
       {[["Reps","5–8 en compuestos (RIR 2–3) · 8–15 en accesorios (RIR 1–2)"],["Descanso","2–3 min en compuestos · 60–90 s en aislados"],["Progresión","Doble progresión: sube reps hasta el techo del rango, luego sube peso"],["Descarga","Cada 5–6 semanas baja el volumen una semana"],["Puntos débiles ★","Hombro lateral/posterior ~12 series · Gemelos 18–20 (3 días) · Abdomen 3 días/sem"]].map(([k,v],i)=><div key={k} style={{padding:"8px 0",borderBottom:i<4?"1px solid "+C.borderSoft:"none"}}><p style={{margin:0,fontFamily:SANS,fontSize:13,fontWeight:700,color:C.espresso}}>{k}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.45}}>{v}</p></div>)}
     </Card></div>
 
-    <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Ejercicios recomendados por sesión</p>
-      {Object.keys(PLANTILLAS).map(dia=><div key={dia} style={{marginBottom:10}}>
+    <div style={bloque}><p style={{...labelStyle,marginBottom:8}}>Tus ejercicios por sesión <span style={{textTransform:"none",color:C.gold}}>(toca ✎ para cambiarlos)</span></p>
+      {Object.keys(pls).map(dia=><div key={dia} style={{marginBottom:10}}>
         <button onClick={()=>setMusAbierto(musAbierto===dia?null:dia)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"13px 15px",cursor:"pointer",fontFamily:SERIF,fontSize:16,color:C.espresso}}>
-          <span>{dia}</span><span style={{color:C.gold,fontSize:18}}>{musAbierto===dia?"–":"+"}</span></button>
-        {musAbierto===dia&&<div style={{padding:"8px 4px 0"}}>{PLANTILLAS[dia].map((p,i)=><div key={i} style={{padding:"9px 8px",borderBottom:i<PLANTILLAS[dia].length-1?"1px solid "+C.borderSoft:"none"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontFamily:SANS,fontSize:14,fontWeight:600}}>{p.nombre}</span><span style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,whiteSpace:"nowrap"}}>{p.sets}×{p.reps}</span></div>
-          <p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{p.musculo} · {p.nota}</p>
-        </div>)}</div>}
+          <span>{dia}{modificado(dia)&&<span style={{marginLeft:8,fontFamily:SANS,fontSize:10,fontWeight:700,background:C.goldSoft,color:C.espresso,padding:"2px 7px",borderRadius:10,verticalAlign:"middle"}}>personalizado</span>}</span><span style={{color:C.gold,fontSize:18}}>{musAbierto===dia?"–":"+"}</span></button>
+        {musAbierto===dia&&<div style={{padding:"8px 4px 0"}}>
+          {pls[dia].map((p,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"9px 8px",borderBottom:"1px solid "+C.borderSoft}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontFamily:SANS,fontSize:14,fontWeight:600}}>{p.nombre}</span><span style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,whiteSpace:"nowrap"}}>{p.sets}×{p.reps}</span></div>
+              <p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{p.musculo}{p.nota?" · "+p.nota:""}</p>
+            </div>
+            <button onClick={()=>setEditEj({dia,idx:i,ej:{...p}})} style={{background:"none",border:"none",color:C.muted,fontSize:15,cursor:"pointer",padding:"2px 4px"}}>✎</button>
+          </div>)}
+          <div style={{display:"flex",gap:8,padding:"10px 4px 4px"}}>
+            <button onClick={()=>setEditEj({dia,idx:null,ej:{nombre:"",musculo:"Otro",sets:3,reps:"8–12",nota:""}})} style={{flex:1,padding:"8px 0",background:C.goldSoft,color:C.espresso,border:"none",borderRadius:9,fontSize:12.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Ejercicio</button>
+            {modificado(dia)&&<button onClick={()=>restaurar(dia)} style={{flex:1,padding:"8px 0",background:"transparent",color:C.muted,border:"1.5px solid "+C.border,borderRadius:9,fontSize:12.5,fontFamily:SANS,cursor:"pointer"}}>↺ Restaurar original</button>}
+          </div>
+        </div>}
       </div>)}
     </div>
+    <Sheet open={!!editEj} onClose={()=>setEditEj(null)} title={editEj?(editEj.idx==null?"Nuevo ejercicio · "+editEj.dia:"Cambiar ejercicio · "+editEj.dia):""}>{editEj&&<FormEjPlan ej={editEj.ej} onGuardar={e=>guardarEj(editEj.dia,editEj.idx,e)} onQuitar={editEj.idx!=null?()=>quitarEj(editEj.dia,editEj.idx):null}/>}</Sheet>
 
     <div style={bloque}><Card pad={16} bd={C.gold}>
       <Mini icon="🏃" label="Carrera e interferencia"/>
       <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>20 km el domingo → lunes Upper, así la pierna descansa ~2 días antes del martes (cuádriceps). 7 km el jueves, sin pesas. Si el muslo o el gemelo se estancan, recorta los 20 km a 12–15 km o pásalos a bici/zona 2 (menos daño excéntrico). Carbos antes del run largo; carbos + proteína después.</p>
     </Card></div>
+  </div>;
+}
+function FormEjPlan({ej,onGuardar,onQuitar}){
+  const [e,setE]=useState(ej); const set=(k,v)=>setE(p=>({...p,[k]:v})); const ok=e.nombre.trim()&&num(e.sets)>0;
+  return <div>
+    <Field label="Ejercicio"><input style={inputStyle} placeholder="Ej. Press inclinado máquina" value={e.nombre} onChange={ev=>set("nombre",ev.target.value)} autoFocus/></Field>
+    <Field label="Músculo"><select style={{...inputStyle,appearance:"none"}} value={e.musculo} onChange={ev=>set("musculo",ev.target.value)}>{MUSCULOS.map(m=><option key={m} value={m}>{m}</option>)}</select></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <Field label="Series"><input style={inputStyle} type="number" inputMode="numeric" value={e.sets} onChange={ev=>set("sets",ev.target.value)}/></Field>
+      <Field label="Reps (rango)"><input style={inputStyle} placeholder="Ej. 8–12" value={e.reps} onChange={ev=>set("reps",ev.target.value)}/></Field>
+    </div>
+    <Field label="Nota (opcional)"><input style={inputStyle} placeholder="Ej. RIR 1–2, dropset final" value={e.nota||""} onChange={ev=>set("nota",ev.target.value)}/></Field>
+    <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 10px"}}>El cambio se guarda en TU plan: las próximas sesiones que cargues desde la plantilla ya traen este ejercicio.</p>
+    <button disabled={!ok} onClick={()=>onGuardar({...e,sets:num(e.sets)})} style={btnP(ok)}>Guardar en mi plan</button>
+    {onQuitar&&<button onClick={onQuitar} style={{width:"100%",marginTop:10,padding:"10px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Quitar del plan</button>}
   </div>;
 }
 
@@ -1773,8 +1801,10 @@ function GymProgreso({entrenos}){
       return {fecha:e.fecha,...best,vol};})
     .sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const pr=ses.reduce((m,s)=>s.e1>m?s.e1:m,0);
+  const [metrica,setMetrica]=useState("e1");
+  const M={e1:{label:"1RM est.",sub:"1RM estimado (Epley) de tu mejor serie",unit:" kg",v:s=>s.e1},peso:{label:"Peso × reps",sub:"Peso de tu mejor serie (con sus reps)",unit:" kg",v:s=>s.peso},vol:{label:"Volumen",sub:"Σ reps × peso de toda la sesión",unit:" kg",v:s=>s.vol}}[metrica];
   const grafico=ses.slice(-10);
-  const maxE=Math.max(...grafico.map(s=>s.e1),1);
+  const maxV=Math.max(...grafico.map(M.v),1);
   return <div style={{padding:"14px 18px 20px"}}>
     {nombres.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:20}}>Registra entrenos y aquí verás tu progresión por ejercicio.</p>:<div>
       <Field label="Ejercicio"><select style={{...inputStyle,appearance:"none"}} value={ejNombre} onChange={e=>setSel(e.target.value)}>{nombres.map(n=><option key={n} value={n}>{n}</option>)}</select></Field>
@@ -1784,9 +1814,9 @@ function GymProgreso({entrenos}){
         <div style={{flex:1,background:C.borderSoft,borderRadius:12,padding:"12px 14px"}}><p style={{margin:0,fontSize:11,color:C.muted,fontFamily:SANS}}>Sesiones</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:22}}>{ses.length}</p></div>
       </div>
 
-      <p style={{...labelStyle,marginBottom:8}}>1RM estimado en el tiempo</p>
-      <Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:120,gap:5}}>{grafico.map((s,i)=>{const h=s.e1/maxE*100;const top=i===grafico.length-1;return <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:9.5,color:C.muted,fontFamily:SANS}}>{s.e1||""}</span><div style={{width:"100%",maxWidth:26,height:Math.max(3,h),background:top?C.purple:C.purpleSoft,borderRadius:5,transition:"height .4s"}}/><span style={{fontSize:9.5,color:C.muted,fontFamily:SANS}}>{s.fecha.slice(5)}</span></div>;})}</div>
-        <p style={{margin:"10px 0 0",fontSize:11,color:C.muted,fontFamily:SANS,textAlign:"center"}}>1RM estimado (Epley) de tu mejor serie por sesión</p></Card>
+      <div style={{display:"flex",gap:6,marginBottom:10}}>{[["e1","1RM est."],["peso","Peso × reps"],["vol","Volumen"]].map(([k,l])=>{const a=metrica===k;return <button key={k} onClick={()=>setMetrica(k)} style={{flex:1,padding:"7px 4px",borderRadius:9,border:"1.5px solid "+(a?C.purple:C.border),background:a?C.purple:"transparent",color:a?"#fff":C.muted,fontSize:12,fontFamily:SANS,fontWeight:a?700:500,cursor:"pointer"}}>{l}</button>;})}</div>
+      <Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:130,gap:5}}>{grafico.map((s,i)=>{const val=M.v(s);const h=val/maxV*92;const top=i===grafico.length-1;return <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><span style={{fontSize:9.5,color:C.muted,fontFamily:SANS}}>{val||""}</span>{metrica==="peso"&&s.reps>0&&<span style={{fontSize:8.5,color:C.purple,fontFamily:SANS,fontWeight:700}}>×{s.reps}</span>}<div style={{width:"100%",maxWidth:26,height:Math.max(3,h),background:top?C.purple:C.purpleSoft,borderRadius:5,transition:"height .4s"}}/><span style={{fontSize:9.5,color:C.muted,fontFamily:SANS}}>{s.fecha.slice(5)}</span></div>;})}</div>
+        <p style={{margin:"10px 0 0",fontSize:11,color:C.muted,fontFamily:SANS,textAlign:"center"}}>{M.sub}</p></Card>
 
       <p style={{...labelStyle,margin:"22px 0 8px"}}>Detalle por sesión</p>
       {[...ses].reverse().map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+(s.e1===pr&&pr>0?C.purple:C.border),fontFamily:SANS,fontSize:13.5}}>
@@ -1797,8 +1827,21 @@ function GymProgreso({entrenos}){
   </div>;
 }
 
-function FormEntreno({entreno,onGuardar}){
+function FormEntreno({entreno,entrenos,onGuardar}){
   const [e,setE]=useState(entreno); const set=(k,v)=>setE(p=>({...p,[k]:v}));
+  // "la última vez": mejor serie del ejercicio en la sesión previa más reciente
+  const ultimaVez=nombre=>{
+    const n=(nombre||"").trim().toLowerCase(); if(!n) return null;
+    const prev=[...(entrenos||[])].filter(x=>x.id!==e.id&&x.ejercicios.some(ej=>ej.nombre.trim().toLowerCase()===n)).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+    if(!prev) return null;
+    const ej=prev.ejercicios.find(x=>x.nombre.trim().toLowerCase()===n);
+    let best=null; ej.sets.forEach(s=>{ if(num(s.peso)>0&&(!best||num(s.peso)>num(best.peso)||(num(s.peso)===num(best.peso)&&num(s.reps)>num(best.reps)))) best=s; });
+    return best?{fecha:prev.fecha,reps:num(best.reps),peso:num(best.peso)}:null;
+  };
+  // temporizador de descanso entre series
+  const [descanso,setDescanso]=useState(0); const finDesc=React.useRef(0);
+  useEffect(()=>{ if(descanso<=0) return; const id=setInterval(()=>{ const rem=Math.round((finDesc.current-Date.now())/1000); if(rem<=0){ clearInterval(id); setDescanso(0); beep(3); notiAhora("⏱ Descanso terminado","¡A la siguiente serie!","gym-rest"); } else setDescanso(rem); },300); return ()=>clearInterval(id); },[descanso>0]);
+  const iniciarDescanso=seg=>{ beep(1); finDesc.current=Date.now()+seg*1000; setDescanso(seg); };
   const setEj=(i,k,v)=>setE(p=>({...p,ejercicios:p.ejercicios.map((x,j)=>j===i?{...x,[k]:v}:x)}));
   const addEj=()=>setE(p=>({...p,ejercicios:[...p.ejercicios,{id:uid(),nombre:"",musculo:"Otro",sets:[{reps:"",peso:""}]}]}));
   const delEj=i=>setE(p=>({...p,ejercicios:p.ejercicios.filter((_,j)=>j!==i)}));
@@ -1812,12 +1855,23 @@ function FormEntreno({entreno,onGuardar}){
       <Field label="Nombre"><input style={inputStyle} placeholder="Ej. Push A" value={e.nombre} onChange={ev=>set("nombre",ev.target.value)}/></Field>
       <Field label="Sesión"><select style={{...inputStyle,appearance:"none"}} value={e.dia||"Otro"} onChange={ev=>set("dia",ev.target.value)}>{DIAS_ENTRENO.map(d=><option key={d} value={d}>{d==="Otro"?"Libre":d}</option>)}</select></Field>
     </div>
+    {/* temporizador de descanso */}
+    <div style={{display:"flex",alignItems:"center",gap:8,background:C.purpleSoft,borderRadius:11,padding:"10px 12px",marginBottom:14}}>
+      <span style={{fontFamily:SANS,fontSize:12.5,color:C.purple,fontWeight:700}}>⏱ Descanso</span>
+      {descanso>0?<React.Fragment>
+        <span style={{flex:1,fontFamily:SERIF,fontSize:20,color:C.purple,textAlign:"center"}}>{fmtMMSS(descanso)}</span>
+        <button onClick={()=>setDescanso(0)} style={{background:"none",border:"none",color:C.purple,fontSize:16,cursor:"pointer"}}>✕</button>
+      </React.Fragment>:<div style={{flex:1,display:"flex",gap:6,justifyContent:"flex-end"}}>
+        {[["1:30",90],["2:00",120],["3:00",180]].map(([l,s])=><button key={l} onClick={()=>iniciarDescanso(s)} style={{padding:"6px 12px",background:C.card,border:"1.5px solid "+C.purple,borderRadius:18,color:C.purple,fontSize:12.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>{l}</button>)}
+      </div>}
+    </div>
     {e.ejercicios.map((ej,ei)=><div key={ej.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:12,border:"1.5px solid "+C.border}}>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}><input style={{...inputStyle,flex:1}} placeholder="Ejercicio" value={ej.nombre} onChange={ev=>setEj(ei,"nombre",ev.target.value)}/>{e.ejercicios.length>1&&<button onClick={()=>delEj(ei)} style={{background:"none",border:"none",color:C.red,fontSize:20,cursor:"pointer"}}>×</button>}</div>
-      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
         <select style={{...inputStyle,flex:1,padding:"8px 11px",fontSize:13,appearance:"none"}} value={ej.musculo||"Otro"} onChange={ev=>setEj(ei,"musculo",ev.target.value)}>{MUSCULOS.map(m=><option key={m} value={m}>{m}</option>)}</select>
         {ej.reps&&<span style={{fontSize:12,color:C.gold,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap"}}>meta {ej.reps}</span>}
       </div>
+      {(()=>{const uv=ultimaVez(ej.nombre);return uv?<p style={{margin:"0 0 10px",fontSize:12,color:C.purple,fontFamily:SANS,fontWeight:600}}>📅 Última vez: {uv.peso} kg × {uv.reps} <span style={{color:C.muted,fontWeight:400}}>({uv.fecha}) — supéralo 💪</span></p>:<div style={{marginBottom:6}}/>;})()}
       <div style={{display:"flex",gap:8,marginBottom:6,fontSize:11,color:C.muted,fontFamily:SANS,paddingLeft:4}}><span style={{flex:1}}>Reps</span><span style={{flex:1}}>Peso (kg)</span><span style={{width:24}}/></div>
       {ej.sets.map((s,si)=><div key={si} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}><input style={{...inputStyle,flex:1,padding:"9px 11px"}} type="number" inputMode="numeric" placeholder={ej.reps||"0"} value={s.reps} onChange={ev=>setSet(ei,si,"reps",ev.target.value)}/><input style={{...inputStyle,flex:1,padding:"9px 11px"}} type="number" inputMode="decimal" placeholder="0" value={s.peso} onChange={ev=>setSet(ei,si,"peso",ev.target.value)}/>{ej.sets.length>1&&<button onClick={()=>delSet(ei,si)} style={{background:"none",border:"none",color:C.muted,fontSize:18,cursor:"pointer",width:24}}>×</button>}</div>)}
       <button onClick={()=>addSet(ei)} style={{background:C.borderSoft,border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,color:C.espresso,cursor:"pointer",fontFamily:SANS,marginTop:4}}>+ Serie</button>
@@ -1910,7 +1964,7 @@ function Calendario({horario,setHorario}){
       {bloques.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:14}}>Sin bloques para {dia}. Añade uno (ej. 5:30–6:30 Gym).</p>:bloques.map(b=>{const c=PALETA_BLOQUES[b.color%PALETA_BLOQUES.length];const nd=b.gid?diasDe(b.gid).length:1;return <div key={b.id} onClick={()=>setEdit(b)} style={{display:"flex",alignItems:"stretch",gap:0,marginBottom:8,borderRadius:12,overflow:"hidden",border:"1.5px solid "+C.border,cursor:"pointer",background:C.card}}>
         <div style={{width:6,background:c.fg}}/>
         <div style={{flex:1,padding:"12px 14px",background:c.bg}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SERIF,fontSize:16,color:c.fg}}>{b.act||"(sin nombre)"}{nd>1&&<span style={{marginLeft:7,fontFamily:SANS,fontSize:10.5,fontWeight:700,background:c.fg,color:c.bg,padding:"2px 7px",borderRadius:10,verticalAlign:"middle"}}>×{nd} días</span>}</span><span style={{fontFamily:SANS,fontSize:12.5,color:c.fg,fontWeight:600}}>{b.desde}–{b.hasta}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SERIF,fontSize:16,color:c.fg}}>{b.act||"(sin nombre)"}{nd>1&&<span style={{marginLeft:7,fontFamily:SANS,fontSize:10.5,fontWeight:700,background:c.fg,color:c.bg,padding:"2px 7px",borderRadius:10,verticalAlign:"middle"}}>×{nd} días</span>}</span><span style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontFamily:SANS,fontSize:12.5,color:c.fg,fontWeight:600}}>{b.desde}–{b.hasta}</span><button onClick={ev=>{ev.stopPropagation();setEdit({...b,id:uid(),gid:undefined,_nuevo:true});}} title="Duplicar" style={{background:"none",border:"none",color:c.fg,fontSize:14,cursor:"pointer",padding:"0 2px",opacity:.75}}>⧉</button></span></div>
         </div>
       </div>;})}
     </div>:<GridSemana horario={horario}/>}
@@ -1981,6 +2035,7 @@ function Pomodoro({cfg,setCfg}){
     const titulo=next==="trabajo"?"💪 ¡A trabajar!":next==="largo"?"🌿 Descanso largo":"☕ Descanso";
     beep(next==="trabajo"?3:2);
     notiAhora(titulo, next==="trabajo"?"Concéntrate "+num(c.trabajo)+" min":"Relájate "+num(next==="largo"?c.largo:c.descanso)+" min","pomo");
+    if(fase==="trabajo") setCfg({...c,statsFecha:HOY,statsCount:(c.statsFecha===HOY?num(c.statsCount):0)+1}); // 🍅 completado
     setFase(next); setCiclo(nciclo); setRun(false); setLeft(durFase(next));
   };
 
@@ -2006,7 +2061,7 @@ function Pomodoro({cfg,setCfg}){
 
   return <div>
     <div style={{background:colSoft,borderRadius:18,padding:"26px 18px 28px",textAlign:"center",marginBottom:14}}>
-      <p style={{margin:0,fontSize:12,letterSpacing:2,textTransform:"uppercase",color:col,fontFamily:SANS,fontWeight:700}}>{etiqueta} · Ciclo {ciclo}/{num(c.ciclos)}</p>
+      <p style={{margin:0,fontSize:12,letterSpacing:2,textTransform:"uppercase",color:col,fontFamily:SANS,fontWeight:700}}>{etiqueta} · Ciclo {ciclo}/{num(c.ciclos)}{c.statsFecha===HOY&&num(c.statsCount)>0?" · 🍅 "+num(c.statsCount)+" hoy":""}</p>
       <div style={{position:"relative",width:200,height:200,margin:"16px auto 0",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <svg width="200" height="200" style={{position:"absolute",top:0,left:0,transform:"rotate(-90deg)"}}><circle cx="100" cy="100" r="90" fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="11"/><circle cx="100" cy="100" r="90" fill="none" stroke={col} strokeWidth="11" strokeLinecap="round" strokeDasharray={2*Math.PI*90} strokeDashoffset={2*Math.PI*90*(1-prog/100)} style={{transition:"stroke-dashoffset .4s linear"}}/></svg>
         <span style={{fontFamily:SERIF,fontSize:48,fontWeight:"bold",color:col}}>{fmtMMSS(left)}</span>
