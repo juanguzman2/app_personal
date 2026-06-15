@@ -1500,7 +1500,10 @@ function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvis
   const aplicarUso=(p,monto)=>{const mn=num(monto);setProvisiones(prev=>prev.map(x=>x.id===p.id?{...x,saldo:Math.max(0,num(x.saldo)-mn),_hist:[...(x._hist||[]),{fecha:HOY,tipo:"uso",monto:mn}].slice(-50)}:x));if(p.inversionId)setInversiones(prev=>prev.map(x=>x.id===p.inversionId?{...x,invertido:Math.max(0,num(x.invertido)-mn),actual:Math.max(0,num(x.actual)-mn)}:x));setTransacciones(prev=>[...prev,{id:uid(),tipo:"gasto",categoria:p.categoria,concepto:p.nombre+" (fondo)",monto:mn,fecha:HOY,_fondo:p.id}]);setUsar(null);setToast("Gasto registrado y descontado del fondo");setTimeout(()=>setToast(""),2600);};
   const provMesTotal=(provisiones||[]).reduce((a,p)=>a+provisionMensual(p),0);
   const provSaldoTotal=(provisiones||[]).reduce((a,p)=>a+num(p.saldo),0);
+  const provAnualTotal=(provisiones||[]).reduce((a,p)=>a+num(p.montoAnual),0);
+  const provFaltaTotal=(provisiones||[]).reduce((a,p)=>a+Math.max(0,num(p.montoAnual)-num(p.saldo)),0);
   const apartarTodos=()=>{(provisiones||[]).forEach(p=>{const m=provisionMensual(p);if(m>0)apartar(p,m);});};
+  const apartarAnual=()=>{(provisiones||[]).forEach(p=>{const falta=Math.max(0,num(p.montoAnual)-num(p.saldo));if(falta>0)apartar(p,falta);});};
 
   return <div style={{padding:"10px 18px 20px"}}>
     {/* ─── INVERSIONES ─── */}
@@ -1513,9 +1516,11 @@ function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvis
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}><h3 style={{margin:0,fontFamily:SERIF,fontSize:19,fontWeight:"normal"}}>🏦 Fondos para gastos anuales</h3></div>
     <p style={{fontFamily:SANS,fontSize:12,color:C.muted,margin:"0 0 12px",lineHeight:1.5}}>Aparta 1/12 al mes para SOAT, seguro, impuestos, renta… Si lo asocias a una inversión, el saldo vive ahí (junto a tu fondo de emergencia).</p>
     {provisiones&&provisiones.length>0&&<Card pad={16}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted}}>A provisionar al mes</span><b style={{fontFamily:SERIF,fontSize:17,color:C.gold}}>{money(provMesTotal)}</b></div>
-      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted}}>Saldo total acumulado</span><b style={{fontFamily:SERIF,fontSize:15}}>{money(provSaldoTotal)}</b></div>
-      {provMesTotal>0&&<button onClick={apartarTodos} style={{width:"100%",marginTop:12,padding:"10px 0",background:C.green,color:"#fff",border:"none",borderRadius:9,fontSize:13.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>+ Apartar TODOS este mes ({money(provMesTotal)})</button>}
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted}}>Total anual a cubrir</span><b style={{fontFamily:SERIF,fontSize:17,color:C.espresso}}>{money(provAnualTotal)}</b></div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted}}>A provisionar al mes</span><b style={{fontFamily:SERIF,fontSize:15,color:C.gold}}>{money(provMesTotal)}</b></div>
+      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted}}>Saldo acumulado{provFaltaTotal>0?" · falta "+money(provFaltaTotal):" · ¡completo!"}</span><b style={{fontFamily:SERIF,fontSize:15,color:provFaltaTotal>0?C.text:C.green}}>{money(provSaldoTotal)}</b></div>
+      {provFaltaTotal>0&&<button onClick={apartarAnual} style={{width:"100%",marginTop:12,padding:"11px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:9,fontSize:13.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>💰 Apartar el AÑO completo ({money(provFaltaTotal)})</button>}
+      {provMesTotal>0&&<button onClick={apartarTodos} style={{width:"100%",marginTop:8,padding:"10px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>+ Apartar solo este mes ({money(provMesTotal)})</button>}
     </Card>}
     <button onClick={nuevoFondo} style={{width:"100%",padding:"12px 0",margin:"12px 0 14px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo fondo</button>
     {(!provisiones||provisiones.length===0)&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Crea fondos: SOAT, seguro del carro, impuesto, declaración de renta, regalos…</p>}
