@@ -371,6 +371,7 @@ function App(){
   const [seguimiento,setSeguimiento]=useState([]);
   const [perfil,setPerfil]=useState(PERFIL_DEFAULT);
   const [plantillas,setPlantillas]=useState(PLANTILLAS);
+  const [rutinaHecha,setRutinaHecha]=useState({});
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
 
@@ -397,6 +398,7 @@ function App(){
     setSeguimiento(await load("seguimiento",[]));
     setPerfil(await load("perfil",PERFIL_DEFAULT));
     setPlantillas(await load("plantillas",PLANTILLAS));
+    setRutinaHecha(await load("rutinaHecha",{}));
     setReady(true);
   })();},[]);
 
@@ -422,19 +424,20 @@ function App(){
   useEffect(()=>{if(ready)save("seguimiento",seguimiento)},[seguimiento,ready]);
   useEffect(()=>{if(ready)save("perfil",perfil)},[perfil,ready]);
   useEffect(()=>{if(ready)save("plantillas",plantillas)},[plantillas,ready]);
+  useEffect(()=>{if(ready)save("rutinaHecha",rutinaHecha)},[rutinaHecha,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
-    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
+    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="lista"&&<ListaCompras {...{lista,setLista}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
-    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg}}/>}
+    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha}}/>}
     <Nav tab={tab} setTab={setTab}/>
     <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters}/>
     <ConfirmHost/>
@@ -493,9 +496,11 @@ function Nav({tab,setTab}){
 }
 
 /* ═══════════ INICIO ═══════════ */
-function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,setTab,abrirAjustes}){
+function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,setTab,abrirAjustes}){
   const sobras=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
   const [toast,setToast]=useState("");
+  const hechasHoy=(rutinaHecha||{})[HOY]||{};
+  const toggleBloque=id=>setRutinaHecha&&setRutinaHecha(p=>{const dia={...((p||{})[HOY]||{})};if(dia[id])delete dia[id];else dia[id]=true;return {...p,[HOY]:dia};});
   const comerLote=(l,p)=>{const real=Math.min(num(p),num(l.porcionesRest));if(real<=0)return;setConsumo&&setConsumo(prev=>[...prev,{id:uid(),fecha:HOY,nombre:l.nombre,porciones:real,kcal:Math.round(num(l.kcal)*real),proteina:Math.round(num(l.proteina)*real),carbos:Math.round(num(l.carbos)*real),grasa:Math.round(num(l.grasa)*real)}]);setLotes&&setLotes(prev=>prev.map(x=>x.id===l.id?{...x,porcionesRest:+(num(x.porcionesRest)-real).toFixed(2)}:x));setToast("Registrado: "+real+" porción"+(real===1?"":"es")+" 🍽️");setTimeout(()=>setToast(""),2200);};
   const delLote=async id=>{ if(await pedirConfirm({titulo:"Quitar de la nevera",texto:"Se quita este plato. No afecta lo ya registrado."})) setLotes&&setLotes(prev=>prev.filter(x=>x.id!==id)); };
   const hora=new Date().getHours();
@@ -570,10 +575,18 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
       <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontSize:12,fontFamily:SANS,color:C.muted}}><span>{Math.round(ma/mo*100)}% · {money(ma)}</span><span>Faltan {moneyShort(mo-ma)}</span></div>
     </Card></div>;})()}
 
-    {(bloqueActual||bloqueSig)&&<div style={{padding:"0 18px 6px"}}><Card onClick={()=>setTab("crono")}>
-      <Mini icon="🗓️" label={bloqueActual?"Ahora":"Lo siguiente hoy"}/>
-      <p style={{margin:"8px 0 4px",fontFamily:SERIF,fontSize:18}}>{(bloqueActual||bloqueSig).act}</p>
-      <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>{(bloqueActual||bloqueSig).desde}–{(bloqueActual||bloqueSig).hasta}{bloqueActual&&bloqueSig?" · luego "+bloqueSig.act:""}</p>
+    {hoyBloques.length>0&&(()=>{const hechas=hoyBloques.filter(b=>hechasHoy[b.id]).length;const pct=Math.round(hechas/hoyBloques.length*100);const todo=hechas===hoyBloques.length;return <div style={{padding:"0 18px 6px"}}><Card>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="✅" label="Mi rutina de hoy"/><span onClick={()=>setTab("crono")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Editar ›</span></div>
+      <div style={{display:"flex",alignItems:"center",gap:10,margin:"10px 0 12px"}}><div style={{flex:1}}><Bar pct={pct} color={todo?C.green:C.gold} h={9}/></div><span style={{fontFamily:SANS,fontSize:12.5,fontWeight:700,color:todo?C.green:C.muted,whiteSpace:"nowrap"}}>{hechas}/{hoyBloques.length}{todo?" 🎉":""}</span></div>
+      <div>{hoyBloques.map(b=>{const done=!!hechasHoy[b.id];const ahoraB=bloqueActual&&b.id===bloqueActual.id;const c=PALETA_BLOQUES[(b.color||0)%PALETA_BLOQUES.length];return <div key={b.id} onClick={()=>toggleBloque(b.id)} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 8px",borderRadius:9,marginBottom:3,cursor:"pointer",background:ahoraB&&!done?c.bg:"transparent",border:ahoraB&&!done?"1.5px solid "+c.fg:"1.5px solid transparent"}}>
+        <div style={{width:22,height:22,borderRadius:7,flexShrink:0,border:done?"none":"1.5px solid "+C.gold,background:done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{done&&<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+        <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:done?C.muted:C.text,textDecoration:done?"line-through":"none"}}>{b.act}{ahoraB&&!done&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:c.fg}}>● ahora</span>}</p></div>
+        <span style={{fontFamily:SANS,fontSize:11.5,color:C.muted,whiteSpace:"nowrap"}}>{b.desde}</span>
+      </div>;})}</div>
+    </Card></div>;})()}
+    {hoyBloques.length===0&&<div style={{padding:"0 18px 6px"}}><Card onClick={()=>setTab("crono")}>
+      <Mini icon="✅" label="Mi rutina de hoy"/>
+      <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>Aún no tienes bloques para hoy. Arma tu rutina en Cronograma → Estudio y aquí la marcarás cada día. →</p>
     </Card></div>}
 
     {sobras.length>0&&<div style={{padding:"8px 18px 4px"}}>
@@ -1909,18 +1922,21 @@ function Cronograma({horario,setHorario,sprints,setSprints,notas,setNotas,pomoCf
 }
 
 /* ---------- ESTUDIO: calendario + pomodoro ---------- */
-function CronoEstudio({horario,setHorario,pomoCfg,setPomoCfg}){
+function CronoEstudio({horario,setHorario,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha}){
   const [sub,setSub]=useState("calendario");
   return <div style={{padding:"10px 18px 20px"}}>
     <div style={{display:"flex",gap:8,marginBottom:14}}>
       {[["calendario","🗓️ Calendario"],["pomodoro","🍅 Pomodoro"]].map(([id,l])=><button key={id} onClick={()=>setSub(id)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid "+(sub===id?C.gold:C.border),background:sub===id?C.gold:"transparent",color:sub===id?C.espresso:C.muted,fontSize:13.5,fontFamily:SANS,fontWeight:sub===id?700:500,cursor:"pointer"}}>{l}</button>)}
     </div>
-    {sub==="calendario"?<Calendario horario={horario} setHorario={setHorario}/>:<Pomodoro cfg={pomoCfg} setCfg={setPomoCfg}/>}
+    {sub==="calendario"?<Calendario horario={horario} setHorario={setHorario} rutinaHecha={rutinaHecha} setRutinaHecha={setRutinaHecha}/>:<Pomodoro cfg={pomoCfg} setCfg={setPomoCfg}/>}
   </div>;
 }
 
-function Calendario({horario,setHorario}){
+function Calendario({horario,setHorario,rutinaHecha,setRutinaHecha}){
   const [dia,setDia]=useState(diaHoyNombre());
+  const esHoy=dia===diaHoyNombre();
+  const hechasHoy=(rutinaHecha||{})[HOY]||{};
+  const toggleBloque=id=>setRutinaHecha&&setRutinaHecha(p=>{const d={...((p||{})[HOY]||{})};if(d[id])delete d[id];else d[id]=true;return {...p,[HOY]:d};});
   const [vista,setVista]=useState("dia");
   const [edit,setEdit]=useState(null);
   const [avisoMsg,setAvisoMsg]=useState("");
@@ -1966,10 +1982,12 @@ function Calendario({horario,setHorario}){
 
     {vista==="dia"?<div>
       <button onClick={nuevo} style={{width:"100%",padding:"11px 0",marginBottom:12,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Bloque en {dia}</button>
-      {bloques.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:14}}>Sin bloques para {dia}. Añade uno (ej. 5:30–6:30 Gym).</p>:bloques.map(b=>{const c=PALETA_BLOQUES[b.color%PALETA_BLOQUES.length];const nd=b.gid?diasDe(b.gid).length:1;return <div key={b.id} onClick={()=>setEdit(b)} style={{display:"flex",alignItems:"stretch",gap:0,marginBottom:8,borderRadius:12,overflow:"hidden",border:"1.5px solid "+C.border,cursor:"pointer",background:C.card}}>
+      {esHoy&&bloques.length>0&&(()=>{const h=bloques.filter(b=>hechasHoy[b.id]).length;const todo=h===bloques.length;return <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}><div style={{flex:1}}><Bar pct={Math.round(h/bloques.length*100)} color={todo?C.green:C.gold} h={9}/></div><span style={{fontFamily:SANS,fontSize:12.5,fontWeight:700,color:todo?C.green:C.muted,whiteSpace:"nowrap"}}>{h}/{bloques.length} hechas{todo?" 🎉":""}</span></div>;})()}
+      {bloques.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:14}}>Sin bloques para {dia}. Añade uno (ej. 5:30–6:30 Gym).</p>:bloques.map(b=>{const c=PALETA_BLOQUES[b.color%PALETA_BLOQUES.length];const nd=b.gid?diasDe(b.gid).length:1;const done=esHoy&&!!hechasHoy[b.id];return <div key={b.id} style={{display:"flex",alignItems:"stretch",gap:0,marginBottom:8,borderRadius:12,overflow:"hidden",border:"1.5px solid "+C.border,background:C.card,opacity:done?.6:1}}>
         <div style={{width:6,background:c.fg}}/>
-        <div style={{flex:1,padding:"12px 14px",background:c.bg}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SERIF,fontSize:16,color:c.fg}}>{b.act||"(sin nombre)"}{nd>1&&<span style={{marginLeft:7,fontFamily:SANS,fontSize:10.5,fontWeight:700,background:c.fg,color:c.bg,padding:"2px 7px",borderRadius:10,verticalAlign:"middle"}}>×{nd} días</span>}</span><span style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontFamily:SANS,fontSize:12.5,color:c.fg,fontWeight:600}}>{b.desde}–{b.hasta}</span><button onClick={ev=>{ev.stopPropagation();setEdit({...b,id:uid(),gid:undefined,_nuevo:true});}} title="Duplicar" style={{background:"none",border:"none",color:c.fg,fontSize:14,cursor:"pointer",padding:"0 2px",opacity:.75}}>⧉</button></span></div>
+        {esHoy&&<div onClick={()=>toggleBloque(b.id)} style={{display:"flex",alignItems:"center",padding:"0 0 0 12px",cursor:"pointer",background:c.bg}}><div style={{width:22,height:22,borderRadius:7,flexShrink:0,border:done?"none":"1.5px solid "+c.fg,background:done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{done&&<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></div>}
+        <div onClick={()=>setEdit(b)} style={{flex:1,padding:"12px 14px",background:c.bg,cursor:"pointer"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SERIF,fontSize:16,color:c.fg,textDecoration:done?"line-through":"none"}}>{b.act||"(sin nombre)"}{nd>1&&<span style={{marginLeft:7,fontFamily:SANS,fontSize:10.5,fontWeight:700,background:c.fg,color:c.bg,padding:"2px 7px",borderRadius:10,verticalAlign:"middle"}}>×{nd} días</span>}</span><span style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontFamily:SANS,fontSize:12.5,color:c.fg,fontWeight:600}}>{b.desde}–{b.hasta}</span><button onClick={ev=>{ev.stopPropagation();setEdit({...b,id:uid(),gid:undefined,_nuevo:true});}} title="Duplicar" style={{background:"none",border:"none",color:c.fg,fontSize:14,cursor:"pointer",padding:"0 2px",opacity:.75}}>⧉</button></span></div>
         </div>
       </div>;})}
     </div>:<GridSemana horario={horario}/>}
