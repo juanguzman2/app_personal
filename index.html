@@ -56,6 +56,7 @@ function mesAdj(ym,d){ const[y,m]=ym.split("-").map(Number); const x=new Date(y,
 function mesesHasta(f){ const a=new Date(HOY),b=new Date(f); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
 function mesesDesde(f){ const a=new Date(f),b=new Date(HOY); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
 function ultimos7(){ const a=[]; for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(fechaLocal(d));} return a; }
+function ultimosN(n){ const a=[]; for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(fechaLocal(d));} return a; }
 const DIA_CORTO = f => ["Do","Lu","Ma","Mi","Ju","Vi","Sa"][new Date(f+"T12:00").getDay()];
 // Semana Lun–Dom: lunes de la semana que contiene la fecha d
 function lunesDe(d=new Date()){ const x=new Date(d); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); x.setHours(0,0,0,0); return x; }
@@ -372,6 +373,8 @@ function App(){
   const [perfil,setPerfil]=useState(PERFIL_DEFAULT);
   const [plantillas,setPlantillas]=useState(PLANTILLAS);
   const [rutinaHecha,setRutinaHecha]=useState({});
+  const [habitos,setHabitos]=useState([]);
+  const [habitosLog,setHabitosLog]=useState({});
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
 
@@ -399,6 +402,8 @@ function App(){
     setPerfil(await load("perfil",PERFIL_DEFAULT));
     setPlantillas(await load("plantillas",PLANTILLAS));
     setRutinaHecha(await load("rutinaHecha",{}));
+    setHabitos(await load("habitos",[]));
+    setHabitosLog(await load("habitosLog",{}));
     setReady(true);
   })();},[]);
 
@@ -425,11 +430,13 @@ function App(){
   useEffect(()=>{if(ready)save("perfil",perfil)},[perfil,ready]);
   useEffect(()=>{if(ready)save("plantillas",plantillas)},[plantillas,ready]);
   useEffect(()=>{if(ready)save("rutinaHecha",rutinaHecha)},[rutinaHecha,ready]);
+  useEffect(()=>{if(ready)save("habitos",habitos)},[habitos,ready]);
+  useEffect(()=>{if(ready)save("habitosLog",habitosLog)},[habitosLog,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
@@ -437,7 +444,7 @@ function App(){
     {tab==="lista"&&<ListaCompras {...{lista,setLista}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
-    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha}}/>}
+    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog}}/>}
     <Nav tab={tab} setTab={setTab}/>
     <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters}/>
     <ConfirmHost/>
@@ -1911,13 +1918,14 @@ function progresoSprint(sp){
   return {tot,hechos,pct:tot>0?Math.round(hechos/tot*100):0};
 }
 
-function Cronograma({horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg}){
+function Cronograma(props){
   const [vista,setVista]=useState("estudio");
   return <div>
     <Header titulo="Cronograma"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"estudio",label:"📚 Estudio"},{id:"trabajo",label:"💼 Trabajo"}]}/>
-    {vista==="estudio"&&<CronoEstudio {...{horario,setHorario,pomoCfg,setPomoCfg}}/>}
-    {vista==="trabajo"&&<CronoTrabajo {...{sprints,setSprints,notas,setNotas}}/>}
+    <Segmented value={vista} onChange={setVista} options={[{id:"estudio",label:"📚 Estudio"},{id:"trabajo",label:"💼 Trabajo"},{id:"habitos",label:"🎯 Hábitos"}]}/>
+    {vista==="estudio"&&<CronoEstudio {...props}/>}
+    {vista==="trabajo"&&<CronoTrabajo {...props}/>}
+    {vista==="habitos"&&<CronoHabitos {...props}/>}
   </div>;
 }
 
@@ -2104,6 +2112,115 @@ function Pomodoro({cfg,setCfg}){
 }
 
 /* ---------- TRABAJO: sprints + notas ---------- */
+/* ---------- HÁBITOS ---------- */
+// ¿cumplido el hábito h el día f? mira el log y, si está vinculado a un bloque, la rutina hecha
+function habitoCumplido(h,f,habitosLog,rutinaHecha){
+  const log=((habitosLog||{})[f]||{});
+  if(h.bloqueId){ const r=((rutinaHecha||{})[f]||{}); if(r[h.bloqueId]) return true; }
+  const v=log[h.id];
+  if(v===undefined) return false;
+  if(h.tipo==="cantidad") return num(v)>=num(h.meta);
+  return !!v;
+}
+function rachaHabito(h,habitosLog,rutinaHecha){
+  let n=0; const d=new Date();
+  // si hoy aún no se cumple, la racha puede venir de ayer
+  if(!habitoCumplido(h,fechaLocal(d),habitosLog,rutinaHecha)) d.setDate(d.getDate()-1);
+  while(habitoCumplido(h,fechaLocal(d),habitosLog,rutinaHecha)){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+function cumplimiento(h,dias,habitosLog,rutinaHecha){
+  const hechos=dias.filter(f=>habitoCumplido(h,f,habitosLog,rutinaHecha)).length;
+  return {hechos,total:dias.length,pct:dias.length?Math.round(hechos/dias.length*100):0};
+}
+
+function CronoHabitos({habitos,setHabitos,habitosLog,setHabitosLog,horario,rutinaHecha,setRutinaHecha}){
+  const [editando,setEditando]=useState(null);
+  const dias30=ultimosN(30);
+  const bloquesUnicos=(()=>{const m={};DIAS_SEM.forEach(d=>(horario&&horario[d]||[]).forEach(b=>{if(!m[b.id])m[b.id]=b.act;}));return Object.entries(m).map(([id,act])=>({id,act}));})();
+  const guardar=h=>{const{_nuevo,...l}=h;setHabitos(p=>p.some(x=>x.id===h.id)?p.map(x=>x.id===h.id?l:x):[...p,l]);setEditando(null);};
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar hábito",texto:"Se borrará el hábito y su historial de marcas."})){ setHabitos(p=>p.filter(x=>x.id!==id)); setEditando(null);} };
+  const nuevo=()=>setEditando({id:uid(),nombre:"",icon:"🎯",tipo:"sino",meta:"",unidad:"",bloqueId:"",_nuevo:true});
+  // marcar hoy
+  const setHoy=(h,val)=>{
+    if(h.bloqueId){ // sincroniza con la rutina del bloque
+      setRutinaHecha(p=>{const d={...((p||{})[HOY]||{})};if(val)d[h.bloqueId]=true;else delete d[h.bloqueId];return {...p,[HOY]:d};});
+    }
+    setHabitosLog(p=>{const d={...((p||{})[HOY]||{})};d[h.id]=val;return {...p,[HOY]:d};});
+  };
+  const toggleSino=h=>setHoy(h,!habitoCumplido(h,HOY,habitosLog,rutinaHecha));
+  const setCant=(h,v)=>setHoy(h,num(v));
+
+  // ranking: los que peor van en 30 días (con al menos algo de historia)
+  const flojos=[...habitos].map(h=>({h,c:cumplimiento(h,dias30,habitosLog,rutinaHecha)})).filter(x=>x.c.pct<70).sort((a,b)=>a.c.pct-b.c.pct);
+
+  return <div style={{padding:"10px 18px 24px"}}>
+    <button onClick={nuevo} style={{width:"100%",padding:"12px 0",marginBottom:14,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo hábito</button>
+    {habitos.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10,lineHeight:1.6}}>Crea hábitos para seguir tu constancia: meditar, leer, beber 3 L de agua, 8000 pasos… Puedes vincularlos a un bloque de tu rutina para que se marquen solos.</p>}
+
+    {/* ⚠ refuerza estos */}
+    {flojos.length>0&&<div style={{marginBottom:18,background:C.redSoft,borderRadius:14,padding:15}}>
+      <Mini icon="⚠️" label="Refuerza estos (últimos 30 días)"/>
+      {flojos.slice(0,3).map(({h,c})=><div key={h.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
+        <span style={{fontFamily:SANS,fontSize:13.5,color:C.red,fontWeight:600}}>{h.icon} {h.nombre}</span>
+        <span style={{fontFamily:SERIF,fontSize:16,color:C.red}}>{c.pct}%</span>
+      </div>)}
+      <p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:11.5,color:C.red,lineHeight:1.4}}>Estás por debajo del 70%. Ponles atención esta semana — la constancia se construye con los días flojos.</p>
+    </div>}
+
+    {/* lista de hábitos con marca de hoy + gráfica */}
+    {[...habitos].map(h=>{const c=cumplimiento(h,dias30,habitosLog,rutinaHecha);const r=rachaHabito(h,habitosLog,rutinaHecha);const hoyVal=((habitosLog||{})[HOY]||{})[h.id];const cumpleHoy=habitoCumplido(h,HOY,habitosLog,rutinaHecha);const bloque=h.bloqueId&&bloquesUnicos.find(b=>b.id===h.bloqueId);const colP=c.pct>=80?C.green:c.pct>=50?C.gold:C.red;
+      return <div key={h.id} style={{background:C.card,borderRadius:14,padding:15,marginBottom:11,border:"1.5px solid "+(cumpleHoy?C.green:C.border)}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SERIF,fontSize:17}}>{h.icon} {h.nombre}</p>
+            <p style={{margin:"2px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS}}>{h.tipo==="cantidad"?"Meta: "+h.meta+" "+(h.unidad||""):"Sí / No"}{bloque?" · 🔗 "+bloque.act:""}{r>0?" · 🔥 "+r:""}</p>
+          </div>
+          <button onClick={()=>setEditando({...h,_nuevo:false})} style={{background:"none",border:"none",color:C.muted,fontSize:15,cursor:"pointer",padding:"0 2px"}}>✎</button>
+        </div>
+
+        {/* marca de HOY */}
+        <div style={{margin:"12px 0 10px"}}>
+          {h.tipo==="sino"?<button onClick={()=>toggleSino(h)} style={{width:"100%",padding:"11px 0",borderRadius:10,border:"none",background:cumpleHoy?C.green:C.borderSoft,color:cumpleHoy?"#fff":C.espresso,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>{cumpleHoy?"✓ Hecho hoy":"Marcar hoy"}</button>
+          :<div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button onClick={()=>setCant(h,Math.max(0,num(hoyVal)-1))} style={stepBtn}>−</button>
+            <div style={{flex:1,textAlign:"center"}}><span style={{fontFamily:SERIF,fontSize:22,color:cumpleHoy?C.green:C.espresso}}>{num(hoyVal)}</span><span style={{fontFamily:SANS,fontSize:12,color:C.muted}}> / {h.meta} {h.unidad}</span></div>
+            <button onClick={()=>setCant(h,num(hoyVal)+1)} style={stepBtn}>+</button>
+          </div>}
+        </div>
+
+        {/* mini-heatmap 30 días + % */}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{flex:1,display:"flex",gap:2,flexWrap:"wrap"}}>{dias30.map(f=>{const ok=habitoCumplido(h,f,habitosLog,rutinaHecha);const esHoy=f===HOY;return <div key={f} title={f} style={{width:"calc((100% - 58px)/30)",minWidth:6,height:14,borderRadius:2,background:ok?colP:C.borderSoft,outline:esHoy?"1.5px solid "+C.espresso:"none"}}/>;})}</div>
+          <span style={{fontFamily:SERIF,fontSize:16,color:colP,whiteSpace:"nowrap"}}>{c.pct}%</span>
+        </div>
+        <p style={{margin:"6px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>{c.hechos}/30 días cumplidos</p>
+      </div>;})}
+
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo hábito":"Editar hábito"}>{editando&&<FormHabito hab={editando} bloques={bloquesUnicos} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+  </div>;
+}
+function FormHabito({hab,bloques,onGuardar,onEliminar}){
+  const [h,setH]=useState(hab); const set=(k,v)=>setH(p=>({...p,[k]:v}));
+  const ok=h.nombre.trim()&&(h.tipo==="sino"||num(h.meta)>0);
+  const ICONS=["🎯","💧","📖","🧘","🏃","💊","🥗","😴","☀️","🚭","💰","🧠","🦷","🌱"];
+  return <div>
+    <Field label="Nombre"><input style={inputStyle} placeholder="Ej. Beber agua, Meditar, Leer" value={h.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
+    <p style={labelStyle}>Ícono</p>
+    <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:16}}>{ICONS.map(ic=><button key={ic} onClick={()=>set("icon",ic)} style={{width:38,height:38,borderRadius:9,fontSize:18,border:h.icon===ic?"2.5px solid "+C.gold:"1.5px solid "+C.border,background:h.icon===ic?C.goldSoft:C.card,cursor:"pointer"}}>{ic}</button>)}</div>
+    <p style={labelStyle}>Tipo</p>
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      {[["sino","✓ Sí / No"],["cantidad","🔢 Con cantidad"]].map(([k,l])=><button key={k} onClick={()=>set("tipo",k)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid "+(h.tipo===k?C.espresso:C.border),background:h.tipo===k?C.espresso:"transparent",color:h.tipo===k?C.bg:C.muted,fontSize:13,fontFamily:SANS,fontWeight:h.tipo===k?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>
+    {h.tipo==="cantidad"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <Field label="Meta diaria"><input style={inputStyle} type="number" inputMode="decimal" placeholder="Ej. 3" value={h.meta} onChange={e=>set("meta",e.target.value)}/></Field>
+      <Field label="Unidad"><input style={inputStyle} placeholder="Ej. L, pasos, min" value={h.unidad} onChange={e=>set("unidad",e.target.value)}/></Field>
+    </div>}
+    {bloques.length>0&&<Field label="Vincular a un bloque de tu rutina (opcional)"><select style={{...inputStyle,appearance:"none"}} value={h.bloqueId||""} onChange={e=>set("bloqueId",e.target.value)}><option value="">— Independiente —</option>{bloques.map(b=>(<option key={b.id} value={b.id}>{b.act}</option>))}</select></Field>}
+    {h.bloqueId&&<p style={{fontFamily:SANS,fontSize:11.5,color:C.muted,margin:"-6px 0 12px",lineHeight:1.4}}>Cuando marques ese bloque como hecho en tu rutina (Inicio o Calendario), este hábito se cumplirá solo ese día.</p>}
+    <button disabled={!ok} onClick={()=>onGuardar(h)} style={btnP(ok)}>Guardar hábito</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+
 function CronoTrabajo({sprints,setSprints,notas,setNotas}){
   const [sub,setSub]=useState("sprints");
   return <div style={{padding:"10px 18px 20px"}}>
