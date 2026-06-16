@@ -439,7 +439,7 @@ function App(){
   const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
-    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
+    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="lista"&&<ListaCompras {...{lista,setLista}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
@@ -503,7 +503,9 @@ function Nav({tab,setTab}){
 }
 
 /* ═══════════ INICIO ═══════════ */
-function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,setTab,abrirAjustes}){
+function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,setTab,abrirAjustes}){
+  const habsHoy=(habitos||[]).filter(h=>!h.bloqueId); // los vinculados a bloque ya salen en la rutina
+  const setHabitoHoy=(h,val)=>setHabitosLog&&setHabitosLog(p=>{const d={...((p||{})[HOY]||{})};d[h.id]=val;return {...p,[HOY]:d};});
   const sobras=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
   const [toast,setToast]=useState("");
   const hechasHoy=(rutinaHecha||{})[HOY]||{};
@@ -595,6 +597,16 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
       <Mini icon="✅" label="Mi rutina de hoy"/>
       <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>Aún no tienes bloques para hoy. Arma tu rutina en Cronograma → Estudio y aquí la marcarás cada día. →</p>
     </Card></div>}
+
+    {habsHoy.length>0&&(()=>{const hechos=habsHoy.filter(h=>habitoCumplido(h,HOY,habitosLog,rutinaHecha)).length;const pct=Math.round(hechos/habsHoy.length*100);const todo=hechos===habsHoy.length;return <div style={{padding:"0 18px 6px"}}><Card>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="🎯" label="Mis hábitos de hoy"/><span onClick={()=>setTab("crono")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Ver todos ›</span></div>
+      <div style={{display:"flex",alignItems:"center",gap:10,margin:"10px 0 12px"}}><div style={{flex:1}}><Bar pct={pct} color={todo?C.green:C.gold} h={9}/></div><span style={{fontFamily:SANS,fontSize:12.5,fontWeight:700,color:todo?C.green:C.muted,whiteSpace:"nowrap"}}>{hechos}/{habsHoy.length}{todo?" 🎉":""}</span></div>
+      <div>{habsHoy.map(h=>{const done=habitoCumplido(h,HOY,habitosLog,rutinaHecha);const val=((habitosLog||{})[HOY]||{})[h.id];return <div key={h.id} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 8px",borderRadius:9,marginBottom:3}}>
+        <div onClick={()=>{if(h.tipo==="cantidad")setHabitoHoy(h,done?0:num(h.meta));else setHabitoHoy(h,!done);}} style={{width:22,height:22,borderRadius:7,flexShrink:0,cursor:"pointer",border:done?"none":"1.5px solid "+C.gold,background:done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{done&&<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+        <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:done?C.muted:C.text,textDecoration:done?"line-through":"none"}}>{h.icon} {h.nombre}</p></div>
+        {h.tipo==="cantidad"&&<div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>setHabitoHoy(h,Math.max(0,num(val)-1))} style={{width:28,height:28,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:16,cursor:"pointer",lineHeight:1}}>−</button><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted,minWidth:54,textAlign:"center"}}>{num(val)}/{h.meta} {h.unidad}</span><button onClick={()=>setHabitoHoy(h,num(val)+1)} style={{width:28,height:28,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:16,cursor:"pointer",lineHeight:1}}>+</button></div>}
+      </div>;})}</div>
+    </Card></div>;})()}
 
     {sobras.length>0&&<div style={{padding:"8px 18px 4px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
