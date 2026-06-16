@@ -1866,15 +1866,18 @@ function GymProgreso({entrenos}){
 
 function FormEntreno({entreno,entrenos,onGuardar}){
   const [e,setE]=useState(entreno); const set=(k,v)=>setE(p=>({...p,[k]:v}));
-  // "la última vez": mejor serie del ejercicio en la sesión previa más reciente
+  // "la última vez": la sesión previa más reciente de ese ejercicio, con TODAS sus series
   const ultimaVez=nombre=>{
     const n=(nombre||"").trim().toLowerCase(); if(!n) return null;
     const prev=[...(entrenos||[])].filter(x=>x.id!==e.id&&x.ejercicios.some(ej=>ej.nombre.trim().toLowerCase()===n)).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
     if(!prev) return null;
     const ej=prev.ejercicios.find(x=>x.nombre.trim().toLowerCase()===n);
-    let best=null; ej.sets.forEach(s=>{ if(num(s.peso)>0&&(!best||num(s.peso)>num(best.peso)||(num(s.peso)===num(best.peso)&&num(s.reps)>num(best.reps)))) best=s; });
-    return best?{fecha:prev.fecha,reps:num(best.reps),peso:num(best.peso)}:null;
+    const sets=ej.sets.filter(s=>num(s.reps)>0||num(s.peso)>0).map(s=>({reps:num(s.reps),peso:num(s.peso)}));
+    if(!sets.length) return null;
+    let best=null; sets.forEach(s=>{const v=e1rm(s.reps,s.peso); if(!best||v>best.e1) best={...s,e1:v};});
+    return {fecha:prev.fecha,sets,best,e1:best.e1};
   };
+  const copiarUltima=(ei,nombre)=>{const uv=ultimaVez(nombre);if(!uv)return;setE(p=>({...p,ejercicios:p.ejercicios.map((x,j)=>j===ei?{...x,sets:uv.sets.map(s=>({reps:String(s.reps),peso:String(s.peso)}))}:x)}));};
   // temporizador de descanso entre series
   const [descanso,setDescanso]=useState(0); const finDesc=React.useRef(0);
   useEffect(()=>{ if(descanso<=0) return; const id=setInterval(()=>{ const rem=Math.round((finDesc.current-Date.now())/1000); if(rem<=0){ clearInterval(id); setDescanso(0); beep(3); notiAhora("⏱ Descanso terminado","¡A la siguiente serie!","gym-rest"); } else setDescanso(rem); },300); return ()=>clearInterval(id); },[descanso>0]);
@@ -1908,7 +1911,11 @@ function FormEntreno({entreno,entrenos,onGuardar}){
         <select style={{...inputStyle,flex:1,padding:"8px 11px",fontSize:13,appearance:"none"}} value={ej.musculo||"Otro"} onChange={ev=>setEj(ei,"musculo",ev.target.value)}>{MUSCULOS.map(m=><option key={m} value={m}>{m}</option>)}</select>
         {ej.reps&&<span style={{fontSize:12,color:C.gold,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap"}}>meta {ej.reps}</span>}
       </div>
-      {(()=>{const uv=ultimaVez(ej.nombre);return uv?<p style={{margin:"0 0 10px",fontSize:12,color:C.purple,fontFamily:SANS,fontWeight:600}}>📅 Última vez: {uv.peso} kg × {uv.reps} <span style={{color:C.muted,fontWeight:400}}>({uv.fecha}) — supéralo 💪</span></p>:<div style={{marginBottom:6}}/>;})()}
+      {(()=>{const uv=ultimaVez(ej.nombre);if(!uv)return <div style={{marginBottom:6}}/>;return <div style={{background:C.purpleSoft,borderRadius:9,padding:"9px 11px",margin:"0 0 10px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontSize:11.5,color:C.purple,fontFamily:SANS,fontWeight:700}}>📅 Última vez · {uv.fecha}</span><button onClick={()=>copiarUltima(ei,ej.nombre)} style={{background:C.purple,color:"#fff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:11,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>Repetir y superar</button></div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{uv.sets.map((s,k)=><span key={k} style={{fontFamily:SANS,fontSize:12,padding:"3px 8px",borderRadius:14,background:C.card,color:C.espresso,fontWeight:s===uv.best?700:400,border:s===uv.best?"1.5px solid "+C.purple:"1.5px solid transparent"}}>{s.peso}×{s.reps}</span>)}</div>
+        <p style={{margin:"6px 0 0",fontSize:10.5,color:C.purple,fontFamily:SANS}}>Mejor: {uv.best.peso} kg × {uv.best.reps} · 1RM est. {uv.e1} kg 💪</p>
+      </div>;})()}
       <div style={{display:"flex",gap:8,marginBottom:6,fontSize:11,color:C.muted,fontFamily:SANS,paddingLeft:4}}><span style={{flex:1}}>Reps</span><span style={{flex:1}}>Peso (kg)</span><span style={{width:24}}/></div>
       {ej.sets.map((s,si)=><div key={si} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}><input style={{...inputStyle,flex:1,padding:"9px 11px"}} type="number" inputMode="numeric" placeholder={ej.reps||"0"} value={s.reps} onChange={ev=>setSet(ei,si,"reps",ev.target.value)}/><input style={{...inputStyle,flex:1,padding:"9px 11px"}} type="number" inputMode="decimal" placeholder="0" value={s.peso} onChange={ev=>setSet(ei,si,"peso",ev.target.value)}/>{ej.sets.length>1&&<button onClick={()=>delSet(ei,si)} style={{background:"none",border:"none",color:C.muted,fontSize:18,cursor:"pointer",width:24}}>×</button>}</div>)}
       <button onClick={()=>addSet(ei)} style={{background:C.borderSoft,border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,color:C.espresso,cursor:"pointer",fontFamily:SANS,marginTop:4}}>+ Serie</button>
