@@ -54,6 +54,8 @@ const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","
 const nombreMes = ym => { const[y,m]=ym.split("-"); return MESES[+m-1]+" "+y; };
 function mesAdj(ym,d){ const[y,m]=ym.split("-").map(Number); const x=new Date(y,m-1+d,1); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0"); }
 function mesesHasta(f){ const a=new Date(HOY),b=new Date(f); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
+function diasHasta(f){ const a=new Date(HOY),b=new Date(f); return Math.round((b-a)/86400000); } // días hasta una fecha (negativo si pasó)
+function fechaLarga(f){ try{const[y,m,d]=f.split("-").map(Number);return d+" de "+MESES[m-1].toLowerCase()+" de "+y;}catch(e){return f;} }
 function mesesDesde(f){ const a=new Date(f),b=new Date(HOY); return Math.max(0,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())); }
 function ultimos7(){ const a=[]; for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(fechaLocal(d));} return a; }
 function ultimosN(n){ const a=[]; for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(fechaLocal(d));} return a; }
@@ -496,6 +498,7 @@ function App(){
   const [rutinaHecha,setRutinaHecha]=useState({});
   const [habitos,setHabitos]=useState([]);
   const [habitosLog,setHabitosLog]=useState({});
+  const [cuentasReg,setCuentasReg]=useState([]);
   const [inglesSR,setInglesSR]=useState({});
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
@@ -526,6 +529,7 @@ function App(){
     setRutinaHecha(await load("rutinaHecha",{}));
     setHabitos(await load("habitos",[]));
     setHabitosLog(await load("habitosLog",{}));
+    setCuentasReg(await load("cuentasReg",[]));
     setInglesSR(await load("inglesSR",{}));
     setReady(true);
   })();},[]);
@@ -555,12 +559,13 @@ function App(){
   useEffect(()=>{if(ready)save("rutinaHecha",rutinaHecha)},[rutinaHecha,ready]);
   useEffect(()=>{if(ready)save("habitos",habitos)},[habitos,ready]);
   useEffect(()=>{if(ready)save("habitosLog",habitosLog)},[habitosLog,ready]);
+  useEffect(()=>{if(ready)save("cuentasReg",cuentasReg)},[cuentasReg,ready]);
   useEffect(()=>{if(ready)save("inglesSR",inglesSR)},[inglesSR,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,inglesSR};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,inglesSR:setInglesSR};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
@@ -568,7 +573,7 @@ function App(){
     {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
-    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog}}/>}
+    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog,cuentasReg,setCuentasReg}}/>}
     <Nav tab={tab} setTab={setTab}/>
     <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters}/>
     <ConfirmHost/>
@@ -2357,9 +2362,15 @@ function cumplimiento(h,dias,habitosLog,rutinaHecha){
   return {hechos,total:dias.length,pct:dias.length?Math.round(hechos/dias.length*100):0};
 }
 
-function CronoHabitos({habitos,setHabitos,habitosLog,setHabitosLog,horario,rutinaHecha,setRutinaHecha}){
+function CronoHabitos({habitos,setHabitos,habitosLog,setHabitosLog,horario,rutinaHecha,setRutinaHecha,cuentasReg,setCuentasReg}){
   const [editando,setEditando]=useState(null);
+  const [editCR,setEditCR]=useState(null);
   const dias30=ultimosN(30);
+  // cuentas regresivas (metas con fecha límite)
+  const CRs=[...(cuentasReg||[])].sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||""));
+  const guardarCR=c=>{const{_nuevo,...l}=c;setCuentasReg(p=>(p||[]).some(x=>x.id===c.id)?p.map(x=>x.id===c.id?l:x):[...(p||[]),l]);setEditCR(null);};
+  const eliminarCR=async id=>{ if(await pedirConfirm({titulo:"Eliminar cuenta regresiva",texto:"Se borrará esta meta con fecha."})){ setCuentasReg(p=>(p||[]).filter(x=>x.id!==id)); setEditCR(null);} };
+  const nuevaCR=()=>setEditCR({id:uid(),nombre:"",icon:"🎯",fecha:"",_nuevo:true});
   const bloquesUnicos=(()=>{const m={};DIAS_SEM.forEach(d=>(horario&&horario[d]||[]).forEach(b=>{if(!m[b.id])m[b.id]=b.act;}));return Object.entries(m).map(([id,act])=>({id,act}));})();
   const guardar=h=>{const{_nuevo,...l}=h;setHabitos(p=>p.some(x=>x.id===h.id)?p.map(x=>x.id===h.id?l:x):[...p,l]);setEditando(null);};
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar hábito",texto:"Se borrará el hábito y su historial de marcas."})){ setHabitos(p=>p.filter(x=>x.id!==id)); setEditando(null);} };
@@ -2378,6 +2389,30 @@ function CronoHabitos({habitos,setHabitos,habitosLog,setHabitosLog,horario,rutin
   const flojos=[...habitos].map(h=>({h,c:cumplimiento(h,dias30,habitosLog,rutinaHecha)})).filter(x=>x.c.pct<70).sort((a,b)=>a.c.pct-b.c.pct);
 
   return <div style={{padding:"10px 18px 24px"}}>
+    {/* ⏳ cuentas regresivas: metas con fecha límite */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+      <Mini icon="⏳" label="Cuenta regresiva"/>
+      <button onClick={nuevaCR} style={{background:"none",border:"1.5px solid "+C.gold,color:C.espresso,borderRadius:9,padding:"5px 11px",fontSize:12.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Meta con fecha</button>
+    </div>
+    {CRs.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:12.5,margin:"0 0 16px",lineHeight:1.5}}>Añade fechas objetivo (definición hasta el 28 ago, examen IELTS en septiembre…) y mira cuántas semanas o días te quedan.</p>}
+    {CRs.map(c=>{const d=diasHasta(c.fecha);const sem=Math.floor(Math.abs(d)/7),dr=Math.abs(d)%7;
+      const col=d<0?C.muted:d<=7?C.red:d<=30?C.gold:C.green;
+      const grande=d<0?"Vencida":d===0?"¡Hoy!":d===1?"Mañana":sem>=1?sem+(sem===1?" semana":" semanas"):d+" días";
+      const chico=d<0?("hace "+Math.abs(d)+" día"+(Math.abs(d)!==1?"s":"")):d<=1?fechaLarga(c.fecha):(sem>=1?(d+" días"+(dr>0&&sem>=1?" ("+sem+"s "+dr+"d)":"")):fechaLarga(c.fecha));
+      const pasada=d<0;
+      return <div key={c.id} onClick={()=>setEditCR({...c,_nuevo:false})} style={{display:"flex",alignItems:"center",gap:12,background:C.card,borderRadius:13,padding:"13px 15px",marginBottom:10,border:"1.5px solid "+(pasada?C.borderSoft:col),cursor:"pointer",opacity:pasada?0.65:1}}>
+        <span style={{fontSize:22}}>{c.icon||"🎯"}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{margin:0,fontFamily:SERIF,fontSize:16,lineHeight:1.25}}>{c.nombre}</p>
+          <p style={{margin:"2px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS}}>{fechaLarga(c.fecha)}</p>
+        </div>
+        <div style={{textAlign:"right",whiteSpace:"nowrap"}}>
+          <p style={{margin:0,fontFamily:SERIF,fontSize:d<0||d===0?17:21,color:col,lineHeight:1}}>{grande}</p>
+          <p style={{margin:"3px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>{d>1?"quedan · "+chico:chico}</p>
+        </div>
+      </div>;})}
+
+    <div style={{height:1,background:C.borderSoft,margin:"6px 0 16px"}}/>
     <button onClick={nuevo} style={{width:"100%",padding:"12px 0",marginBottom:14,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nuevo hábito</button>
     {habitos.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14,marginTop:10,lineHeight:1.6}}>Crea hábitos para seguir tu constancia: meditar, leer, beber 3 L de agua, 8000 pasos… Puedes vincularlos a un bloque de tu rutina para que se marquen solos.</p>}
 
@@ -2420,6 +2455,20 @@ function CronoHabitos({habitos,setHabitos,habitosLog,setHabitosLog,horario,rutin
       </div>;})}
 
     <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nuevo hábito":"Editar hábito"}>{editando&&<FormHabito hab={editando} bloques={bloquesUnicos} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={!!editCR} onClose={()=>setEditCR(null)} title={editCR?._nuevo?"Nueva cuenta regresiva":"Editar cuenta regresiva"}>{editCR&&<FormCuentaReg cr={editCR} onGuardar={guardarCR} onEliminar={editCR._nuevo?null:()=>eliminarCR(editCR.id)}/>}</Sheet>
+  </div>;
+}
+function FormCuentaReg({cr,onGuardar,onEliminar}){
+  const [c,setC]=useState(cr); const set=(k,v)=>setC(p=>({...p,[k]:v}));
+  const ok=c.nombre.trim()&&c.fecha;
+  const ICONS=["🎯","🏁","📝","🏖️","🎓","💪","🥗","✈️","💍","🎂","🏆","📅","🩺","🚀"];
+  return <div>
+    <Field label="Meta / evento"><input style={inputStyle} placeholder="Ej. Examen IELTS, Definición lograda" value={c.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
+    <Field label="Fecha objetivo"><input type="date" style={inputStyle} value={c.fecha} onChange={e=>set("fecha",e.target.value)}/></Field>
+    <p style={labelStyle}>Ícono</p>
+    <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:16}}>{ICONS.map(ic=><button key={ic} onClick={()=>set("icon",ic)} style={{width:38,height:38,borderRadius:9,fontSize:18,border:c.icon===ic?"2.5px solid "+C.gold:"1.5px solid "+C.border,background:c.icon===ic?C.goldSoft:C.card,cursor:"pointer"}}>{ic}</button>)}</div>
+    <button disabled={!ok} onClick={()=>onGuardar(c)} style={btnP(ok)}>Guardar</button>
+    {onEliminar&&btnDel(onEliminar)}
   </div>;
 }
 function FormHabito({hab,bloques,onGuardar,onEliminar}){
