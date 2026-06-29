@@ -18,6 +18,7 @@
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes slideUp{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
   @keyframes pop{0%{transform:scale(.9)}100%{transform:scale(1)}}
+  @keyframes respira{0%,100%{transform:scale(.62);opacity:.55}50%{transform:scale(1);opacity:1}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -166,6 +167,84 @@ const CAT_INGRESO=["💼 Salario","💵 Freelance","🎁 Extra","📈 Rendimient
 const CAT_PROVISION=["🚗 Carro","🏛️ Impuestos","🛡️ Seguros","🎄 Regalos/Navidad","🏥 Salud","✈️ Viajes","🔧 Mantenimiento","📦 Otros"];
 const AHORRO_META_DEFAULT=40; // % objetivo de tasa de ahorro
 const MESES_CORTOS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+/* ═══════════ DESARROLLO PERSONAL (Seminario Fénix · Brian Tracy) ═══════════ */
+// 7 áreas de vida = columna vertebral de Metas + Rueda de la Vida
+const AREAS_VIDA=[
+  {id:"paz",         label:"Paz mental",          icon:"🧘", color:C.blue},
+  {id:"salud",       label:"Salud y energía",     icon:"💪", color:C.green},
+  {id:"relaciones",  label:"Relaciones",          icon:"❤️", color:C.red},
+  {id:"finanzas",    label:"Finanzas",            icon:"💰", color:C.gold},
+  {id:"carrera",     label:"Carrera y propósito", icon:"🎯", color:C.purple},
+  {id:"crecimiento", label:"Crecimiento",         icon:"📚", color:C.espresso},
+  {id:"realizacion", label:"Realización",         icon:"✨", color:C.muted},
+];
+const AREA=id=>AREAS_VIDA.find(a=>a.id===id)||AREAS_VIDA[6];
+
+// Contenido estático de la pestaña Teoría (acordeón por 8 categorías). No se guarda.
+const TEORIA_BT=[
+  {id:"t1",cat:"El Seminario Fénix",icon:"🔥",cuerpo:
+"Brian Tracy (Canadá, 1944) dejó la secundaria, trabajó como obrero y viajó por más de 80 países buscando responder: «¿por qué unas personas tienen más éxito que otras?».\n\nEn 1981 ensambló su sistema en un seminario de dos días; lo llamó Seminario Fénix (por el ave que renace de sus cenizas: la reinvención personal). Hacia 1985 lo grabó como The Phoenix Seminar on the Psychology of Achievement (Psicología del Logro), traducido a más de 20 idiomas. En español circula como un programa de 27 módulos.\n\nIdea central: «El éxito es predecible.» Somos criaturas mentales; cada logro viene de vivir en armonía con las leyes mentales y cada problema de violarlas.\n\nFórmula: Comprensión × Esfuerzo = Resultados. Existe un «mecanismo de fracaso» (buscar lo fácil, la zona de confort) y un «mecanismo de éxito» que se activa al fijar una meta."},
+  {id:"t2",cat:"Las Leyes Mentales",icon:"⚖️",cuerpo:
+"Tracy las presenta como leyes naturales tan confiables como la gravedad.\n\nLAS 7 CLÁSICAS\n1. Control. Te sientes positivo en la medida en que sientes que controlas tu vida. El control empieza en tus pensamientos.\n2. Causa y Efecto. Todo efecto tiene una causa. «Los pensamientos son causas y las condiciones son efectos.»\n3. Creencia. Lo que crees con emoción se vuelve tu realidad. Las creencias autolimitantes son el mayor freno.\n4. Expectativas. Lo que esperas con certeza se vuelve profecía autocumplida. «No consigues lo que quieres, sino lo que esperas.»\n5. Atracción. Eres un imán viviente: atraes lo que está en armonía con tus pensamientos dominantes. (Ver Advertencias.)\n6. Correspondencia. «Como es adentro, es afuera.» Tu mundo exterior refleja tu mundo interior.\n7. Equivalencia Mental. Pensamientos vívidos, repetidos y cargados de emoción se objetivan en tu realidad.\n\nADICIONALES DEL FÉNIX\nAccidente («fallar en planear es planear fallar»), Hábito (el 95% de lo que haces es hábito), Concentración («aquello en lo que te concentras crece»), Sustitución (la mente sostiene un solo pensamiento a la vez: reemplaza el negativo), Emoción (toda decisión es emocional; deseo vs. temor), Actividad Subconsciente, Reversibilidad («actúa como si» y la emoción sigue a la acción), Práctica (la repetición crea el hábito) y Relajación (para programar el subconsciente, relájate y suelta)."},
+  {id:"t3",cat:"Fijación de Metas",icon:"🎯",cuerpo:
+"La habilidad maestra.\n\nLAS 5 CLAVES: define con claridad qué quieres; determina el precio; decídete a pagarlo; sé un fijador de metas continuo; entiende que es la llave maestra.\n\nEL SISTEMA DE 12 PASOS\n1. Deseo intenso y ardiente.\n2. Creencia de que es alcanzable.\n3. Escríbela (clara, específica, medible).\n4. Lista de beneficios (el «porqué» es el combustible).\n5. Punto de partida.\n6. Fecha límite (y sub-fechas).\n7. Lista de obstáculos (identifica el limitante).\n8. Conocimientos/habilidades necesarios.\n9. Personas cuyo apoyo requieres.\n10. Plan (ordenado por prioridad).\n11. Visualiza la meta lograda.\n12. Persiste: nunca te rindas.\n\nOPERATIVO: escribe en presente, positivo y personal («Gano X», «Peso X»). El Propósito Mayor Definido: de tu lista, la meta que de lograrse tendría mayor impacto. Equilibra 2–3 metas por área (12–18 en total)."},
+  {id:"t4",cat:"Visualización y Programación Mental",icon:"🧠",cuerpo:
+"LOS 4 ELEMENTOS\nFrecuencia (cuántas veces visualizas), Duración (cuánto sostienes la imagen), Viveza (qué tan clara y detallada) e Intensidad (cuánta emoción — el más poderoso).\n\nAdvertencia del propio Tracy: la visualización es neutral, trae lo que imaginas con viveza e intensidad, sea bueno o malo.\n\nAFIRMACIONES (3 P): positivas, en presente, personales.\nVerbalización: dilo en voz alta, con emoción.\nActúa el papel (Ley de Reversibilidad).\n\nEl subconsciente mantiene coherencia con tu autoconcepto; el superconsciente (intuición/flujo) entrega soluciones cuando sostienes una meta y luego practicas el silencio."},
+  {id:"t5",cat:"Productividad («Tráguese ese sapo»)",icon:"🐸",cuerpo:
+"El «sapo» es tu tarea más importante y difícil. Cómete el sapo más feo primero (a primera hora).\n\nMÉTODO ABCDE\nA = debo (consecuencias serias) · B = debería (leves) · C = sería agradable (ninguna) · D = delegar · E = eliminar.\nNunca hagas una B con una A pendiente.\n\nRegla 80/20: el 20% de las tareas da el 80% del resultado.\nEficiencia forzada: «nunca hay tiempo para todo, pero siempre para lo más importante».\nMonotarea: una sola tarea sin interrupción hasta terminar (ahorra hasta 50% del tiempo).\nPlanifica la noche anterior (cada minuto de planeación ahorra ~10 de ejecución)."},
+  {id:"t6",cat:"Desarrollo Personal y Éxito",icon:"🌱",cuerpo:
+"LOS 7 INGREDIENTES DEL ÉXITO: paz mental, salud y energía, relaciones amorosas, libertad financiera, metas e ideales dignos, autoconocimiento, sentido de realización.\n\nAUTOCONCEPTO (programa maestro): auto-ideal (quién aspiras a ser) + autoimagen (cómo te ves hoy) + autoestima (cuánto te agradas). Afirmación maestra: «Me agrado a mí mismo.»\n\nAutodisciplina: «la capacidad de hacer lo que debes, cuando debes, tengas ganas o no». Es el puente entre las metas y los logros.\n\nHábitos: el 95% de lo que haces es hábito aprendido — y reemplazable. Buenos hábitos: dormir 7–8 h, ejercicio, lectura diaria, ahorrar.\n\nAprendizaje continuo: «para ganar más, aprende más». Pensamiento de base cero: «sabiendo lo que ahora sé, ¿volvería a meterme en esto?». Si no, sal cuanto antes."},
+  {id:"t7",cat:"Libros clave",icon:"📚",cuerpo:
+"Maximum Achievement — sistematiza el seminario.\nGoals! — metas; los 12 pasos y los 4 elementos de visualización.\nEat That Frog! — productividad.\nNo Excuses! — autodisciplina.\nMillion Dollar Habits — hábitos.\nFocal Point — las 7 áreas y el plan estratégico personal."},
+  {id:"t8",cat:"Advertencias (honestidad intelectual)",icon:"⚠️",cuerpo:
+"El «estudio del 3% de Yale/Harvard» es un MITO. La famosa cifra (3% con metas escritas ganan 10× más) no corresponde a ningún estudio real; Yale lo confirma. Escribir metas sigue siendo útil, pero no por esa estadística inventada.\n\n«Ley de Atracción» ≠ pensamiento mágico. El lenguaje de imanes/vibraciones es metafórico. El propio Tracy critica la película The Secret por omitir que el éxito exige trabajo duro, no solo pensar. Interpreta estas leyes como psicología de la autoeficacia y la profecía autocumplida, no como metafísica garantizada.\n\nCifras motivacionales (p. ej. «meta + plan = 1000% más probabilidad») son afirmaciones de Tracy, no estudios revisados. Úsalas como heurísticas inspiradoras.\n\nEquilibrio: el énfasis extremo en productividad puede llevar al agotamiento. El propio Tracy pone la paz mental como ingrediente #1."},
+];
+
+// Contenido estático de la pestaña Mi Año (lectura simbólica). No se guarda.
+const MI_ANO={
+  titular:"Un año de cierre y consolidación.",
+  subtitulo:"Terminar lo abierto —el cuerpo, el inglés, la aplicación— y dejar el terreno limpio. El reinicio llega en 2027, cuando empieza el máster y un ciclo nuevo. No es año de abrir frentes; es año de completar.",
+  mapa:[
+    {t:"Alma que siente hondo",d:"Ascendente Piscis · Camino de Vida 11. Sensibilidad e intuición: por eso buscas la paz."},
+    {t:"El hogar como propósito",d:"Stellium en Casa 4 · Destino 6. La finca y los tuyos son el eje, no un adorno."},
+    {t:"El alma libre",d:"Medio Cielo en Sagitario · Deseo 5. Libertad, mundo, estudio, viaje."},
+    {t:"La fuerza propia",d:"Marte + Plutón · Personalidad 1 (×10). Disciplina y liderazgo: te construyes solo."},
+    {t:"La solidez que madura",d:"Venus en Tauro (Casa 2) · Madurez 8. La estabilidad financiera como fruto que crece."},
+    {t:"El año del umbral",d:"Sol a 29°51' · Año Personal 9 → 1. Cerrar para reiniciar."},
+  ],
+  tension:"Tensión central: un alma de 5 (volar) dentro de un destino de 6 (echar raíces). La finca rural los une.",
+  timeline:[
+    {cuando:"Ago 2026",titulo:"Reinicio personal",nota:"Eclipses (uno sobre tu Ascendente): cierras una versión tuya y abres otra.",area:"realizacion"},
+    {cuando:"Fin ago – sep 2026",titulo:"Pico de carrera",nota:"La ventana más clara del año para un paso adelante profesional.",area:"carrera"},
+    {cuando:"Oct 2026",titulo:"Cuerpo y estudio",nota:"Buen mes para el IELTS y para entrenar con fuerza.",area:"crecimiento"},
+    {cuando:"Nov 2026",titulo:"Calidez y hogar",nota:"Respiro de buen ánimo y conexión con los tuyos.",area:"relaciones"},
+    {cuando:"Ene – abr 2027",titulo:"Bajar revoluciones",nota:"Consolidar y recuperar, no forzar (cuida el cuerpo).",area:"salud"},
+    {cuando:"Mar – jun 2027",titulo:"Cosecha de la disciplina",nota:"Lo construido con método empieza a rendir.",area:"carrera"},
+    {cuando:"Jun 2027",titulo:"El umbral",nota:"Año 9 → Año 1: termina un ciclo y arranca el máster.",area:"realizacion"},
+  ],
+  nota:"Lectura simbólica calculada con efemérides reales. Es un espejo para pensarte y fijar intención sobre el año, no un pronóstico. Lo que construyes, lo construyes tú.",
+};
+// Semillas editables (la primera vez)
+const DP_AFIRMACIONES_SEED=[
+  {id:"af1",texto:"Aprendo rápido y aplico lo que aprendo."},
+  {id:"af2",texto:"Soy disciplinado: hago lo que debo, tenga ganas o no."},
+  {id:"af3",texto:"Me agrado a mí mismo."},
+  {id:"af4",texto:"Cada día avanzo hacia mis metas."},
+];
+const dpMetaNueva=area=>({id:uid(),area:area||"carrera",texto:"",esPropositoMayor:false,deseo:8,creencia:8,beneficios:[],puntoPartida:"",fechaLimite:"",obstaculos:[],conocimientos:[],personas:[],plan:[],notas:"",finanzaMetaId:null,creada:HOY,completada:false});
+const DP_METAS_SEED=[
+  {...dpMetaNueva("carrera"),id:"dm1",texto:"Soy admitido en la maestría MSAI de UT Austin para iniciar en otoño de 2027.",esPropositoMayor:true,fechaLimite:"2027-03-15",
+    beneficios:["Crecer profesionalmente en IA","Abrir puertas internacionales"],puntoPartida:"Preparando IELTS y ensayos.",
+    plan:[{id:uid(),texto:"IELTS ≥ 7.0 (oct 2026)",hecho:false},{id:uid(),texto:"Ensayos de aplicación",hecho:false},{id:uid(),texto:"Cartas de recomendación",hecho:false},{id:uid(),texto:"Enviar aplicación (dic 2026)",hecho:false}]},
+  {...dpMetaNueva("salud"),id:"dm2",texto:"Peso ~70 kg de forma sostenible y entreno 5 días por semana.",fechaLimite:"2026-12-31",
+    beneficios:["Más energía","Verme y sentirme mejor"],puntoPartida:"En definición.",
+    plan:[{id:uid(),texto:"Déficit calórico gradual",hecho:false},{id:uid(),texto:"Split Upper/Lower 5 días",hecho:false},{id:uid(),texto:"Cardio/natación fin de semana",hecho:false}]},
+  {...dpMetaNueva("finanzas"),id:"dm3",texto:"Tengo un fondo de emergencia de 10M COP.",fechaLimite:"2026-12-31",
+    beneficios:["Tranquilidad","Base para el máster"],plan:[{id:uid(),texto:"Apartar de cada prima",hecho:false}]},
+  {...dpMetaNueva("realizacion"),id:"dm4",texto:"Avanzo hacia vivir en una finca conectada con la naturaleza.",fechaLimite:"2031-12-31",
+    beneficios:["Paz","Hogar propio","Conexión con la tierra"],plan:[{id:uid(),texto:"Definir zona y presupuesto",hecho:false}]},
+];
 
 const SEED_LISTA=[["Papa criolla","🥦 Frutas y Verduras"],["Zanahoria","🥦 Frutas y Verduras"],["Lechuga","🥦 Frutas y Verduras"],["Tomate cherry","🥦 Frutas y Verduras"],["Cebolla blanca","🥦 Frutas y Verduras"],["Champiñones","🥦 Frutas y Verduras"],["Limones","🥦 Frutas y Verduras"],["Ajo","🥦 Frutas y Verduras"],["Huevos","🧀 Lácteos y Huevos"],["Queso crema","🧀 Lácteos y Huevos"],["Crema de leche","🧀 Lácteos y Huevos"],["Mantequilla","🧀 Lácteos y Huevos"],["Parmesano en bloque","🧀 Lácteos y Huevos"],["Pechuga de pollo","🍖 Carnes y Fríos"],["Carne de res molida","🍖 Carnes y Fríos"],["Pepperoni","🍖 Carnes y Fríos"],["Harina de trigo","🌾 Despensa"],["Levadura seca","🌾 Despensa"],["Arroz blanco","🌾 Despensa"],["Pasta","🌾 Despensa"],["Granola","🌾 Despensa"],["Gelatina sin sabor","🌾 Despensa"],["Leche condensada","🌾 Despensa"],["Aceite de oliva","🫙 Aceites y Salsas"],["Salsa de soya","🫙 Aceites y Salsas"],["Mostaza Dijon","🫙 Aceites y Salsas"],["Mayonesa","🫙 Aceites y Salsas"],["Orégano","🌿 Especias"],["Pimentón ahumado","🌿 Especias"],["Comino","🌿 Especias"],["Tomate triturado","🥫 Enlatados"],["Caldo de pollo","🥫 Enlatados"]].map(([nombre,categoria],i)=>({id:"seed-"+i,nombre,categoria,comprado:false,precio:"",tienda:""}));
 
@@ -499,6 +578,11 @@ function App(){
   const [habitos,setHabitos]=useState([]);
   const [habitosLog,setHabitosLog]=useState({});
   const [cuentasReg,setCuentasReg]=useState([]);
+  const [dpGratitud,setDpGratitud]=useState([]);
+  const [dpAfirmaciones,setDpAfirmaciones]=useState([]);
+  const [dpVizLog,setDpVizLog]=useState([]);
+  const [dpMetas,setDpMetas]=useState([]);
+  const [dpRueda,setDpRueda]=useState({});
   const [inglesSR,setInglesSR]=useState({});
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
@@ -530,6 +614,11 @@ function App(){
     setHabitos(await load("habitos",[]));
     setHabitosLog(await load("habitosLog",{}));
     setCuentasReg(await load("cuentasReg",[]));
+    setDpGratitud(await load("dpGratitud",[]));
+    setDpAfirmaciones(await load("dpAfirmaciones",DP_AFIRMACIONES_SEED));
+    setDpVizLog(await load("dpVizLog",[]));
+    setDpMetas(await load("dpMetas",DP_METAS_SEED));
+    setDpRueda(await load("dpRueda",{}));
     setInglesSR(await load("inglesSR",{}));
     setReady(true);
   })();},[]);
@@ -560,12 +649,17 @@ function App(){
   useEffect(()=>{if(ready)save("habitos",habitos)},[habitos,ready]);
   useEffect(()=>{if(ready)save("habitosLog",habitosLog)},[habitosLog,ready]);
   useEffect(()=>{if(ready)save("cuentasReg",cuentasReg)},[cuentasReg,ready]);
+  useEffect(()=>{if(ready)save("dpGratitud",dpGratitud)},[dpGratitud,ready]);
+  useEffect(()=>{if(ready)save("dpAfirmaciones",dpAfirmaciones)},[dpAfirmaciones,ready]);
+  useEffect(()=>{if(ready)save("dpVizLog",dpVizLog)},[dpVizLog,ready]);
+  useEffect(()=>{if(ready)save("dpMetas",dpMetas)},[dpMetas,ready]);
+  useEffect(()=>{if(ready)save("dpRueda",dpRueda)},[dpRueda,ready]);
   useEffect(()=>{if(ready)save("inglesSR",inglesSR)},[inglesSR,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
@@ -574,6 +668,7 @@ function App(){
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
     {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog,cuentasReg,setCuentasReg}}/>}
+    {tab==="desarrollo"&&<DesarrolloPersonal {...{dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizLog,setDpVizLog,dpMetas,setDpMetas,dpRueda,setDpRueda,metas,inversiones}}/>}
     <Nav tab={tab} setTab={setTab}/>
     <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters}/>
     <ConfirmHost/>
@@ -625,7 +720,7 @@ function Ajustes({open,onClose,datos,setters}){
 }
 
 function Nav({tab,setTab}){
-  const items=[{id:"inicio",icon:"🏠",label:"Inicio"},{id:"comida",icon:"📖",label:"Comida"},{id:"crono",icon:"🗓️",label:"Cronograma"},{id:"finanzas",icon:"💰",label:"Finanzas"},{id:"gym",icon:"🏋️",label:"Gym"},{id:"ingles",icon:"📕",label:"Inglés"}];
+  const items=[{id:"inicio",icon:"🏠",label:"Inicio"},{id:"comida",icon:"📖",label:"Comida"},{id:"crono",icon:"🗓️",label:"Cronograma"},{id:"finanzas",icon:"💰",label:"Finanzas"},{id:"gym",icon:"🏋️",label:"Gym"},{id:"ingles",icon:"📕",label:"Inglés"},{id:"desarrollo",icon:"🌱",label:"Crecer"}];
   return <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:C.espresso,display:"flex",justifyContent:"space-around",padding:"8px 2px 14px",boxShadow:"0 -4px 20px rgba(0,0,0,.18)"}}>
     {items.map(it=>{const a=tab===it.id;return <button key={it.id} onClick={()=>setTab(it.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 4px",opacity:a?1:.5,transition:"opacity .2s",flex:1,minWidth:0}}><span style={{fontSize:18,filter:a?"none":"grayscale(.4)"}}>{it.icon}</span><span style={{fontSize:9,fontFamily:SANS,color:a?C.gold:"#d8cdb8",fontWeight:a?600:400,whiteSpace:"nowrap"}}>{it.label}</span></button>;})}
   </div>;
@@ -748,6 +843,308 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
     </div>}
 
     {toast&&<Toast>{toast}</Toast>}
+  </div>;
+}
+
+/* ═══════════ DESARROLLO PERSONAL (UI) ═══════════ */
+function DesarrolloPersonal(props){
+  const [vista,setVista]=useState("teoria");
+  return <div>
+    <Header titulo="Crecer" sub="Desarrollo personal · Seminario Fénix"/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"teoria",label:"📚 Teoría"},{id:"viz",label:"🧘 Práctica"},{id:"metas",label:"🎯 Metas"},{id:"miano",label:"🧭 Mi Año"}]}/>
+    {vista==="teoria"&&<DPTeoria/>}
+    {vista==="viz"&&<DPViz {...props}/>}
+    {vista==="metas"&&<DPMetas {...props}/>}
+    {vista==="miano"&&<DPMiAno/>}
+  </div>;
+}
+
+/* ── Teoría: acordeón estático ── */
+function DPTeoria(){
+  const [abierto,setAbierto]=useState("t1");
+  return <div style={{padding:"10px 18px 24px"}}>
+    <p style={{margin:"4px 0 14px",fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.5}}>El sistema de Brian Tracy (Seminario Fénix · Psicología del Logro), para consulta offline. Toca una sección para expandirla.</p>
+    {TEORIA_BT.map(s=>{const op=abierto===s.id;return <div key={s.id} style={{background:C.card,borderRadius:14,border:"1.5px solid "+(op?C.gold:C.border),marginBottom:10,overflow:"hidden"}}>
+      <div onClick={()=>setAbierto(op?null:s.id)} style={{display:"flex",alignItems:"center",gap:11,padding:"14px 15px",cursor:"pointer"}}>
+        <span style={{fontSize:20}}>{s.icon}</span>
+        <p style={{flex:1,margin:0,fontFamily:SERIF,fontSize:16}}>{s.cat}</p>
+        <span style={{color:op?C.gold:C.muted,fontSize:16,fontWeight:700,transform:op?"rotate(90deg)":"none",transition:"transform .2s"}}>›</span>
+      </div>
+      {op&&<div style={{padding:"0 16px 17px"}}><p style={{margin:0,fontFamily:SANS,fontSize:13.5,lineHeight:1.62,color:C.text,whiteSpace:"pre-wrap"}}>{s.cuerpo}</p></div>}
+    </div>;})}
+  </div>;
+}
+
+/* ── Mi Año: lectura simbólica estática ── */
+function DPMiAno(){
+  return <div style={{padding:"12px 18px 28px"}}>
+    <div style={{border:"1.5px solid "+C.gold,background:C.goldSoft,borderRadius:16,padding:"18px 17px",marginBottom:18}}>
+      <p style={{margin:0,fontFamily:SANS,fontSize:11,letterSpacing:2,textTransform:"uppercase",color:C.muted}}>Jun 2026 – Jun 2027</p>
+      <h2 style={{margin:"8px 0 8px",fontFamily:SERIF,fontSize:23,lineHeight:1.2}}>{MI_ANO.titular}</h2>
+      <p style={{margin:0,fontFamily:SANS,fontSize:13.5,lineHeight:1.6,color:C.text}}>{MI_ANO.subtitulo}</p>
+    </div>
+    <Mini icon="🧵" label="Mi mapa simbólico"/>
+    <div style={{marginTop:10,marginBottom:8}}>{MI_ANO.mapa.map((m,i)=><div key={i} style={{display:"flex",gap:11,padding:"9px 0",borderBottom:i<MI_ANO.mapa.length-1?"1px solid "+C.borderSoft:"none"}}>
+      <span style={{fontFamily:SERIF,fontSize:15,color:C.gold,fontWeight:700,minWidth:16}}>{i+1}</span>
+      <div><p style={{margin:0,fontFamily:SERIF,fontSize:15}}>{m.t}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.5}}>{m.d}</p></div>
+    </div>)}</div>
+    <p style={{margin:"4px 0 20px",fontFamily:SANS,fontSize:12.5,fontStyle:"italic",color:C.purple,lineHeight:1.5}}>{MI_ANO.tension}</p>
+    <Mini icon="📍" label="Momentos del año"/>
+    <div style={{marginTop:14}}>{MI_ANO.timeline.map((h,i)=>{const a=AREA(h.area);return <div key={i} style={{display:"flex",gap:12}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+        <div style={{width:32,height:32,borderRadius:"50%",background:C.card,border:"1.5px solid "+a.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>{a.icon}</div>
+        {i<MI_ANO.timeline.length-1&&<div style={{flex:1,width:2,background:C.borderSoft,minHeight:14}}/>}
+      </div>
+      <div style={{paddingBottom:16,flex:1}}>
+        <p style={{margin:0,fontFamily:SANS,fontSize:11,color:C.gold,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>{h.cuando}</p>
+        <p style={{margin:"2px 0 2px",fontFamily:SERIF,fontSize:16}}>{h.titulo}</p>
+        <p style={{margin:0,fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.5}}>{h.nota}</p>
+      </div>
+    </div>;})}</div>
+    <p style={{margin:"6px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted,lineHeight:1.55,fontStyle:"italic",background:C.borderSoft,padding:"13px 14px",borderRadius:12}}>{MI_ANO.nota}</p>
+  </div>;
+}
+
+/* ── Práctica: gratitud + afirmaciones + visualización ── */
+function DPViz({dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizLog,setDpVizLog,dpMetas}){
+  const hoyEntry=(dpGratitud||[]).find(g=>g.fecha===HOY);
+  const [items,setItems]=useState(hoyEntry?[...hoyEntry.items,""]:["","",""]);
+  const [verHist,setVerHist]=useState(false);
+  const [editAf,setEditAf]=useState(null);
+  const [sesion,setSesion]=useState(false);
+  const [toast,setToast]=useState("");
+  const aviso=t=>{setToast(t);setTimeout(()=>setToast(""),2200);};
+  // racha (no se rompe si hoy aún no escribes)
+  const racha=(()=>{const set=new Set((dpGratitud||[]).filter(g=>g.items&&g.items.some(x=>x&&x.trim())).map(g=>g.fecha));let n=0;let d=new Date();if(!set.has(fechaLocal(d)))d.setDate(d.getDate()-1);while(set.has(fechaLocal(d))){n++;d.setDate(d.getDate()-1);}return n;})();
+  const vizDias=new Set((dpVizLog||[]).map(v=>v.fecha)).size;
+  const setItem=(i,v)=>setItems(p=>p.map((x,j)=>j===i?v:x));
+  const guardarGrat=()=>{const limpio=items.map(s=>s.trim()).filter(Boolean);if(limpio.length===0){aviso("Escribe algo primero");return;}setDpGratitud(p=>{const otros=(p||[]).filter(g=>g.fecha!==HOY);return [...otros,{id:hoyEntry?hoyEntry.id:uid(),fecha:HOY,items:limpio}];});aviso("Gratitud guardada 🙏");};
+  const delGrat=async id=>{ if(await pedirConfirm({titulo:"Borrar entrada",texto:"Se borrará esta entrada de gratitud."})) setDpGratitud(p=>(p||[]).filter(g=>g.id!==id)); };
+  const guardarAf=a=>{const{_nuevo,...l}=a;setDpAfirmaciones(p=>(p||[]).some(x=>x.id===a.id)?p.map(x=>x.id===a.id?l:x):[...(p||[]),l]);setEditAf(null);};
+  const delAf=async id=>{ if(await pedirConfirm({titulo:"Borrar afirmación",texto:"Se borrará esta afirmación."})){ setDpAfirmaciones(p=>(p||[]).filter(x=>x.id!==id)); setEditAf(null);} };
+  const hist=[...(dpGratitud||[])].filter(g=>g.fecha!==HOY).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  if(sesion) return <DPVizSesion dpMetas={dpMetas} dpAfirmaciones={dpAfirmaciones} onSalir={seg=>{ if(seg>0) setDpVizLog(p=>[...(p||[]),{id:uid(),fecha:HOY,metaTexto:sesion.metaTexto||"",metaId:sesion.metaId||null,segundos:seg}]); setSesion(false); }}/>;
+
+  return <div style={{padding:"10px 18px 24px"}}>
+    {/* rachas */}
+    <div style={{display:"flex",gap:10,marginBottom:16}}>
+      <div style={{flex:1,background:C.card,borderRadius:13,border:"1.5px solid "+C.border,padding:"12px 13px"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:C.gold}}>🔥 {racha}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:11,color:C.muted}}>días de gratitud</p></div>
+      <div style={{flex:1,background:C.card,borderRadius:13,border:"1.5px solid "+C.border,padding:"12px 13px"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:C.purple}}>🧘 {vizDias}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:11,color:C.muted}}>visualizaciones</p></div>
+    </div>
+
+    {/* visualización */}
+    <div onClick={()=>setSesion({})} style={{background:"linear-gradient(160deg,#3a3050,#241d35)",borderRadius:16,padding:"20px 18px",marginBottom:18,cursor:"pointer",color:"#fff"}}>
+      <p style={{margin:0,fontFamily:SANS,fontSize:11,letterSpacing:2,textTransform:"uppercase",color:C.goldSoft}}>Programación mental</p>
+      <p style={{margin:"7px 0 4px",fontFamily:SERIF,fontSize:21}}>✨ Visualización guiada</p>
+      <p style={{margin:0,fontFamily:SANS,fontSize:12.5,color:"#d8cfe6",lineHeight:1.5}}>5 minutos: relájate, ve tu meta lograda con viveza e intensidad, y siente la emoción. Toca para iniciar.</p>
+    </div>
+
+    {/* gratitud */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Mini icon="🙏" label="Hoy agradezco…"/>{hoyEntry&&<Chip bg={C.greenSoft} col={C.green}>guardado</Chip>}</div>
+    {items.map((v,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+      <input style={inputStyle} placeholder={"Agradezco…"} value={v} onChange={e=>setItem(i,e.target.value)}/>
+      {items.length>1&&<button onClick={()=>setItems(p=>p.filter((_,j)=>j!==i))} style={{border:"none",background:"none",color:C.muted,fontSize:18,cursor:"pointer"}}>×</button>}
+    </div>)}
+    {items.length<5&&<button onClick={()=>setItems(p=>[...p,""])} style={{background:"none",border:"1.5px dashed "+C.border,color:C.muted,borderRadius:9,padding:"8px 0",width:"100%",fontFamily:SANS,fontSize:13,cursor:"pointer",marginBottom:10}}>+ agregar</button>}
+    <button onClick={guardarGrat} style={btnP(true)}>Guardar gratitud de hoy</button>
+    {hist.length>0&&<button onClick={()=>setVerHist(!verHist)} style={{background:"none",border:"none",color:C.gold,fontFamily:SANS,fontSize:13,fontWeight:600,cursor:"pointer",marginTop:12}}>{verHist?"Ocultar":"Ver"} historial ({hist.length}) {verHist?"▴":"▾"}</button>}
+    {verHist&&<div style={{marginTop:8}}>{hist.map(g=><div key={g.id} style={{background:C.card,borderRadius:12,border:"1.5px solid "+C.border,padding:"11px 13px",marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:11.5,color:C.muted,textTransform:"uppercase",letterSpacing:.4}}>{fechaLarga(g.fecha)}</span><button onClick={()=>delGrat(g.id)} style={{border:"none",background:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>×</button></div>
+      {g.items.map((it,k)=><p key={k} style={{margin:"5px 0 0",fontFamily:SANS,fontSize:13,color:C.text}}>• {it}</p>)}
+    </div>)}</div>}
+
+    {/* afirmaciones */}
+    <div style={{height:1,background:C.borderSoft,margin:"20px 0 14px"}}/>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><Mini icon="💬" label="Mis afirmaciones"/><button onClick={()=>setEditAf({id:uid(),texto:"",_nuevo:true})} style={{background:"none",border:"1.5px solid "+C.gold,color:C.espresso,borderRadius:9,padding:"5px 11px",fontSize:12.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Afirmación</button></div>
+    <p style={{margin:"0 0 12px",fontFamily:SANS,fontSize:11.5,color:C.muted,lineHeight:1.5}}>Las 3 P: positiva, en presente, personal. Ej. «Soy excelente administrando mi tiempo» (no «No voy a procrastinar»).</p>
+    {(dpAfirmaciones||[]).map(a=><div key={a.id} onClick={()=>setEditAf({...a,_nuevo:false})} style={{display:"flex",alignItems:"center",gap:10,background:C.card,borderRadius:12,border:"1.5px solid "+C.border,padding:"12px 14px",marginBottom:8,cursor:"pointer"}}>
+      <span style={{fontSize:16}}>✦</span><p style={{flex:1,margin:0,fontFamily:SERIF,fontSize:15.5,fontStyle:"italic",lineHeight:1.35}}>{a.texto}</p><span style={{color:C.muted,fontSize:14}}>✎</span>
+    </div>)}
+
+    <Sheet open={!!editAf} onClose={()=>setEditAf(null)} title={editAf?._nuevo?"Nueva afirmación":"Editar afirmación"}>{editAf&&<DPFormAfirmacion af={editAf} onGuardar={guardarAf} onEliminar={editAf._nuevo?null:()=>delAf(editAf.id)}/>}</Sheet>
+    {toast&&<Toast>{toast}</Toast>}
+  </div>;
+}
+function DPFormAfirmacion({af,onGuardar,onEliminar}){
+  const [a,setA]=useState(af); const ok=a.texto.trim();
+  return <div>
+    <Field label="Afirmación"><textarea style={{...inputStyle,minHeight:80,resize:"vertical"}} placeholder="Soy disciplinado y avanzo cada día." value={a.texto} onChange={e=>setA({...a,texto:e.target.value})} autoFocus/></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(a)} style={btnP(ok)}>Guardar</button>
+    {onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+
+/* Visualización guiada: overlay a pantalla completa con pasos + timer */
+function DPVizSesion({dpMetas,dpAfirmaciones,onSalir}){
+  const [paso,setPaso]=useState(0);
+  const [seg,setSeg]=useState(0);
+  const [metaTexto,setMetaTexto]=useState("");
+  const [metaLibre,setMetaLibre]=useState("");
+  useEffect(()=>{const t=setInterval(()=>setSeg(s=>s+1),1000);return ()=>clearInterval(t);},[]);
+  const metasActivas=(dpMetas||[]).filter(m=>!m.completada&&m.texto);
+  const afs=(dpAfirmaciones||[]).filter(a=>a.texto&&a.texto.trim());
+  const foco=metaLibre.trim()||metaTexto;
+  const PASOS=[
+    {t:"Relájate",sub:"Respira hondo. Suelta la tensión de los hombros, la cara, las manos. La mente programa mejor cuando el cuerpo está en calma.",respira:true},
+    {t:"Tu meta",sub:"¿Qué quieres ver logrado? Elígela o escríbela. La vas a vivir como si ya fuera real.",meta:true},
+    {t:"Velo con detalle",sub:"Mira la escena de haberlo logrado. ¿Qué ves a tu alrededor? ¿Qué oyes? ¿Qué hueles? Hazlo nítido, a todo color."},
+    {t:"Siéntelo",sub:"Siente la emoción de haberlo conseguido. La alegría, el orgullo, el alivio. Esa intensidad es lo que más programa al subconsciente."},
+    {t:"Tus afirmaciones",sub:"Léelas en voz alta, con convicción.",afs:true},
+    {t:"Suelta y confía",sub:"Suelta la imagen. Ya plantaste la semilla. Confía y vuelve a tu día con esa certeza."},
+  ];
+  const P=PASOS[paso];
+  const fin=()=>onSalir(seg);
+  const sig=()=>{ if(paso<PASOS.length-1) setPaso(paso+1); else fin(); };
+  const mmss=String(Math.floor(seg/60)).padStart(2,"0")+":"+String(seg%60).padStart(2,"0");
+  return <div style={{position:"fixed",inset:0,zIndex:200,background:"linear-gradient(170deg,#2a2340,#15101f)",color:"#fff",display:"flex",flexDirection:"column",padding:"22px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span style={{fontFamily:SANS,fontSize:12,color:C.goldSoft,letterSpacing:1}}>{mmss}</span>
+      <button onClick={fin} style={{background:"rgba(255,255,255,.12)",border:"none",color:"#fff",borderRadius:20,padding:"6px 14px",fontFamily:SANS,fontSize:12.5,cursor:"pointer"}}>Terminar</button>
+    </div>
+    <div style={{display:"flex",gap:5,margin:"16px 0 0"}}>{PASOS.map((_,i)=><div key={i} style={{flex:1,height:3,borderRadius:2,background:i<=paso?C.gold:"rgba(255,255,255,.18)"}}/>)}</div>
+    <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+      {P.respira&&<div style={{width:160,height:160,borderRadius:"50%",background:"radial-gradient(circle,#c8a96e88,#c8a96e22)",border:"1.5px solid "+C.gold,animation:"respira 8s ease-in-out infinite",marginBottom:30,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:13,color:"#fff"}}>inhala · exhala</div>}
+      <h2 style={{margin:"0 0 14px",fontFamily:SERIF,fontSize:30,fontWeight:"normal"}}>{P.t}</h2>
+      {foco&&!P.meta&&<p style={{margin:"0 0 16px",fontFamily:SERIF,fontStyle:"italic",fontSize:19,color:C.goldSoft,lineHeight:1.3,maxWidth:420}}>“{foco}”</p>}
+      <p style={{margin:0,fontFamily:SANS,fontSize:15,lineHeight:1.65,color:"#e6e0f0",maxWidth:440}}>{P.sub}</p>
+      {P.meta&&<div style={{width:"100%",maxWidth:420,marginTop:20}}>
+        {metasActivas.length>0&&<select value={metaTexto} onChange={e=>{setMetaTexto(e.target.value);setMetaLibre("");}} style={{...inputStyle,background:"rgba(255,255,255,.1)",color:"#fff",border:"1.5px solid rgba(255,255,255,.25)",marginBottom:10}}>
+          <option value="" style={{color:"#000"}}>— Elige una meta —</option>
+          {metasActivas.map(m=><option key={m.id} value={m.texto} style={{color:"#000"}}>{m.texto.slice(0,60)}</option>)}
+        </select>}
+        <input value={metaLibre} onChange={e=>setMetaLibre(e.target.value)} placeholder="…o escribe una meta libre" style={{...inputStyle,background:"rgba(255,255,255,.1)",color:"#fff",border:"1.5px solid rgba(255,255,255,.25)"}}/>
+      </div>}
+      {P.afs&&<div style={{marginTop:18,maxWidth:420}}>{afs.length>0?afs.map(a=><p key={a.id} style={{margin:"10px 0",fontFamily:SERIF,fontStyle:"italic",fontSize:18,color:"#fff"}}>✦ {a.texto}</p>):<p style={{fontFamily:SANS,fontSize:13,color:"#bbb"}}>Aún no tienes afirmaciones. Créalas en la pestaña Práctica.</p>}</div>}
+    </div>
+    <div style={{display:"flex",gap:10}}>
+      {paso>0&&<button onClick={()=>setPaso(paso-1)} style={{flex:"0 0 auto",background:"rgba(255,255,255,.12)",border:"none",color:"#fff",borderRadius:12,padding:"15px 20px",fontFamily:SANS,fontSize:15,cursor:"pointer"}}>←</button>}
+      <button onClick={sig} style={{flex:1,background:C.gold,border:"none",color:C.espresso,borderRadius:12,padding:"15px 0",fontFamily:SANS,fontSize:15,fontWeight:700,cursor:"pointer"}}>{paso<PASOS.length-1?"Siguiente":"Terminar ✓"}</button>
+    </div>
+  </div>;
+}
+
+/* ── Metas de vida: Rueda + sistema 12 pasos ── */
+function DPMetas({dpMetas,setDpMetas,dpRueda,setDpRueda,dpVizLog,setDpVizLog,dpAfirmaciones,metas,inversiones}){
+  const [sub,setSub]=useState("metas");
+  const [editando,setEditando]=useState(null);
+  const [verMeta,setVerMeta]=useState(null);
+  const progreso=m=>{const pl=m.plan||[];if(pl.length===0)return 0;return Math.round(pl.filter(p=>p.hecho).length/pl.length*100);};
+  const guardar=m=>{const{_nuevo,...l}=m; let lista=(dpMetas||[]).some(x=>x.id===m.id)?dpMetas.map(x=>x.id===m.id?l:x):[...(dpMetas||[]),l]; if(l.esPropositoMayor) lista=lista.map(x=>x.id===l.id?x:{...x,esPropositoMayor:false}); setDpMetas(lista); setEditando(null); setVerMeta(l); };
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar meta",texto:"Se borrará esta meta de vida y su plan."})){ setDpMetas(p=>(p||[]).filter(x=>x.id!==id)); setEditando(null); setVerMeta(null);} };
+  const togglePaso=(m,pid)=>{const l={...m,plan:m.plan.map(p=>p.id===pid?{...p,hecho:!p.hecho}:p)};setDpMetas(prev=>prev.map(x=>x.id===m.id?l:x));setVerMeta(l);};
+  const nueva=()=>setEditando({...dpMetaNueva(),_nuevo:true});
+  const proposito=(dpMetas||[]).find(m=>m.esPropositoMayor&&!m.completada);
+  const porArea=AREAS_VIDA.map(a=>({a,ms:(dpMetas||[]).filter(m=>m.area===a.id)})).filter(g=>g.ms.length>0);
+
+  return <div style={{padding:"10px 18px 24px"}}>
+    <Segmented value={sub} onChange={setSub} options={[{id:"metas",label:"🎯 Mis metas"},{id:"rueda",label:"☸️ Rueda"}]}/>
+    {sub==="rueda"&&<div style={{marginTop:14}}>
+      <p style={{margin:"0 0 14px",fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.5}}>Califica cada área de tu vida del 1 al 10. Tu vida ideal es equilibrada: las áreas más bajas son tus prioridades de meta.</p>
+      {AREAS_VIDA.map(a=>{const v=num(dpRueda[a.id])||0;return <div key={a.id} style={{marginBottom:15}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontFamily:SANS,fontSize:14}}>{a.icon} {a.label}</span><span style={{fontFamily:SERIF,fontSize:17,color:a.color}}>{v||"–"}<span style={{fontSize:12,color:C.muted}}>/10</span></span></div>
+        <div style={{marginBottom:6}}><Bar pct={v*10} color={a.color} h={9}/></div>
+        <input type="range" min="0" max="10" value={v} onChange={e=>setDpRueda(p=>({...p,[a.id]:num(e.target.value)}))} style={{width:"100%",accentColor:a.color}}/>
+      </div>;})}
+    </div>}
+    {sub==="metas"&&<div style={{marginTop:6}}>
+      <button onClick={nueva} style={{width:"100%",padding:"12px 0",marginBottom:14,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Nueva meta de vida</button>
+      {(dpMetas||[]).length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:13,marginTop:10,lineHeight:1.6}}>Define tus metas de vida con el sistema de 12 pasos de Tracy. Equilibra 2–3 por área.</p>}
+      {proposito&&(()=>{const pct=progreso(proposito);const a=AREA(proposito.area);return <div onClick={()=>setVerMeta(proposito)} style={{background:C.goldSoft,border:"1.5px solid "+C.gold,borderRadius:15,padding:16,marginBottom:16,cursor:"pointer"}}>
+        <Chip bg={C.gold} col={C.espresso}>⭐ Propósito Mayor</Chip>
+        <p style={{margin:"10px 0 8px",fontFamily:SERIF,fontSize:18,lineHeight:1.3}}>{proposito.texto}</p>
+        <Bar pct={pct} color={C.espresso} h={9}/>
+        <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{a.icon} {a.label} · {pct}%{proposito.fechaLimite?" · "+mesesHasta(proposito.fechaLimite)+" meses":""}</p>
+      </div>;})()}
+      {porArea.map(({a,ms})=>{const prom=Math.round(ms.reduce((s,m)=>s+progreso(m),0)/ms.length);return <div key={a.id} style={{marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><span style={{fontFamily:SERIF,fontSize:16}}>{a.icon} {a.label}</span><span style={{fontFamily:SANS,fontSize:12,color:C.muted}}>{prom}%</span></div>
+        {ms.map(m=>{const pct=progreso(m);const ruta=metaRuta(m,pct);return <div key={m.id} onClick={()=>setVerMeta(m)} style={{background:C.card,borderRadius:13,border:"1.5px solid "+(m.completada?C.green:C.border),padding:"13px 14px",marginBottom:9,cursor:"pointer",opacity:m.completada?0.7:1}}>
+          <p style={{margin:"0 0 9px",fontFamily:SERIF,fontSize:15.5,lineHeight:1.3}}>{m.esPropositoMayor?"⭐ ":""}{m.completada?"✓ ":""}{m.texto||"(sin título)"}</p>
+          <Bar pct={pct} color={a.color} h={8}/>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontFamily:SANS,fontSize:11.5,color:C.muted}}><span>{(m.plan||[]).filter(p=>p.hecho).length}/{(m.plan||[]).length} pasos · {pct}%</span>{ruta&&<span style={{color:ruta.c,fontWeight:600}}>{ruta.t}</span>}</div>
+        </div>;})}
+      </div>;})}
+    </div>}
+
+    <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando?._nuevo?"Nueva meta de vida":"Editar meta"}>{editando&&<DPFormMeta meta={editando} onGuardar={guardar} onEliminar={editando._nuevo?null:()=>eliminar(editando.id)}/>}</Sheet>
+    <Sheet open={!!verMeta} onClose={()=>setVerMeta(null)} title="Meta de vida">{verMeta&&<DPVerMeta meta={verMeta} progreso={progreso(verMeta)} onTogglePaso={pid=>togglePaso(verMeta,pid)} onEditar={()=>{setEditando({...verMeta,_nuevo:false});setVerMeta(null);}} onCompletar={()=>{const l={...verMeta,completada:!verMeta.completada};setDpMetas(p=>p.map(x=>x.id===l.id?l:x));setVerMeta(l);}}/>}</Sheet>
+  </div>;
+}
+// semáforo "en ruta" según tiempo transcurrido vs progreso
+function metaRuta(m,pct){ if(m.completada||!m.fechaLimite||!m.creada) return null; const tot=mesesHasta(m.fechaLimite)+mesesDesde(m.creada); if(tot<=0) return null; const esp=mesesDesde(m.creada)/tot*100; if(diasHasta(m.fechaLimite)<0) return {t:"Vencida",c:C.red}; return pct>=esp*0.9?{t:"En ruta",c:C.green}:{t:"Atrasada",c:C.red}; }
+
+function DPVerMeta({meta:m,progreso,onTogglePaso,onEditar,onCompletar}){
+  const a=AREA(m.area);
+  const Lista=({label,arr})=>arr&&arr.length>0?<div style={{marginBottom:13}}><p style={labelStyle}>{label}</p>{arr.map((x,i)=><p key={i} style={{margin:"3px 0",fontFamily:SANS,fontSize:13.5,color:C.text}}>• {typeof x==="string"?x:x.texto}</p>)}</div>:null;
+  return <div>
+    <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}><Chip bg={a.color==C.espresso?C.borderSoft:undefined} col={a.color}>{a.icon} {a.label}</Chip>{m.esPropositoMayor&&<Chip bg={C.gold} col={C.espresso}>⭐ Propósito Mayor</Chip>}</div>
+    <p style={{margin:"0 0 14px",fontFamily:SERIF,fontSize:20,lineHeight:1.3}}>{m.texto}</p>
+    <div style={{marginBottom:16}}><Bar pct={progreso} color={a.color} h={10}/><p style={{margin:"6px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>{progreso}% del plan{m.fechaLimite?" · meta "+fechaLarga(m.fechaLimite)+" ("+mesesHasta(m.fechaLimite)+" meses)":""}</p></div>
+    {(m.plan||[]).length>0&&<div style={{marginBottom:16}}><p style={labelStyle}>Plan</p>{m.plan.map(p=><div key={p.id} onClick={()=>onTogglePaso(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",cursor:"pointer"}}>
+      <div style={{width:22,height:22,borderRadius:7,flexShrink:0,border:p.hecho?"none":"1.5px solid "+C.gold,background:p.hecho?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{p.hecho&&<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+      <span style={{fontFamily:SANS,fontSize:14,color:p.hecho?C.muted:C.text,textDecoration:p.hecho?"line-through":"none"}}>{p.texto}</span>
+    </div>)}</div>}
+    {m.deseo||m.creencia?<div style={{display:"flex",gap:10,marginBottom:14}}><div style={{flex:1,background:C.borderSoft,borderRadius:10,padding:"9px 12px"}}><p style={{margin:0,fontFamily:SANS,fontSize:11,color:C.muted}}>Deseo</p><p style={{margin:"2px 0 0",fontFamily:SERIF,fontSize:18}}>{m.deseo}/10</p></div><div style={{flex:1,background:C.borderSoft,borderRadius:10,padding:"9px 12px"}}><p style={{margin:0,fontFamily:SANS,fontSize:11,color:C.muted}}>Creencia</p><p style={{margin:"2px 0 0",fontFamily:SERIF,fontSize:18}}>{m.creencia}/10</p></div></div>:null}
+    {Lista({label:"Beneficios (¿por qué la quiero?)",arr:m.beneficios})}
+    {m.puntoPartida&&<div style={{marginBottom:13}}><p style={labelStyle}>Punto de partida</p><p style={{margin:0,fontFamily:SANS,fontSize:13.5}}>{m.puntoPartida}</p></div>}
+    {Lista({label:"Obstáculos",arr:(m.obstaculos||[]).map(o=>(o.esLimitante?"⚠️ ":"")+ (typeof o==="string"?o:o.texto))})}
+    {Lista({label:"Conocimientos / habilidades",arr:m.conocimientos})}
+    {Lista({label:"Personas cuyo apoyo necesito",arr:m.personas})}
+    {m.notas&&<div style={{marginBottom:13}}><p style={labelStyle}>Notas</p><p style={{margin:0,fontFamily:SANS,fontSize:13.5,whiteSpace:"pre-wrap"}}>{m.notas}</p></div>}
+    <button onClick={onEditar} style={btnP(true)}>Editar meta</button>
+    <button onClick={onCompletar} style={{width:"100%",marginTop:10,padding:"11px 0",background:"transparent",color:m.completada?C.muted:C.green,border:"1.5px solid "+(m.completada?C.border:C.green),borderRadius:12,fontSize:13.5,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>{m.completada?"Reabrir meta":"✓ Marcar como lograda"}</button>
+  </div>;
+}
+
+// sección colapsable y editor de listas (top-level para no perder foco al escribir)
+function DPSec({titulo,open,onToggle,children}){ return <div style={{border:"1.5px solid "+(open?C.gold:C.border),borderRadius:12,marginBottom:10,overflow:"hidden"}}>
+  <div onClick={onToggle} style={{padding:"12px 14px",display:"flex",justifyContent:"space-between",cursor:"pointer",background:open?C.goldSoft:C.card}}><span style={{fontFamily:SERIF,fontSize:15}}>{titulo}</span><span style={{color:C.muted,transform:open?"rotate(90deg)":"none"}}>›</span></div>
+  {open&&<div style={{padding:"14px"}}>{children}</div>}
+</div>; }
+function DPListEd({arr,onChange,ph}){ const a=arr||[]; return <div>{a.map((x,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:7,alignItems:"center"}}>
+    <input style={inputStyle} value={x} placeholder={ph} onChange={e=>onChange(a.map((y,j)=>j===i?e.target.value:y))}/>
+    <button onClick={()=>onChange(a.filter((_,j)=>j!==i))} style={{border:"none",background:"none",color:C.muted,fontSize:18,cursor:"pointer"}}>×</button>
+  </div>)}<button onClick={()=>onChange([...a,""])} style={{background:"none",border:"1.5px dashed "+C.border,color:C.muted,borderRadius:9,padding:"7px 0",width:"100%",fontFamily:SANS,fontSize:13,cursor:"pointer"}}>+ agregar</button></div>; }
+function DPFormMeta({meta,onGuardar,onEliminar}){
+  const [m,setM]=useState({deseo:8,creencia:8,beneficios:[],obstaculos:[],conocimientos:[],personas:[],plan:[],...meta});
+  const set=(k,v)=>setM(p=>({...p,[k]:v}));
+  const ok=m.texto&&m.texto.trim();
+  const [sec,setSec]=useState("meta");
+  const tog=id=>setSec(sec===id?null:id);
+  return <div>
+    <DPSec titulo="La meta (pasos 1–3)" open={sec==="meta"} onToggle={()=>tog("meta")}>
+      <Field label="Tu meta (en presente, positivo y personal)"><textarea style={{...inputStyle,minHeight:60,resize:"vertical"}} placeholder="Ej. Soy admitido en…, Peso 75 kg" value={m.texto||""} onChange={e=>set("texto",e.target.value)}/></Field>
+      <Field label="Área de vida"><select style={inputStyle} value={m.area} onChange={e=>set("area",e.target.value)}>{AREAS_VIDA.map(a=><option key={a.id} value={a.id}>{a.icon} {a.label}</option>)}</select></Field>
+      <label style={{display:"flex",alignItems:"center",gap:9,marginBottom:12,cursor:"pointer",fontFamily:SANS,fontSize:14}}><input type="checkbox" checked={!!m.esPropositoMayor} onChange={e=>set("esPropositoMayor",e.target.checked)} style={{width:18,height:18,accentColor:C.gold}}/>⭐ Es mi Propósito Mayor Definido</label>
+      <div style={{display:"flex",gap:12}}>
+        <div style={{flex:1}}><p style={labelStyle}>Deseo (1–10)</p><input type="number" min="1" max="10" style={inputStyle} value={m.deseo} onChange={e=>set("deseo",num(e.target.value))}/></div>
+        <div style={{flex:1}}><p style={labelStyle}>Creencia (1–10)</p><input type="number" min="1" max="10" style={inputStyle} value={m.creencia} onChange={e=>set("creencia",num(e.target.value))}/></div>
+      </div>
+    </DPSec>
+    <DPSec titulo="El porqué (pasos 4–6)" open={sec==="porque"} onToggle={()=>tog("porque")}>
+      <p style={labelStyle}>Beneficios (¿por qué la quiero?)</p><DPListEd arr={m.beneficios} onChange={v=>set("beneficios",v)} ph="Un beneficio"/>
+      <div style={{height:10}}/>
+      <Field label="Punto de partida (¿dónde estoy hoy?)"><textarea style={{...inputStyle,minHeight:50,resize:"vertical"}} value={m.puntoPartida||""} onChange={e=>set("puntoPartida",e.target.value)}/></Field>
+      <Field label="Fecha límite"><input type="date" style={inputStyle} value={m.fechaLimite||""} onChange={e=>set("fechaLimite",e.target.value)}/></Field>
+      {m.fechaLimite&&<p style={{margin:"-6px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>Faltan {mesesHasta(m.fechaLimite)} meses.</p>}
+    </DPSec>
+    <DPSec titulo="Recursos (pasos 7–9)" open={sec==="recursos"} onToggle={()=>tog("recursos")}>
+      <p style={labelStyle}>Obstáculos a superar</p><DPListEd arr={m.obstaculos} onChange={v=>set("obstaculos",v)} ph="Un obstáculo"/>
+      <div style={{height:12}}/><p style={labelStyle}>Conocimientos / habilidades</p><DPListEd arr={m.conocimientos} onChange={v=>set("conocimientos",v)} ph="Algo que aprender"/>
+      <div style={{height:12}}/><p style={labelStyle}>Personas cuyo apoyo necesito</p><DPListEd arr={m.personas} onChange={v=>set("personas",v)} ph="Una persona"/>
+    </DPSec>
+    <DPSec titulo="Plan y notas (pasos 10–12)" open={sec==="plan"} onToggle={()=>tog("plan")}>
+      <p style={labelStyle}>Plan de pasos accionables</p>
+      {(m.plan||[]).map((p,i)=><div key={p.id||i} style={{display:"flex",gap:8,marginBottom:7,alignItems:"center"}}>
+        <input style={inputStyle} value={p.texto} placeholder="Un paso" onChange={e=>set("plan",m.plan.map((y,j)=>j===i?{...y,texto:e.target.value}:y))}/>
+        <button onClick={()=>set("plan",m.plan.filter((_,j)=>j!==i))} style={{border:"none",background:"none",color:C.muted,fontSize:18,cursor:"pointer"}}>×</button>
+      </div>)}
+      <button onClick={()=>set("plan",[...(m.plan||[]),{id:uid(),texto:"",hecho:false}])} style={{background:"none",border:"1.5px dashed "+C.border,color:C.muted,borderRadius:9,padding:"7px 0",width:"100%",fontFamily:SANS,fontSize:13,cursor:"pointer"}}>+ agregar paso</button>
+      <div style={{height:14}}/>
+      <Field label="Notas (paso 12: persiste)"><textarea style={{...inputStyle,minHeight:60,resize:"vertical"}} value={m.notas||""} onChange={e=>set("notas",e.target.value)}/></Field>
+    </DPSec>
+    <button disabled={!ok} onClick={()=>onGuardar({...m,plan:(m.plan||[]).filter(p=>p.texto&&p.texto.trim()),beneficios:(m.beneficios||[]).filter(Boolean),obstaculos:(m.obstaculos||[]).filter(Boolean),conocimientos:(m.conocimientos||[]).filter(Boolean),personas:(m.personas||[]).filter(Boolean)})} style={btnP(ok)}>Guardar meta</button>
+    {onEliminar&&btnDel(onEliminar)}
   </div>;
 }
 
