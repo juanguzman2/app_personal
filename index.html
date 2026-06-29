@@ -568,7 +568,7 @@ function App(){
   const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
-    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
+    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
@@ -632,7 +632,7 @@ function Nav({tab,setTab}){
 }
 
 /* ═══════════ INICIO ═══════════ */
-function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,setTab,abrirAjustes}){
+function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,setTab,abrirAjustes}){
   const habsHoy=(habitos||[]).filter(h=>!h.bloqueId); // los vinculados a bloque ya salen en la rutina
   const setHabitoHoy=(h,val)=>setHabitosLog&&setHabitosLog(p=>{const d={...((p||{})[HOY]||{})};d[h.id]=val;return {...p,[HOY]:d};});
   const sobras=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
@@ -643,15 +643,11 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
   const delLote=async id=>{ if(await pedirConfirm({titulo:"Quitar de la nevera",texto:"Se quita este plato. No afecta lo ya registrado."})) setLotes&&setLotes(prev=>prev.filter(x=>x.id!==id)); };
   const hora=new Date().getHours();
   const saludo=hora<12?"Buenos días":hora<19?"Buenas tardes":"Buenas noches";
-  const pendientes=lista.filter(i=>!i.comprado).length;
   const hoyBloques=((horario||{})[diaHoyNombre()]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
   const ahora=minNow();
   const bloqueActual=hoyBloques.find(b=>ahora>=hhmmToMin(b.desde)&&ahora<hhmmToMin(b.hasta));
-  const bloqueSig=hoyBloques.find(b=>hhmmToMin(b.desde)>ahora);
-  const t=totDia(consumo,HOY);
-  const lim=num(limites.kcal);
-  const quemHoy=quemadoDia(quemadas,HOY,limites.quemadaDiaria);
-  const neto=t.kcal-quemHoy;
+  // cuentas regresivas (metas con fecha) vigentes, las más próximas primero
+  const cuentasProx=[...(cuentasReg||[])].filter(c=>c.fecha&&diasHasta(c.fecha)>=0).sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||"")).slice(0,3);
 
   const efectivo=transacciones.reduce((a,x)=>a+(x.tipo==="ingreso"?num(x.monto):-num(x.monto)),0);
   const tMes=transacciones.filter(x=>mesDe(x.fecha)===MES_ACTUAL);
@@ -660,14 +656,9 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
 
   const metaAct=m=>metaActual(m,inversiones);
   const metaProx=[...metas].filter(m=>metaAct(m)<num(m.objetivo)).sort((a,b)=>new Date(a.fecha||"2999")-new Date(b.fecha||"2999"))[0];
-  const entSem=entrenos.filter(e=>ultimos7().includes(e.fecha)).length;
 
   const diaAno=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/864e5);
   const frase=FRASES[diaAno%FRASES.length];
-
-  let estado=null;
-  if(quemHoy>0||lim>0){ const ref=quemHoy>0?quemHoy:lim;
-    if(neto>ref*0.05+50) estado={t:"Superávit",c:C.red}; else if(neto<-(ref*0.05+50)) estado={t:"Déficit",c:C.green}; else estado={t:"Mantenimiento",c:C.blue}; }
 
   return <div>
     <div style={{position:"relative",minHeight:340,overflow:"hidden",backgroundColor:"#11264a",backgroundImage:"linear-gradient(180deg, rgba(12,22,44,.30) 0%, rgba(12,18,34,.20) 38%, rgba(14,12,8,.86) 100%), url('./asta.jpeg'), linear-gradient(160deg,#3f86c9 0%,#1d3f74 55%,#11203f 100%)",backgroundSize:"cover, cover, cover",backgroundPosition:"center, top center, center",backgroundRepeat:"no-repeat"}}>
@@ -683,26 +674,18 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
       </div>
     </div>
 
-    <div style={{padding:18,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-      <Card onClick={()=>setTab("comida")}>
-        <Mini icon="🍽️" label="Hoy comiste"/>
-        <p style={{margin:"8px 0 0",fontFamily:SERIF,fontSize:26,lineHeight:1}}>{t.kcal}<span style={{fontSize:13,color:C.muted}}> kcal</span></p>
-        {lim>0?<div style={{marginTop:8}}><Bar pct={t.kcal/lim*100} color={t.kcal>lim?C.red:C.green}/><p style={{margin:"5px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>Meta {lim}</p></div>:<p style={{margin:"6px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>Define tu meta →</p>}
-        <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
-          <Chip bg={C.greenSoft} col={C.green}>{t.proteina}g P</Chip>
-          <Chip bg={C.blueSoft} col={C.blue}>{t.carbos}g C</Chip>
-          <Chip bg={C.redSoft} col={C.red}>{t.grasa}g G</Chip>
-        </div>
-        {estado&&<p style={{margin:"10px 0 0",fontSize:12,fontFamily:SANS,fontWeight:700,color:estado.c}}>{estado.t} {neto>=0?"+":""}{neto} kcal</p>}
-      </Card>
-
+    <div style={{padding:18}}>
       <Card onClick={()=>setTab("finanzas")}>
-        <Mini icon="💵" label="Efectivo disponible"/>
-        <p style={{margin:"8px 0 0",fontFamily:SERIF,fontSize:24,lineHeight:1,color:efectivo>=0?C.green:C.red}}>{moneyShort(efectivo)}</p>
-        <p style={{margin:"6px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>Sin contar inversiones</p>
-        <div style={{height:1,background:C.borderSoft,margin:"12px 0 10px"}}/>
-        <Mini icon="📅" label="Este mes"/>
-        <p style={{margin:"6px 0 0",fontSize:12,color:C.muted,fontFamily:SANS}}>+{moneyShort(ing)} · −{moneyShort(gas)}</p>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div><Mini icon="💵" label="Efectivo disponible"/>
+            <p style={{margin:"8px 0 0",fontFamily:SERIF,fontSize:26,lineHeight:1,color:efectivo>=0?C.green:C.red}}>{moneyShort(efectivo)}</p>
+            <p style={{margin:"6px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>Sin contar inversiones</p>
+          </div>
+          <div style={{textAlign:"right"}}><Mini icon="📅" label="Este mes"/>
+            <p style={{margin:"8px 0 0",fontSize:13,color:C.green,fontFamily:SANS,fontWeight:600}}>+{moneyShort(ing)}</p>
+            <p style={{margin:"3px 0 0",fontSize:13,color:C.red,fontFamily:SANS,fontWeight:600}}>−{moneyShort(gas)}</p>
+          </div>
+        </div>
       </Card>
     </div>
 
@@ -737,6 +720,15 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
       </div>;})}</div>
     </Card></div>;})()}
 
+    {cuentasProx.length>0&&<div style={{padding:"0 18px 6px"}}><Card>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="⏳" label="Cuenta regresiva"/><span onClick={()=>setTab("crono")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Ver todas ›</span></div>
+      <div style={{marginTop:10}}>{cuentasProx.map(c=>{const d=diasHasta(c.fecha);const sem=Math.floor(d/7);const col=d<=7?C.red:d<=30?C.gold:C.green;const grande=d===0?"¡Hoy!":d===1?"Mañana":sem>=1?sem+(sem===1?" sem":" sem"):d+" días";const chico=sem>=1?d+" días":fechaLarga(c.fecha);return <div key={c.id} style={{display:"flex",alignItems:"center",gap:11,padding:"7px 0"}}>
+        <span style={{fontSize:19}}>{c.icon||"🎯"}</span>
+        <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p><p style={{margin:"1px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>{fechaLarga(c.fecha)}</p></div>
+        <div style={{textAlign:"right",whiteSpace:"nowrap"}}><p style={{margin:0,fontFamily:SERIF,fontSize:18,color:col,lineHeight:1}}>{grande}</p><p style={{margin:"2px 0 0",fontSize:10.5,color:C.muted,fontFamily:SANS}}>{chico}</p></div>
+      </div>;})}</div>
+    </Card></div>}
+
     {sobras.length>0&&<div style={{padding:"8px 18px 4px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
         <h2 style={{margin:0,fontFamily:SERIF,fontSize:19,fontWeight:"normal"}}>🍱 En la nevera</h2>
@@ -755,12 +747,6 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
       </div>;})}
     </div>}
 
-    <div style={{padding:"14px 18px 10px",display:"grid",gap:8}}>
-      <Card onClick={()=>setTab("crono")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>🗂️ Sprints activos</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{(sprints||[]).filter(s=>progresoSprint(s).pct<100).length}</span></div></Card>
-      <Card onClick={()=>setTab("gym")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>🏋️ Entrenos esta semana</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{entSem}</span></div></Card>
-      <Card onClick={()=>setTab("lista")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>🛒 Lista de mercado</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{pendientes} pendientes</span></div></Card>
-      <Card onClick={()=>setTab("comida")} pad={16}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontFamily:SANS,fontSize:14}}>📖 Recetas guardadas</span><span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:600}}>{recetas.length}</span></div></Card>
-    </div>
     {toast&&<Toast>{toast}</Toast>}
   </div>;
 }
