@@ -1,4 +1,4 @@
-const CACHE = "mvo-v25";
+const CACHE = "mvo-v26";
 const ASSETS = [
   "./",
   "./index.html",
@@ -31,6 +31,21 @@ self.addEventListener("notificationclick", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  const url = new URL(e.request.url);
+  const esHTML = e.request.mode === "navigate" || url.pathname.endsWith("/index.html");
+  if (esHTML) {
+    // NETWORK-FIRST para la app: los cambios llegan solos, sin subir versión de caché.
+    // Sin red, sirve la última copia guardada (modo offline intacto).
+    e.respondWith(
+      fetch(e.request).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => { c.put(e.request, copy); c.put("./index.html", res.clone()); }).catch(() => {});
+        return res;
+      }).catch(() => caches.match(e.request).then((hit) => hit || caches.match("./index.html")))
+    );
+    return;
+  }
+  // CACHE-FIRST para el resto (CDN de React/Babel, iconos, imagen): no cambian casi nunca.
   e.respondWith(
     caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
       const copy = res.clone();

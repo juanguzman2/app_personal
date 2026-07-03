@@ -43,7 +43,7 @@ const SANS = "system-ui,-apple-system,sans-serif";
 /* ───── HELPERS ───── */
 const uid = () => Math.random().toString(36).slice(2,10);
 const num = n => Number(n)||0;
-const money = n => num(n)===0 ? "$0" : "$"+num(n).toLocaleString("es-CO",{maximumFractionDigits:0});
+const money = n => { const v=num(n); if(v===0) return "$0"; return (v<0?"−":"")+"$"+Math.abs(v).toLocaleString("es-CO",{maximumFractionDigits:0}); };
 const moneyShort = n => { const v=num(n); const s=v<0?"-":""; const a=Math.abs(v);
   if(a>=1e6) return s+"$"+(a/1e6).toFixed(1).replace(/\.0$/,"")+"M";
   if(a>=1e3) return s+"$"+Math.round(a/1e3)+"k"; return money(v); };
@@ -64,8 +64,6 @@ const DIA_CORTO = f => ["Do","Lu","Ma","Mi","Ju","Vi","Sa"][new Date(f+"T12:00")
 // Semana Lun–Dom: lunes de la semana que contiene la fecha d
 function lunesDe(d=new Date()){ const x=new Date(d); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); x.setHours(0,0,0,0); return x; }
 function semanaLunDom(d=new Date()){ const ini=lunesDe(d); const a=[]; for(let i=0;i<7;i++){const x=new Date(ini);x.setDate(ini.getDate()+i);a.push(fechaLocal(x));} return a; }
-const LUNES_ACTUAL = fechaLocal(lunesDe());
-const DIAS_TRANSCURRIDOS = ()=>((new Date().getDay()+6)%7); // 0=lunes ... 6=domingo, índice del día de hoy
 function fechaBonita(){ let s=new Date().toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"}); return s.charAt(0).toUpperCase()+s.slice(1); }
 
 /* ───── STORAGE (Claude o local) ───── */
@@ -151,7 +149,7 @@ const MEDIDAS_CORP=[
   {k:"musloD",label:"Muslo der."},{k:"musloI",label:"Muslo izq."},{k:"pantorrilla",label:"Pantorrilla"},
 ];
 // Jackson-Pollock 3 pliegues (hombres: pecho, abdomen, muslo) → densidad → Siri → %grasa.
-function grasaJP7(pl, edad){
+function grasaJP3(pl, edad){
   const keys=["pecho","abdomen","muslo"];
   const vals=keys.map(k=>num(pl[k]));
   if(vals.some(v=>v<=0)||num(edad)<=0) return 0;
@@ -161,7 +159,6 @@ function grasaJP7(pl, edad){
   return Math.round(pct*10)/10;
 }
 function mlg(peso,grasa){ const p=num(peso),g=num(grasa); if(!p) return 0; return Math.round((p*(1-g/100))*10)/10; } // masa libre de grasa
-const CAT_GUIA=["Marinados","Carnes","Almacenamiento","Técnicas","Tips","Otro"];
 const CAT_GASTO=["🍽️ Alimentación","🛒 Mercado","🏠 Vivienda","🚗 Transporte","🎓 Educación","🎉 Ocio","💊 Salud","💡 Servicios","💳 Deudas","🛍️ Compras","📦 Otros"];
 const CAT_INGRESO=["💼 Salario","💵 Freelance","🎁 Extra","📈 Rendimientos","📦 Otros"];
 const CAT_PROVISION=["🚗 Carro","🏛️ Impuestos","🛡️ Seguros","🎄 Regalos/Navidad","🏥 Salud","✈️ Viajes","🔧 Mantenimiento","📦 Otros"];
@@ -584,6 +581,8 @@ function App(){
   const [dpMetas,setDpMetas]=useState([]);
   const [dpRueda,setDpRueda]=useState({});
   const [inglesSR,setInglesSR]=useState({});
+  const [inglesCustom,setInglesCustom]=useState([]);
+  const [lastExport,setLastExport]=useState(null);
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
 
@@ -620,7 +619,11 @@ function App(){
     setDpMetas(await load("dpMetas",DP_METAS_SEED));
     setDpRueda(await load("dpRueda",{}));
     setInglesSR(await load("inglesSR",{}));
+    setInglesCustom(await load("inglesCustom",[]));
+    setLastExport(await load("lastExport",null));
     setReady(true);
+    // pedir almacenamiento persistente (protege localStorage de limpiezas del sistema)
+    try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   })();},[]);
 
   useEffect(()=>{if(ready)save("recetas",recetas)},[recetas,ready]);
@@ -655,28 +658,30 @@ function App(){
   useEffect(()=>{if(ready)save("dpMetas",dpMetas)},[dpMetas,ready]);
   useEffect(()=>{if(ready)save("dpRueda",dpRueda)},[dpRueda,ready]);
   useEffect(()=>{if(ready)save("inglesSR",inglesSR)},[inglesSR,ready]);
+  useEffect(()=>{if(ready)save("inglesCustom",inglesCustom)},[inglesCustom,ready]);
+  useEffect(()=>{if(ready)save("lastExport",lastExport)},[lastExport,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
-    {tab==="inicio"&&<Inicio {...{recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
-    {tab==="comida"&&<Comida {...{recetas,setRecetas,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,guias,setGuias,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
-    {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR}}/>}
+    {tab==="inicio"&&<Inicio {...{setConsumo,transacciones,metas,inversiones,lotes,setLotes,horario,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,lastExport,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
+    {tab==="comida"&&<Comida {...{recetas,setRecetas,lista,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
+    {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR,inglesCustom,setInglesCustom}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
     {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog,cuentasReg,setCuentasReg}}/>}
     {tab==="desarrollo"&&<DesarrolloPersonal {...{dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizLog,setDpVizLog,dpMetas,setDpMetas,dpRueda,setDpRueda,metas,inversiones}}/>}
     <Nav tab={tab} setTab={setTab}/>
-    <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters}/>
+    <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters} lastExport={lastExport} setLastExport={setLastExport}/>
     <ConfirmHost/>
   </div>;
 }
 
 /* ═══════════ AJUSTES / RESPALDO ═══════════ */
-function Ajustes({open,onClose,datos,setters}){
+function Ajustes({open,onClose,datos,setters,lastExport,setLastExport}){
   const [msg,setMsg]=useState("");
   const exportar=()=>{
     const payload={_app:"Mi Vida en Orden",_v:1,_fecha:new Date().toISOString(),datos};
@@ -685,8 +690,10 @@ function Ajustes({open,onClose,datos,setters}){
     const a=document.createElement("a");
     a.href=url; a.download="mi-vida-en-orden-"+HOY+".json";
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    setLastExport&&setLastExport(HOY);
     setMsg("Respaldo descargado ✓"); setTimeout(()=>setMsg(""),2600);
   };
+  const diasSinRespaldo=lastExport?-diasHasta(lastExport):null;
   const importar=ev=>{
     const file=ev.target.files&&ev.target.files[0]; if(!file) return;
     const reader=new FileReader();
@@ -704,7 +711,8 @@ function Ajustes({open,onClose,datos,setters}){
   };
   const conteo=Object.entries(datos).filter(([k])=>Array.isArray(datos[k])).map(([k,v])=>({k,n:v.length}));
   return <Sheet open={open} onClose={onClose} title="Ajustes y respaldo">
-    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 16px",lineHeight:1.5}}>Tus datos viven solo en este dispositivo. Exporta un respaldo para no perderlos o para pasarlos entre tu celular y tu PC.</p>
+    <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 10px",lineHeight:1.5}}>Tus datos viven solo en este dispositivo. Exporta un respaldo para no perderlos o para pasarlos entre tu celular y tu PC.</p>
+    <p style={{fontFamily:SANS,fontSize:12.5,margin:"0 0 14px",color:diasSinRespaldo==null||diasSinRespaldo>30?C.red:C.muted,fontWeight:diasSinRespaldo==null||diasSinRespaldo>30?600:400}}>{lastExport?"Último respaldo: "+fechaLarga(lastExport)+(diasSinRespaldo>0?" (hace "+diasSinRespaldo+" día"+(diasSinRespaldo!==1?"s":"")+")":" (hoy)"):"Nunca has exportado un respaldo."}</p>
     <button onClick={exportar} style={{width:"100%",padding:"14px 0",background:C.espresso,color:C.bg,border:"none",borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>⬇ Exportar respaldo (.json)</button>
     <label style={{display:"block",width:"100%",padding:"14px 0",marginTop:10,background:"transparent",color:C.text,border:"1.5px solid "+C.border,borderRadius:12,fontSize:15,fontWeight:600,fontFamily:SANS,cursor:"pointer",textAlign:"center"}}>
       ⬆ Importar respaldo
@@ -727,7 +735,7 @@ function Nav({tab,setTab}){
 }
 
 /* ═══════════ INICIO ═══════════ */
-function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones,metas,inversiones,entrenos,lotes,setLotes,horario,sprints,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,setTab,abrirAjustes}){
+function Inicio({setConsumo,transacciones,metas,inversiones,lotes,setLotes,horario,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,lastExport,setTab,abrirAjustes}){
   const habsHoy=(habitos||[]).filter(h=>!h.bloqueId); // los vinculados a bloque ya salen en la rutina
   const setHabitoHoy=(h,val)=>setHabitosLog&&setHabitosLog(p=>{const d={...((p||{})[HOY]||{})};d[h.id]=val;return {...p,[HOY]:d};});
   const sobras=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
@@ -743,6 +751,11 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
   const bloqueActual=hoyBloques.find(b=>ahora>=hhmmToMin(b.desde)&&ahora<hhmmToMin(b.hasta));
   // cuentas regresivas (metas con fecha) vigentes, las más próximas primero
   const cuentasProx=[...(cuentasReg||[])].filter(c=>c.fecha&&diasHasta(c.fecha)>=0).sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||"")).slice(0,3);
+  // inglés: tarjetas de repaso vencidas hoy
+  const engVencidas=Object.values(inglesSR||{}).filter(s=>s&&s.due&&s.due<=HOY).length;
+  // respaldo: días desde el último export (null = nunca)
+  const diasResp=lastExport?-diasHasta(lastExport):null;
+  const avisorespaldo=(diasResp==null&&transacciones.length+((habitos||[]).length)>0)||diasResp>30;
 
   const efectivo=transacciones.reduce((a,x)=>a+(x.tipo==="ingreso"?num(x.monto):-num(x.monto)),0);
   const tMes=transacciones.filter(x=>mesDe(x.fecha)===MES_ACTUAL);
@@ -815,6 +828,15 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
       </div>;})}</div>
     </Card></div>;})()}
 
+    {engVencidas>0&&<div style={{padding:"0 18px 6px"}}><Card onClick={()=>setTab("ingles")} bd={C.gold}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><Mini icon="📕" label="Inglés · repaso pendiente"/>
+          <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:13.5,color:C.text}}><b style={{fontFamily:SERIF,fontSize:19}}>{engVencidas}</b> tarjeta{engVencidas!==1?"s":""} vencida{engVencidas!==1?"s":""} hoy</p>
+        </div>
+        <span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:700}}>Estudiar ›</span>
+      </div>
+    </Card></div>}
+
     {cuentasProx.length>0&&<div style={{padding:"0 18px 6px"}}><Card>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="⏳" label="Cuenta regresiva"/><span onClick={()=>setTab("crono")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Ver todas ›</span></div>
       <div style={{marginTop:10}}>{cuentasProx.map(c=>{const d=diasHasta(c.fecha);const sem=Math.floor(d/7);const col=d<=7?C.red:d<=30?C.gold:C.green;const grande=d===0?"¡Hoy!":d===1?"Mañana":sem>=1?sem+(sem===1?" sem":" sem"):d+" días";const chico=sem>=1?d+" días":fechaLarga(c.fecha);return <div key={c.id} style={{display:"flex",alignItems:"center",gap:11,padding:"7px 0"}}>
@@ -841,6 +863,12 @@ function Inicio({recetas,lista,consumo,setConsumo,quemadas,limites,transacciones
         </div>
       </div>;})}
     </div>}
+
+    {avisorespaldo&&<div style={{padding:"6px 18px 10px"}}><div onClick={abrirAjustes} style={{background:C.redSoft,border:"1.5px solid "+C.red,borderRadius:13,padding:"12px 15px",cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
+      <span style={{fontSize:20}}>🗄️</span>
+      <div style={{flex:1}}><p style={{margin:0,fontFamily:SANS,fontSize:13.5,fontWeight:700,color:C.red}}>{diasResp==null?"Nunca has hecho un respaldo":"Último respaldo hace "+diasResp+" días"}</p>
+        <p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12,color:C.red,lineHeight:1.4}}>Tus datos solo viven en este dispositivo. Toca para exportar.</p></div>
+    </div></div>}
 
     {toast&&<Toast>{toast}</Toast>}
   </div>;
@@ -924,7 +952,7 @@ function DPViz({dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizL
   const delAf=async id=>{ if(await pedirConfirm({titulo:"Borrar afirmación",texto:"Se borrará esta afirmación."})){ setDpAfirmaciones(p=>(p||[]).filter(x=>x.id!==id)); setEditAf(null);} };
   const hist=[...(dpGratitud||[])].filter(g=>g.fecha!==HOY).sort((a,b)=>b.fecha.localeCompare(a.fecha));
 
-  if(sesion) return <DPVizSesion dpMetas={dpMetas} dpAfirmaciones={dpAfirmaciones} onSalir={seg=>{ if(seg>0) setDpVizLog(p=>[...(p||[]),{id:uid(),fecha:HOY,metaTexto:sesion.metaTexto||"",metaId:sesion.metaId||null,segundos:seg}]); setSesion(false); }}/>;
+  if(sesion) return <DPVizSesion dpMetas={dpMetas} dpAfirmaciones={dpAfirmaciones} onSalir={(seg,foco)=>{ if(seg>0) setDpVizLog(p=>[...(p||[]),{id:uid(),fecha:HOY,metaTexto:foco||"",segundos:seg}]); setSesion(false); }}/>;
 
   return <div style={{padding:"10px 18px 24px"}}>
     {/* rachas */}
@@ -934,7 +962,7 @@ function DPViz({dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizL
     </div>
 
     {/* visualización */}
-    <div onClick={()=>setSesion({})} style={{background:"linear-gradient(160deg,#3a3050,#241d35)",borderRadius:16,padding:"20px 18px",marginBottom:18,cursor:"pointer",color:"#fff"}}>
+    <div onClick={()=>setSesion(true)} style={{background:"linear-gradient(160deg,#3a3050,#241d35)",borderRadius:16,padding:"20px 18px",marginBottom:18,cursor:"pointer",color:"#fff"}}>
       <p style={{margin:0,fontFamily:SANS,fontSize:11,letterSpacing:2,textTransform:"uppercase",color:C.goldSoft}}>Programación mental</p>
       <p style={{margin:"7px 0 4px",fontFamily:SERIF,fontSize:21}}>✨ Visualización guiada</p>
       <p style={{margin:0,fontFamily:SANS,fontSize:12.5,color:"#d8cfe6",lineHeight:1.5}}>5 minutos: relájate, ve tu meta lograda con viveza e intensidad, y siente la emoción. Toca para iniciar.</p>
@@ -994,7 +1022,7 @@ function DPVizSesion({dpMetas,dpAfirmaciones,onSalir}){
     {t:"Suelta y confía",sub:"Suelta la imagen. Ya plantaste la semilla. Confía y vuelve a tu día con esa certeza."},
   ];
   const P=PASOS[paso];
-  const fin=()=>onSalir(seg);
+  const fin=()=>onSalir(seg,foco);
   const sig=()=>{ if(paso<PASOS.length-1) setPaso(paso+1); else fin(); };
   const mmss=String(Math.floor(seg/60)).padStart(2,"0")+":"+String(seg%60).padStart(2,"0");
   return <div style={{position:"fixed",inset:0,zIndex:200,background:"linear-gradient(170deg,#2a2340,#15101f)",color:"#fff",display:"flex",flexDirection:"column",padding:"22px"}}>
@@ -1153,10 +1181,11 @@ function Comida(props){
   const [vista,setVista]=useState("recetas");
   return <div>
     <Header titulo="Comida"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"recetas",label:"📖 Recetas"},{id:"diario",label:"🍽️ Diario"},{id:"seguimiento",label:"📊 Seguimiento"}]}/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"recetas",label:"📖 Recetas"},{id:"diario",label:"🍽️ Diario"},{id:"seguimiento",label:"📊 Seguim."},{id:"mercado",label:"🛒 Mercado"}]}/>
     {vista==="recetas"&&<Recetas {...props} irADiario={()=>setVista("diario")}/>}
     {vista==="diario"&&<Diario {...props}/>}
     {vista==="seguimiento"&&<Seguimiento {...props}/>}
+    {vista==="mercado"&&<ListaCompras lista={props.lista} setLista={props.setLista}/>}
   </div>;
 }
 
@@ -1539,7 +1568,7 @@ function Seguimiento({seguimiento,setSeguimiento,perfil,setPerfil}){
   const previo=regs[1]||null;
   const faseActual=ultimo&&num(ultimo.peso)>0?detectarFase(ultimo.peso,(perfil||{}).fasePrev):null;
   const faseInfo=faseActual?FASES_PLAN[faseActual]:null;
-  const guardar=r=>{const grasaPl=grasaJP7(r.pliegues||{},perfil.edad);const rr={...r,grasaPliegues:grasaPl};setSeguimiento(p=>p.some(x=>x.id===r.id)?p.map(x=>x.id===r.id?rr:x):[...p,rr]);setEditando(null);setVer(null);};
+  const guardar=r=>{const grasaPl=grasaJP3(r.pliegues||{},perfil.edad);const rr={...r,grasaPliegues:grasaPl};setSeguimiento(p=>p.some(x=>x.id===r.id)?p.map(x=>x.id===r.id?rr:x):[...p,rr]);setEditando(null);setVer(null);};
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar registro",texto:"Se borrará este registro semanal."})){ setSeguimiento(p=>p.filter(x=>x.id!==id)); setVer(null);} };
   const nuevo=()=>{const pl={};PLIEGUES.forEach(p=>pl[p.k]="");const md={};MEDIDAS_CORP.forEach(m=>md[m.k]="");setEditando({id:uid(),fecha:HOY,peso:"",grasaBascula:"",pliegues:pl,medidas:md,nota:""});};
 
@@ -1688,7 +1717,7 @@ function FormSeguimiento({reg,edad,onGuardar}){
   const [r,setR]=useState(reg); const set=(k,v)=>setR(p=>({...p,[k]:v}));
   const setPl=(k,v)=>setR(p=>({...p,pliegues:{...p.pliegues,[k]:v}}));
   const setMd=(k,v)=>setR(p=>({...p,medidas:{...p.medidas,[k]:v}}));
-  const grasaCalc=grasaJP7(r.pliegues||{},edad);
+  const grasaCalc=grasaJP3(r.pliegues||{},edad);
   const ok=num(r.peso)>0||num(r.grasaBascula)>0||Object.values(r.pliegues||{}).some(v=>num(v)>0);
   return <div>
     <Field label="Fecha"><input style={inputStyle} type="date" value={r.fecha} onChange={e=>set("fecha",e.target.value)}/></Field>
@@ -1781,46 +1810,99 @@ function Proyeccion({regs,perfil}){
 }
 
 /* ═══════════ INGLÉS IELTS (repetición espaciada) ═══════════ */
-function Ingles({inglesSR,setInglesSR}){
+// Palabras propias del usuario → 2 tarjetas cada una (igual que el mazo base)
+function buildCustomCards(ws){ const cards=[]; (ws||[]).forEach(w=>{ if(!w.term||!w.def) return;
+  cards.push({id:"x"+w.id+"-r",tipo:"vocab",dir:"term-def",topic:w.topic||"my words",front:w.term,back:w.def,ex:w.ex||""});
+  cards.push({id:"x"+w.id+"-p",tipo:"vocab",dir:"def-term",topic:w.topic||"my words",front:w.def,back:w.term,ex:w.ex||""});
+}); return cards; }
+function Ingles({inglesSR,setInglesSR,inglesCustom,setInglesCustom}){
   const [vista,setVista]=useState("vocab");
+  const cartasAll=[...ENG_CARDS,...buildCustomCards(inglesCustom)];
   return <div>
     <Header titulo="English · IELTS"/>
     <Segmented value={vista} onChange={setVista} options={[{id:"vocab",label:"📘 Vocabulary"},{id:"gram",label:"✍️ Grammar"}]}/>
-    {vista==="vocab"&&<EngMazo tipo="vocab" inglesSR={inglesSR} setInglesSR={setInglesSR}/>}
-    {vista==="gram"&&<EngMazo tipo="gram" inglesSR={inglesSR} setInglesSR={setInglesSR}/>}
+    {vista==="vocab"&&<EngMazo tipo="vocab" cartasAll={cartasAll} inglesSR={inglesSR} setInglesSR={setInglesSR} inglesCustom={inglesCustom} setInglesCustom={setInglesCustom}/>}
+    {vista==="gram"&&<EngMazo tipo="gram" cartasAll={cartasAll} inglesSR={inglesSR} setInglesSR={setInglesSR}/>}
   </div>;
 }
 const NUEVAS_POR_DIA=15;
-function EngMazo({tipo,inglesSR,setInglesSR}){
+function EngMazo({tipo,cartasAll,inglesSR,setInglesSR,inglesCustom,setInglesCustom}){
   const [sesion,setSesion]=useState(false);
-  const cartas=ENG_CARDS.filter(c=>c.tipo===tipo);
+  const [tema,setTema]=useState("");     // "" = todos los temas
+  const [extra,setExtra]=useState(0);    // tarjetas nuevas extra pedidas hoy
+  const [editPal,setEditPal]=useState(null);
+  const cartas=cartasAll.filter(c=>c.tipo===tipo);
+  const enTema=tema?cartas.filter(c=>c.topic===tema):cartas;
   const estado=c=>inglesSR[c.id];
-  const vencidas=cartas.filter(c=>{const s=estado(c);return s&&s.due&&s.due<=HOY;});
-  const nuevasAll=cartas.filter(c=>!estado(c));
-  const aprendidas=cartas.filter(c=>estado(c)).length;
-  const cola=[...vencidas,...nuevasAll.slice(0,NUEVAS_POR_DIA)];
+  const vencidas=enTema.filter(c=>{const s=estado(c);return s&&s.due&&s.due<=HOY;});
+  const nuevasAll=enTema.filter(c=>!estado(c));
+  const nNuevas=Math.min(nuevasAll.length,NUEVAS_POR_DIA+extra);
+  const aprendidas=enTema.filter(c=>estado(c)).length;
+  const cola=[...vencidas,...nuevasAll.slice(0,nNuevas)];
+  const MANANA=fechaLocal(new Date(Date.now()+864e5));
+  const dueManana=enTema.filter(c=>{const s=estado(c);return s&&s.due===MANANA;}).length;
+  const temasSel=[...new Set(cartas.map(c=>c.topic))];
   const temas={};cartas.forEach(c=>{const t=c.topic;if(!temas[t])temas[t]={tot:0,ok:0};temas[t].tot++;const s=estado(c);if(s&&num(s.reps)>=2)temas[t].ok++;});
   const temasArr=Object.entries(temas).map(([t,v])=>({t,...v,pct:Math.round(v.ok/v.tot*100)})).sort((a,b)=>a.pct-b.pct);
+  // palabras propias
+  const guardarPal=w=>{const{_nuevo,...l}=w; setInglesCustom(p=>(p||[]).some(x=>x.id===w.id)?p.map(x=>x.id===w.id?l:x):[...(p||[]),l]); setEditPal(null);};
+  const eliminarPal=async id=>{ if(await pedirConfirm({titulo:"Delete word",texto:"The word and its review progress will be removed."})){ setInglesCustom(p=>(p||[]).filter(x=>x.id!==id)); setInglesSR(p=>{const q={...p}; delete q["x"+id+"-r"]; delete q["x"+id+"-p"]; return q;}); setEditPal(null);} };
 
   if(sesion) return <EngSesion cola={cola} inglesSR={inglesSR} setInglesSR={setInglesSR} onSalir={()=>setSesion(false)}/>;
 
   return <div style={{padding:"12px 18px 24px"}}>
     <Card pad={18}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon={tipo==="vocab"?"📘":"✍️"} label={tipo==="vocab"?"IELTS Vocabulary":"IELTS Grammar"}/><span style={{fontFamily:SANS,fontSize:12,color:C.muted}}>{aprendidas}/{cartas.length}</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon={tipo==="vocab"?"📘":"✍️"} label={tipo==="vocab"?"IELTS Vocabulary":"IELTS Grammar"}/><span style={{fontFamily:SANS,fontSize:12,color:C.muted}}>{aprendidas}/{enTema.length}</span></div>
       <div style={{display:"flex",gap:10,margin:"14px 0 4px"}}>
         <div style={{flex:1,background:vencidas.length>0?C.gold:C.borderSoft,borderRadius:11,padding:"12px 10px",textAlign:"center"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:vencidas.length>0?C.espresso:C.muted}}>{vencidas.length}</p><p style={{margin:"2px 0 0",fontSize:11,color:vencidas.length>0?C.espresso:C.muted,fontFamily:SANS}}>to review</p></div>
-        <div style={{flex:1,background:C.greenSoft,borderRadius:11,padding:"12px 10px",textAlign:"center"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:C.green}}>{Math.min(NUEVAS_POR_DIA,nuevasAll.length)}</p><p style={{margin:"2px 0 0",fontSize:11,color:C.green,fontFamily:SANS}}>new today</p></div>
+        <div style={{flex:1,background:C.greenSoft,borderRadius:11,padding:"12px 10px",textAlign:"center"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:C.green}}>{nNuevas}</p><p style={{margin:"2px 0 0",fontSize:11,color:C.green,fontFamily:SANS}}>new today</p></div>
       </div>
+      {dueManana>0&&<p style={{margin:"8px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Tomorrow: {dueManana} card{dueManana!==1?"s":""} due</p>}
     </Card>
-    {cola.length>0?<button onClick={()=>setSesion(true)} style={{width:"100%",padding:"15px 0",margin:"14px 0 6px",background:C.espresso,color:C.gold,border:"none",borderRadius:12,fontSize:16,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>▶ Study {cola.length} card{cola.length!==1?"s":""}</button>
-      :<div style={{margin:"16px 0",textAlign:"center",background:C.greenSoft,borderRadius:12,padding:16}}><p style={{margin:0,fontFamily:SERIF,fontSize:17,color:C.green}}>All caught up! 🎉</p><p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:13,color:C.green}}>No cards due today. Come back tomorrow.</p></div>}
 
-    <p style={{...labelStyle,margin:"22px 0 8px"}}>Progress by topic</p>
-    {temasArr.map(t=>{const col=t.pct>=70?C.green:t.pct>=40?C.gold:C.red;return <div key={t.t} style={{marginBottom:11}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontFamily:SANS,fontSize:12.5}}><span style={{textTransform:"capitalize"}}>{t.t.replace(/-/g," ")}</span><span style={{color:C.muted}}>{t.ok}/{t.tot}</span></div>
+    {/* elegir qué estudiar */}
+    <div style={{margin:"12px 0 0"}}>
+      <select value={tema} onChange={e=>{setTema(e.target.value);setExtra(0);}} style={{...inputStyle,appearance:"none",textTransform:"capitalize"}}>
+        <option value="">🌍 All topics</option>
+        {temasSel.map(t=><option key={t} value={t}>{t.replace(/-/g," ")}</option>)}
+      </select>
+    </div>
+
+    {cola.length>0?<button onClick={()=>setSesion(true)} style={{width:"100%",padding:"15px 0",margin:"12px 0 6px",background:C.espresso,color:C.gold,border:"none",borderRadius:12,fontSize:16,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>▶ Study {cola.length} card{cola.length!==1?"s":""}{tema?" · "+tema.replace(/-/g," "):""}</button>
+      :<div style={{margin:"14px 0 6px",textAlign:"center",background:C.greenSoft,borderRadius:12,padding:16}}><p style={{margin:0,fontFamily:SERIF,fontSize:17,color:C.green}}>All caught up! 🎉</p><p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:13,color:C.green}}>No cards due{tema?" in this topic":""} today.</p></div>}
+    {nuevasAll.length>nNuevas&&<button onClick={()=>setExtra(e=>e+15)} style={{width:"100%",padding:"11px 0",margin:"4px 0 0",background:"transparent",color:C.espresso,border:"1.5px dashed "+C.gold,borderRadius:11,fontSize:13.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Add 15 more new cards today ({nuevasAll.length-nNuevas} left)</button>}
+
+    {/* palabras propias */}
+    {tipo==="vocab"&&<div style={{marginTop:22}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><p style={{...labelStyle,margin:0}}>My words ({(inglesCustom||[]).length})</p><button onClick={()=>setEditPal({id:uid(),term:"",def:"",ex:"",topic:"my words",_nuevo:true})} style={{background:"none",border:"1.5px solid "+C.gold,color:C.espresso,borderRadius:9,padding:"5px 11px",fontSize:12.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Add word</button></div>
+      {(inglesCustom||[]).length===0&&<p style={{margin:"0 0 4px",fontFamily:SANS,fontSize:12,color:C.muted,lineHeight:1.5}}>Add the words you meet in readings, series or class — they join the deck with their own cards.</p>}
+      {(inglesCustom||[]).map(w=><div key={w.id} onClick={()=>setEditPal({...w,_nuevo:false})} style={{display:"flex",alignItems:"center",gap:10,background:C.card,borderRadius:11,border:"1.5px solid "+C.border,padding:"10px 13px",marginBottom:7,cursor:"pointer"}}>
+        <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SERIF,fontSize:15}}>{w.term}</p><p style={{margin:"1px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.def}</p></div>
+        <span style={{fontFamily:SANS,fontSize:10.5,color:C.gold,textTransform:"capitalize",whiteSpace:"nowrap"}}>{(w.topic||"my words").replace(/-/g," ")}</span>
+      </div>)}
+    </div>}
+
+    <p style={{...labelStyle,margin:"22px 0 8px"}}>Progress by topic <span style={{textTransform:"none",color:C.gold}}>(tap to filter)</span></p>
+    {temasArr.map(t=>{const col=t.pct>=70?C.green:t.pct>=40?C.gold:C.red;const sel=tema===t.t;return <div key={t.t} onClick={()=>{setTema(sel?"":t.t);setExtra(0);}} style={{marginBottom:11,cursor:"pointer",padding:sel?"7px 9px":"0",borderRadius:9,background:sel?C.goldSoft:"transparent"}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontFamily:SANS,fontSize:12.5}}><span style={{textTransform:"capitalize",fontWeight:sel?700:400}}>{sel?"✓ ":""}{t.t.replace(/-/g," ")}</span><span style={{color:C.muted}}>{t.ok}/{t.tot}</span></div>
       <Bar pct={t.pct} color={col} h={7}/>
     </div>;})}
     <p style={{margin:"14px 0 0",fontSize:11,color:C.muted,fontFamily:SANS,lineHeight:1.5}}>Spaced repetition (SM-2): each correct answer pushes the card further away; each miss brings it back sooner. {tipo==="vocab"?"Every term has 2 cards: recognise (term→meaning) and produce (meaning→term).":"Concepts, rules and common mistakes — with three examples each."}</p>
+
+    <Sheet open={!!editPal} onClose={()=>setEditPal(null)} title={editPal?._nuevo?"Add word":"Edit word"}>{editPal&&<FormPalabra pal={editPal} temas={temasSel} onGuardar={guardarPal} onEliminar={editPal._nuevo?null:()=>eliminarPal(editPal.id)}/>}</Sheet>
+  </div>;
+}
+function FormPalabra({pal,temas,onGuardar,onEliminar}){
+  const [w,setW]=useState(pal); const set=(k,v)=>setW(p=>({...p,[k]:v}));
+  const ok=w.term.trim()&&w.def.trim();
+  const opciones=[...new Set(["my words",...temas])];
+  return <div>
+    <Field label="Word / phrase (EN)"><input style={inputStyle} placeholder="e.g. to overcome" value={w.term} onChange={e=>set("term",e.target.value)} autoFocus/></Field>
+    <Field label="Meaning (definition in English)"><textarea style={{...inputStyle,minHeight:60,resize:"vertical"}} placeholder="e.g. to succeed in dealing with a problem" value={w.def} onChange={e=>set("def",e.target.value)}/></Field>
+    <Field label="Example sentence (optional)"><input style={inputStyle} placeholder="e.g. She overcame her fear of flying." value={w.ex} onChange={e=>set("ex",e.target.value)}/></Field>
+    <Field label="Topic"><select style={{...inputStyle,appearance:"none",textTransform:"capitalize"}} value={w.topic} onChange={e=>set("topic",e.target.value)}>{opciones.map(t=><option key={t} value={t}>{t.replace(/-/g," ")}</option>)}</select></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(w)} style={btnP(ok)}>Save word</button>
+    {onEliminar&&btnDel(onEliminar)}
   </div>;
 }
 function EngSesion({cola,inglesSR,setInglesSR,onSalir}){
@@ -1860,7 +1942,7 @@ function EngSesion({cola,inglesSR,setInglesSR,onSalir}){
   </div>;
 }
 
-/* ═══════════ LISTA (en desuso; conservada por compatibilidad de respaldos) ═══════════ */
+/* ═══════════ LISTA DE MERCADO (sub-pestaña de Comida) ═══════════ */
 function ListaCompras({lista,setLista}){
   const [editando,setEditando]=useState(null);
   const [copiado,setCopiado]=useState(false);
@@ -1881,7 +1963,7 @@ function ListaCompras({lista,setLista}){
   const copiar=()=>{const texto=grupos.map(g=>g.cat+"\n"+g.items.map(i=>"  • "+i.nombre+(i.precio?" — "+money(i.precio):"")+(i.tienda?" ("+i.tienda+")":"")).join("\n")).join("\n\n");navigator.clipboard&&navigator.clipboard.writeText("🛒 LISTA DE MERCADO\n"+"─".repeat(24)+"\n\n"+texto);setCopiado(true);setTimeout(()=>setCopiado(false),2200);};
 
   return <div>
-    <Header titulo="Lista de Mercado" sub={pendientes+" pendientes · "+money(costo)}/>
+    <p style={{margin:"10px 18px 0",fontFamily:SANS,fontSize:12.5,color:C.muted}}>{pendientes} pendiente{pendientes!==1?"s":""} · {money(costo)} por comprar</p>
     <Segmented value={estado} onChange={setEstado} options={[{id:"pendientes",label:"Por comprar"},{id:"compradas",label:"Ya tengo"},{id:"todas",label:"Todas"}]}/>
     <div style={{display:"flex",gap:8,padding:"6px 18px 0",alignItems:"center"}}>
       <span style={{fontSize:12,color:C.muted,fontFamily:SANS}}>Agrupar:</span>
@@ -1915,7 +1997,7 @@ function FormItem({item,onGuardar,onEliminar}){
 // Provisión mensual de un fondo: monto anual /12, o repartido en los meses que faltan al vencimiento
 function provisionMensual(p){
   const anual=num(p.montoAnual); if(anual<=0) return 0;
-  if(p.mesVencimiento){ const m=mesesAlMesObjetivo(p.mesVencimiento); if(m>0&&m<12) return Math.ceil((anual-num(p.saldo))/m); }
+  if(p.mesVencimiento){ const m=mesesAlMesObjetivo(p.mesVencimiento); if(m>0&&m<12) return Math.max(0,Math.ceil((anual-num(p.saldo))/m)); }
   return Math.ceil(anual/12);
 }
 // meses (1-12) desde el mes actual hasta el mes objetivo (1-12), envolviendo el año
@@ -1980,7 +2062,9 @@ function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,s
   const nuevoFijo=()=>setEditFijo({id:uid(),nombre:"",monto:"",categoria:"💡 Servicios",pagos:{},_nuevo:true});
   const togglePagado=f=>{const pagado=f.pagos&&f.pagos[mes];const tid="fijo-"+f.id+"-"+mes;
     setFijos(p=>p.map(x=>x.id===f.id?{...x,pagos:{...(x.pagos||{}),[mes]:!pagado}}:x));
-    if(!pagado){ setTransacciones(p=>[...p,{id:tid,tipo:"gasto",categoria:f.categoria,concepto:f.nombre+" (fijo)",monto:num(f.monto),fecha:mes+"-"+String(new Date().getDate()).padStart(2,"0"),_fijo:tid}]); }
+    // día válido para el mes navegado (evita fechas tipo 2026-02-31)
+    const [fy,fm]=mes.split("-").map(Number); const dia=Math.min(new Date().getDate(),new Date(fy,fm,0).getDate());
+    if(!pagado){ setTransacciones(p=>[...p,{id:tid,tipo:"gasto",categoria:f.categoria,concepto:f.nombre+" (fijo)",monto:num(f.monto),fecha:mes+"-"+String(dia).padStart(2,"0"),_fijo:tid}]); }
     else { setTransacciones(p=>p.filter(t=>t.id!==tid)); }
   };
   const fijoTotal=fijos.reduce((a,f)=>a+num(f.monto),0);
@@ -2024,10 +2108,10 @@ function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,s
     {/* cascada del dinero (provisión al final) */}
     <div style={{marginTop:12}}><Card pad={16}>
       <Mini icon="💧" label="Cascada del mes"/>
-      {[["1. Fijos",fijoTotal,C.red],["2. Metas (ahorro)",Math.round(aporteMetasMes),C.green],["3. Disponible para gastar",disponible,disponible>=0?C.blue:C.red],["4. Provisión a apartar",provMes,C.gold]].map(([l,v,col],i)=><div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<3?"1px solid "+C.borderSoft:"none"}}><span style={{fontFamily:SANS,fontSize:13.5,color:i===2?C.espresso:C.muted,fontWeight:i===2?700:400}}>{l}</span><span style={{fontFamily:SERIF,fontSize:16,color:col}}>{money(v)}</span></div>)}
+      {[["1. Fijos",fijoTotal,C.red],["2. Metas (ahorro)",Math.round(aporteMetasMes),C.green],["3. Provisión a apartar",provMes,C.gold],["4. Disponible para gastar",disponible,disponible>=0?C.blue:C.red]].map(([l,v,col],i)=><div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<3?"1px solid "+C.borderSoft:"none"}}><span style={{fontFamily:SANS,fontSize:13.5,color:i===3?C.espresso:C.muted,fontWeight:i===3?700:400}}>{l}</span><span style={{fontFamily:SERIF,fontSize:16,color:col}}>{money(v)}</span></div>)}
       {provMes>0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted,textAlign:"center",lineHeight:1.4}}>La provisión va al final: apártala cuando puedas (incluso de golpe). Saldo en fondos: {money(provSaldo)}.</p>}
       {ing===0&&<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:12,color:C.muted,textAlign:"center"}}>Registra tus ingresos del mes para ver el disponible.</p>}
-    </Card></div>}
+    </Card></div>
 
     {/* fondo de emergencia */}
     {fondoEmergencia&&<div style={{marginTop:12}}><Card pad={16} onClick={()=>ir("metas")}>
@@ -2285,9 +2369,19 @@ function Gym(props){
 
 function GymEntrenos({entrenos,setEntrenos,plantillas}){
   const [editando,setEditando]=useState(null); const [ver,setVer]=useState(null); const [eligiendo,setEligiendo]=useState(false);
+  const [toast,setToast]=useState("");
   const guardar=e=>{
     const limpio={...e,ejercicios:e.ejercicios.map(ej=>({...ej,sets:ej.sets.filter(s=>num(s.reps)>0||num(s.peso)>0)})).filter(ej=>ej.nombre.trim()&&ej.sets.length>0)};
     if(limpio.ejercicios.length===0) return;
+    // ¿algún PR? compara el mejor 1RM estimado de cada ejercicio contra todo el historial
+    const prs=[];
+    limpio.ejercicios.forEach(ej=>{
+      const n=ej.nombre.trim().toLowerCase();
+      const nuevo=ej.sets.reduce((m,s)=>Math.max(m,e1rm(s.reps,s.peso)),0);
+      const previo=entrenos.filter(x=>x.id!==limpio.id).reduce((m,x)=>{const p=x.ejercicios.find(y=>y.nombre.trim().toLowerCase()===n);return p?Math.max(m,p.sets.reduce((mm,s)=>Math.max(mm,e1rm(s.reps,s.peso)),0)):m;},0);
+      if(previo>0&&nuevo>previo) prs.push(ej.nombre);
+    });
+    if(prs.length){ setToast("🏆 ¡Nuevo PR en "+prs[0]+(prs.length>1?" (+"+(prs.length-1)+" más)":"")+"!"); setTimeout(()=>setToast(""),3200); }
     setEntrenos(p=>p.some(x=>x.id===limpio.id)?p.map(x=>x.id===limpio.id?limpio:x):[...p,limpio]);setEditando(null);setVer(null);
   };
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar entreno",texto:"Se borrará este entreno y sus series."})){ setEntrenos(p=>p.filter(x=>x.id!==id)); setVer(null);} };
@@ -2340,6 +2434,7 @@ function GymEntrenos({entrenos,setEntrenos,plantillas}){
     </div>}</Sheet>
 
     <Sheet open={!!editando} onClose={()=>setEditando(null)} title={editando&&entrenos.some(x=>x.id===editando.id)?"Editar entreno":"Nuevo entreno"}>{editando&&<FormEntreno entreno={editando} entrenos={entrenos} onGuardar={guardar}/>}</Sheet>
+    {toast&&<Toast>{toast}</Toast>}
   </div>;
 }
 
