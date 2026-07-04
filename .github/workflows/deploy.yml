@@ -1,0 +1,40 @@
+# Despliegue a GitHub Pages con actions actuales (reemplaza el pipeline
+# gestionado "pages build and deployment", que venía fallando en deploy
+# con actions ancladas a Node 20 deprecado).
+# Requiere: Settings → Pages → Source = "GitHub Actions".
+name: Deploy a GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Subir sitio estático
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      - name: Desplegar
+        id: deployment
+        uses: actions/deploy-pages@v4
