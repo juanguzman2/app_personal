@@ -22,7 +22,9 @@ Filosofía de producto: **registro mínimo, máxima automatización**. Cada feat
 - **Persistencia:** `localStorage`, prefijo `mvo_`, vía helpers `load(key, fallback)` / `save(key, value)`.
   Al arrancar se pide `navigator.storage.persist()`.
 - **PWA:** `manifest.webmanifest`, mobile-first (iPhone), viewport bloqueado.
-- **Deploy:** GitHub Pages desde **`master`**. Commit → push = deploy. Sin CI.
+- **Deploy:** GitHub Pages vía workflow propio `.github/workflows/deploy.yml` (checkout@v5,
+  configure-pages@v5, upload-pages-artifact@v4, deploy-pages@v4). Commit → push a `master` = deploy.
+  El pipeline gestionado «pages build and deployment» quedó reemplazado (fallaba con actions Node 20).
   **Flujo acordado con el dueño: trabajar directo sobre master y hacer push sin PR ni revisión.**
 - **Service worker (`service-worker.js`):** **network-first para `index.html`** (los cambios llegan solos,
   NO hace falta subir la versión del caché al editar la app) y cache-first para CDN/imagen/íconos.
