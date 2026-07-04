@@ -55,7 +55,7 @@ Si falta alguno se rompe el respaldo export/import de Ajustes (⚙ en Inicio).
 | Sección | Entidades |
 |---|---|
 | Comida | `recetas`, `consumo`, `quemadas`, `limites`, `lotes` (nevera), `lista` (mercado, sub-tab de Comida), `seguimiento` (corporal), `perfil` |
-| Finanzas | `transacciones`, `fijos`, `inversiones`, `metas`, `provisiones`, `presupuesto`, `finanzasCfg` |
+| Finanzas | `transacciones`, `fijos`, `inversiones` (con `portafolio`/`fondoId` opcionales), `metas`, `provisiones`, `presupuesto`, `finanzasCfg` (con `trmAuto`/`trmFecha`), `finPlan` (portafolios P1/P2, maestría, reglas, hitos; seed `SEED_FIN_PLAN`), `finAportes` (log, máx. 500), `finPatrimonio` (snapshot mensual, máx. 24), `finRitual` (checklist mensual) |
 | Gym | `entrenos`, `plantillas` (plan editable) |
 | Cronograma | `horario` (bloques con `gid` multi-día), `sprints` (macrotareas con `ambito` laboral/personal), `notas`, `pomoCfg`, `rutinaHecha`, `habitos`, `habitosLog`, `cuentasReg` (cuentas regresivas), `bitacora` (actividades ejecutadas), `bitacoraCfg` (meta semanal de foco), `bitacoraTimer` (timer en curso; transiente, fuera del respaldo) |
 | Inglés | `inglesSR` (estado SM-2 por tarjeta), `inglesCustom` (palabras propias del usuario) |
@@ -81,8 +81,14 @@ Patrones que se repiten (reúsalos):
   resumen semanal lun–dom con foco profundo vs meta editable, barras por ámbito, racha, alerta de
   descarga <70% × 2 semanas, modo enfoque con timer persistente, ▶ en tareas de sprint → entrada
   vinculada con `tareaRef` + marcar tarea completada).
-- **Finanzas:** Resumen (balance, tasa de ahorro, cascada fijos→metas→provisión→disponible, fijos,
-  presupuesto por categoría, gráfica 6 meses, movimientos) · Inversión (portafolio + fondos/provisiones) · Metas (prioridad, en ruta, USD).
+- **Finanzas:** Resumen (balance, tasa de ahorro, patrimonio 12m, chip del ritual, cascada
+  fijos→metas→provisión→disponible, fijos, presupuesto, gráfica 6 meses, movimientos) ·
+  Inversión (TRM automática con semáforo verde/neutro/stop, inversiones agrupadas por portafolio
+  P1/P2/Otras con real% vs target% y chips de drift, sugerencia del próximo aporte, fondos/provisiones) ·
+  Plan (💸 Día de pago que reparte salario por targets DCA y prima/bono con waterfall
+  maestría→P1 + resto→P2 en tramos, ritual mensual con racha, portafolios del plan con
+  vinculación fondo↔inversión, hitos countdown, reglas de oro) · Metas (prioridad, en ruta, USD).
+  El día de pago crea la transacción de ingreso con id determinístico `salario-YYYY-MM` (no duplica).
 - **Gym:** Entrenos (plantillas Upper/Lower 5 días, "última vez" con todas las series, toast de PR,
   series/músculo vs MEV-MAV) · Plan (editable, restaurable) · Progreso (1RM est./peso/volumen por ejercicio).
 - **Inglés (todo en inglés):** mazos IELTS Vocabulary (548+) y Grammar (46) con SM-2; 15 nuevas/día

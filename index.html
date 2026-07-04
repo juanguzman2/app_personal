@@ -180,6 +180,60 @@ const CAT_PROVISION=["🚗 Carro","🏛️ Impuestos","🛡️ Seguros","🎄 Re
 const AHORRO_META_DEFAULT=40; // % objetivo de tasa de ahorro
 const MESES_CORTOS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
+/* ═══════════ PLAN DE INVERSIÓN (FICs Bancolombia · referencia jul-2026) ═══════════ */
+const SEED_FIN_PLAN={
+  portafolios:[
+    {id:"p1",nombre:"P1 · Maestría",emoji:"🎓",fondos:[
+      {id:"rfPlazoP1",  nombre:"Renta Fija Plazo",  target:50,comision:1.20,liquidez:"Sin pacto de permanencia · ref. 10,0% EA"},
+      {id:"fiducuentaP1",nombre:"Fiducuenta",        target:20,comision:1.51,liquidez:"A la vista · mínimo $50.000"},
+      {id:"fiduUsdP1",  nombre:"Fiducuenta Dólares",target:30,comision:1.00,liquidez:"Pacto inicial · riesgo moderado"},
+    ]},
+    {id:"p2",nombre:"P2 · Crecimiento 5 años",emoji:"🚀",fondos:[
+      {id:"rvColombia",    nombre:"Renta Variable Colombia",       target:25,targetDca:25,comision:3.05,liquidez:"Sin pacto · T+2",alerta:"Tipo B 3,05% / Tipo C 0,70%"},
+      {id:"altaConviccion",nombre:"Renta Alta Convicción",         target:20,targetDca:25,comision:2.02,liquidez:"Pacto 7 días · T+4 · sanción 1,5% retiro anticipado"},
+      {id:"digitalAC",     nombre:"Renta Digital Alto Crecimiento",target:20,targetDca:25,comision:2.00,liquidez:"Pacto 7 días (Invesbot)"},
+      {id:"balanceado",    nombre:"Renta Balanceado",              target:20,targetDca:15,comision:2.00,liquidez:"Permanencia mínima 1 día"},
+      {id:"rfPlazoP2",     nombre:"Renta Fija Plazo",              target:15,targetDca:10,comision:1.20,liquidez:"Sin pacto · pólvora seca para rebalancear"},
+    ]},
+  ],
+  maestria:{costoTotalUSD:10000,cuotaSemestralUSD:2000,primerPago:"2027-02-15"},
+  reglas:{pctSalario:70,trmVerde:3600,trmStop:3900,driftAlertaPp:5,tramosExtra:3},
+  hitos:[
+    {id:"h-prima",nombre:"Prima de diciembre",fecha:"2026-12-15",tipo:"prima"},
+    {id:"h-maestria",nombre:"Pago 1 · Maestría",fecha:"2027-02-15",tipo:"maestria"},
+    {id:"h-rebal",nombre:"Rebalanceo anual",fecha:"2027-07-01",tipo:"rebalanceo"},
+    {id:"h-bono",nombre:"Bono anual",fecha:"",tipo:"bono"},
+  ],
+};
+const HITO_EMOJI={prima:"🎁",bono:"💰",maestria:"🎓",rebalanceo:"⚖️",otro:"📌"};
+const round1000=v=>Math.round(num(v)/1000)*1000;
+// Reparte un monto entre fondos según sus targets (redondeo a miles; el residuo va al mayor target)
+function repartirPorTargets(monto,fondos,key){
+  const tot=fondos.reduce((a,f)=>a+num(f[key]!=null?f[key]:f.target),0)||100;
+  const rows=fondos.map(f=>{const pct=num(f[key]!=null?f[key]:f.target);return {fondoId:f.id,nombre:f.nombre,pct,monto:Math.floor(num(monto)*pct/tot/1000)*1000};});
+  const residuo=num(monto)-rows.reduce((a,r)=>a+r.monto,0);
+  if(residuo!==0&&rows.length){ const i=rows.reduce((mi,r,j)=>r.pct>rows[mi].pct?j:mi,0); rows[i]={...rows[i],monto:rows[i].monto+residuo}; }
+  return rows;
+}
+// Ritual mensual: 2 checks automáticos (finRitual), fijos calculado en vivo, revisión manual
+function ritualMes(finRitual,fijos,ym){
+  const r=(finRitual||{})[ym]||{};
+  const fijosOk=(fijos||[]).length>0&&fijos.every(f=>f.pagos&&f.pagos[ym]);
+  return {ingreso:!!r.ingreso,distribuido:!!r.distribuido,fijos:fijosOk,revision:!!r.revision};
+}
+const REGLAS_ORO=[
+  {icon:"🛟",titulo:"Emergencia antes que rentabilidad",detalle:"3–6 meses de tus gastos (~$6–12M según tu gasto promedio) en Fiducuenta, como meta prioridad #1 vinculada a esa inversión. Es la licencia para que P2 sea agresivo sin que un imprevisto te obligue a vender barato."},
+  {icon:"💸",titulo:"Págate primero, automáticamente",detalle:"Ya inviertes ~70% del salario: blíndalo con débito automático el mismo día de pago. La fuerza de voluntad es un recurso escaso; la automatización no."},
+  {icon:"📉",titulo:"DCA sin drama",detalle:"Si el mercado cae -20%, el plan es SEGUIR aportando (compras barato). Nunca redimir Alta Convicción o Digital en pánico: pagas sanción de 1,5% y vendes en el peor momento."},
+  {icon:"🧾",titulo:"Las comisiones son el enemigo silencioso",detalle:"En Renta Variable Colombia, Tipo B (3,05%) vs Tipo C (0,70%) son ≈ $700.000/año de diferencia por cada $30M — millones en 5 años. Antes de mirar rentabilidad pasada, pregunta la comisión y la clase que te asignan."},
+  {icon:"🏦",titulo:"El interés compuesto odia los retiros",detalle:"La retención en la fuente de los FIC se causa AL RETIRAR: mientras no toques P2, todo sigue componiendo. P2 no se toca en 5 años salvo rebalanceo por aportes."},
+  {icon:"💵",titulo:"Dólar con regla, no con feeling",detalle:"La cobertura USD es un seguro para la matrícula (~30% de P1), no una apuesta. TRM < $3.600: ok comprar. TRM > $3.900: stop. Lo demás es ruido."},
+  {icon:"🧮",titulo:"APV/AFC: el beneficio tributario que NO es para la maestría",detalle:"Aportes a pensión voluntaria + cuentas AFC son renta exenta hasta el 30% de tu ingreso anual (tope 3.800 UVT ≈ $199M; sujeto además al límite global de rentas exentas de 40% / 1.340 UVT ≈ $70M; UVT 2026 = $52.374). El truco: exigen permanencia de 10 años o destino pensión/vivienda — retirarlos para pagar matrícula rompe el beneficio y se grava. Úsalo para el excedente de largo plazo post-maestría; con tu ingreso (~$111M/año) el ahorro fiscal es real. Valida montos con un contador."},
+  {icon:"⚡",titulo:"4×1.000 bajo control",detalle:"Marca UNA cuenta de ahorros como exenta de GMF (retiros hasta 350 UVT/mes ≈ $18,3M) y recuerda: los traslados FIC ↔ cuenta del mismo titular en Bancolombia no causan 4×1.000."},
+  {icon:"🪜",titulo:"Cuando suba el ingreso, sube el aporte primero",detalle:"Próximo aumento: mueve el 70% → 75% antes de subir estilo de vida. La brecha ingreso-gasto es la máquina; la rentabilidad solo la acelera."},
+  {icon:"📅",titulo:"10 minutos al mes, 1 hora al año",detalle:"Mensual: el ritual. Anual (julio): rebalancear, revisar targets/TRM/metas y descargar los certificados de los FIC para la declaración de renta (con tus ingresos ya estás obligado a declarar; vence entre agosto y octubre según cédula)."},
+];
+
 /* ═══════════ DESARROLLO PERSONAL (Seminario Fénix · Brian Tracy) ═══════════ */
 // 7 áreas de vida = columna vertebral de Metas + Rueda de la Vida
 const AREAS_VIDA=[
@@ -577,6 +631,10 @@ function App(){
   const [presupuesto,setPresupuesto]=useState({});
   const [finanzasCfg,setFinanzasCfg]=useState({tasaAhorroMeta:AHORRO_META_DEFAULT,trm:4000});
   const [metas,setMetas]=useState([]);
+  const [finPlan,setFinPlan]=useState(SEED_FIN_PLAN);
+  const [finAportes,setFinAportes]=useState([]);
+  const [finPatrimonio,setFinPatrimonio]=useState([]);
+  const [finRitual,setFinRitual]=useState({});
   const [entrenos,setEntrenos]=useState([]);
   const [lotes,setLotes]=useState([]);
   const [horario,setHorario]=useState({});
@@ -618,6 +676,10 @@ function App(){
     setProvisiones(await load("provisiones",[]));
     setPresupuesto(await load("presupuesto",{}));
     setFinanzasCfg(await load("finanzasCfg",{tasaAhorroMeta:AHORRO_META_DEFAULT,trm:4000}));
+    setFinPlan((await load("finPlan",null))||SEED_FIN_PLAN);
+    setFinAportes(await load("finAportes",[]));
+    setFinPatrimonio(await load("finPatrimonio",[]));
+    setFinRitual(await load("finRitual",{}));
     setEntrenos(await load("entrenos",[]));
     setLotes(await load("lotes",[]));
     setHorario(await load("horario",{}));
@@ -661,6 +723,10 @@ function App(){
   useEffect(()=>{if(ready)save("provisiones",provisiones)},[provisiones,ready]);
   useEffect(()=>{if(ready)save("presupuesto",presupuesto)},[presupuesto,ready]);
   useEffect(()=>{if(ready)save("finanzasCfg",finanzasCfg)},[finanzasCfg,ready]);
+  useEffect(()=>{if(ready)save("finPlan",finPlan)},[finPlan,ready]);
+  useEffect(()=>{if(ready)save("finAportes",finAportes)},[finAportes,ready]);
+  useEffect(()=>{if(ready)save("finPatrimonio",finPatrimonio)},[finPatrimonio,ready]);
+  useEffect(()=>{if(ready)save("finRitual",finRitual)},[finRitual,ready]);
   useEffect(()=>{if(ready)save("entrenos",entrenos)},[entrenos,ready]);
   useEffect(()=>{if(ready)save("lotes",lotes)},[lotes,ready]);
   useEffect(()=>{if(ready)save("horario",horario)},[horario,ready]);
@@ -688,14 +754,14 @@ function App(){
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,bitacora,bitacoraCfg,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,bitacora:setBitacora,bitacoraCfg:setBitacoraCfg,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,bitacora,bitacoraCfg,finPlan,finAportes,finPatrimonio,finRitual,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,bitacora:setBitacora,bitacoraCfg:setBitacoraCfg,finPlan:setFinPlan,finAportes:setFinAportes,finPatrimonio:setFinPatrimonio,finRitual:setFinRitual,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{setConsumo,transacciones,metas,inversiones,lotes,setLotes,horario,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,lastExport,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,lista,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR,inglesCustom,setInglesCustom}}/>}
-    {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
+    {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg,finPlan,setFinPlan,finAportes,setFinAportes,finPatrimonio,setFinPatrimonio,finRitual,setFinRitual}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
     {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog,cuentasReg,setCuentasReg,bitacora,setBitacora,bitacoraCfg,setBitacoraCfg,bitacoraTimer,setBitacoraTimer}}/>}
     {tab==="desarrollo"&&<DesarrolloPersonal {...{dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizLog,setDpVizLog,dpMetas,setDpMetas,dpRueda,setDpRueda,metas,inversiones}}/>}
@@ -2031,13 +2097,52 @@ function mesesAlMesObjetivo(mesObj){ const hoy=new Date().getMonth()+1; let d=me
 function metaActual(m,inversiones){ const inv=m.inversionId&&(inversiones||[]).find(x=>x.id===m.inversionId); return inv?num(inv.actual):num(m.actual); }
 
 function Finanzas(props){
+  const {inversiones,setInversiones,provisiones,metas,transacciones,setTransacciones,finanzasCfg,setFinanzasCfg,finPlan,setFinPlan,finAportes,setFinAportes,setFinPatrimonio,setFinRitual}=props;
   const [vista,setVista]=useState("resumen");
+  const [diaPago,setDiaPago]=useState(false);
+  const [toast,setToast]=useState("");
+  const aviso=m=>{setToast(m);setTimeout(()=>setToast(""),2800);};
+
+  // snapshot de patrimonio: upsert del mes actual al montar (últimos 24 meses)
+  useEffect(()=>{
+    const total=(inversiones||[]).reduce((a,i)=>a+num(i.actual),0)
+      +(provisiones||[]).filter(p=>!p.inversionId).reduce((a,p)=>a+num(p.saldo),0)
+      +(metas||[]).filter(m=>!m.inversionId).reduce((a,m)=>a+num(m.actual),0);
+    const invertido=(inversiones||[]).reduce((a,i)=>a+num(i.invertido),0);
+    setFinPatrimonio(p=>{const arr=(p||[]).filter(x=>x.ym!==MES_ACTUAL);return [...arr,{ym:MES_ACTUAL,total,invertido}].sort((a,b)=>a.ym.localeCompare(b.ym)).slice(-24);});
+  },[]);
+
+  // TRM automática (datos abiertos oficiales); si falla, silencio y queda la manual
+  const traerTRM=(manual)=>fetch("https://www.datos.gov.co/resource/32sa-8pi3.json?$limit=1&$order=vigenciahasta%20DESC")
+    .then(r=>r.json()).then(d=>{const v=num(d&&d[0]&&d[0].valor);
+      if(v>0){setFinanzasCfg(p=>({...p,trm:Math.round(v),trmFecha:HOY}));if(manual)aviso("TRM actualizada: "+money(Math.round(v)));}
+      else if(manual)aviso("No se pudo leer la TRM");})
+    .catch(()=>{if(manual)aviso("Sin conexión: TRM manual en uso");});
+  useEffect(()=>{const cfg=finanzasCfg||{};if((cfg.trmAuto??true)&&cfg.trmFecha!==HOY)traerTRM(false);},[]);
+
+  // Día de pago: aplica aportes a inversiones vinculadas, loguea y marca el ritual
+  const aplicarDiaPago=({origen,filas,registrarIngreso,montoIngreso,hitosNuevos})=>{
+    setInversiones(p=>p.map(i=>{const m=filas.filter(x=>x.inversionId===i.id).reduce((a,x)=>a+x.monto,0);return m>0?{...i,invertido:num(i.invertido)+m,actual:num(i.actual)+m}:i;}));
+    setFinAportes(p=>[...(p||[]),...filas.map(x=>({id:uid(),fecha:HOY,inversionId:x.inversionId,monto:x.monto,origen}))].slice(-500));
+    let ingresoOk=false;
+    if(registrarIngreso&&num(montoIngreso)>0){ const tid="salario-"+MES_ACTUAL; ingresoOk=true;
+      setTransacciones(p=>p.some(t=>t.id===tid)?p:[...p,{id:tid,tipo:"ingreso",categoria:"💼 Salario",concepto:"Salario",monto:num(montoIngreso),fecha:HOY}]);
+    }
+    if(hitosNuevos&&hitosNuevos.length) setFinPlan(p=>({...p,hitos:[...(p.hitos||[]),...hitosNuevos]}));
+    setFinRitual(p=>({...(p||{}),[MES_ACTUAL]:{...((p||{})[MES_ACTUAL]||{}),distribuido:true,...(ingresoOk?{ingreso:true}:{})}}));
+    setDiaPago(false);
+    aviso("Aportes aplicados: "+money(filas.reduce((a,x)=>a+x.monto,0))+" ✓");
+  };
+
   return <div>
     <Header titulo="Finanzas"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"resumen",label:"📊 Resumen"},{id:"inv",label:"💰 Inversión"},{id:"metas",label:"🎯 Metas"}]}/>
-    {vista==="resumen"&&<FinResumen {...props} ir={setVista}/>}
-    {vista==="inv"&&<InversionFondos {...props}/>}
+    <Segmented value={vista} onChange={setVista} options={[{id:"resumen",label:"📊 Resumen"},{id:"inv",label:"💰 Inversión"},{id:"plan",label:"🧭 Plan"},{id:"metas",label:"🎯 Metas"}]}/>
+    {vista==="resumen"&&<FinResumen {...props} ir={setVista} abrirDiaPago={()=>setDiaPago(true)}/>}
+    {vista==="inv"&&<InversionFondos {...props} traerTRM={()=>traerTRM(true)}/>}
+    {vista==="plan"&&<FinPlan {...props} abrirDiaPago={()=>setDiaPago(true)} aviso={aviso}/>}
     {vista==="metas"&&<Metas {...props}/>}
+    <Sheet open={diaPago} onClose={()=>setDiaPago(false)} title="💸 Día de pago">{diaPago&&<FormDiaPago finPlan={finPlan} inversiones={inversiones} finAportes={finAportes} transacciones={transacciones} trm={num((finanzasCfg||{}).trm)||4000} onAplicar={aplicarDiaPago} irPlan={()=>{setDiaPago(false);setVista("plan");}}/>}</Sheet>
+    {toast&&<Toast>{toast}</Toast>}
   </div>;
 }
 
@@ -2068,7 +2173,7 @@ function FormUsarFondo({prov,onConfirmar}){
 }
 
 /* ═══════════ RESUMEN (todo el mes en una sola pestaña) ═══════════ */
-function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,setPresupuesto,inversiones,metas,provisiones,finanzasCfg,ir}){
+function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,setPresupuesto,inversiones,metas,provisiones,finanzasCfg,finPatrimonio,finRitual,ir,abrirDiaPago}){
   const [mes,setMes]=useState(MES_ACTUAL);
   const [editando,setEditando]=useState(null); const [editPres,setEditPres]=useState(false); const [editFijo,setEditFijo]=useState(null);
   const delMes=transacciones.filter(t=>mesDe(t.fecha)===mes).sort((a,b)=>b.fecha.localeCompare(a.fecha));
@@ -2122,6 +2227,12 @@ function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,s
       <div style={{display:"flex",gap:10}}><div style={{flex:1,background:C.greenSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.green,fontFamily:SANS}}>Ingresos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.green}}>{money(ing)}</p></div><div style={{flex:1,background:C.redSoft,borderRadius:10,padding:"10px 12px"}}><p style={{margin:0,fontSize:11,color:C.red,fontFamily:SANS}}>Gastos</p><p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:17,color:C.red}}>{money(gas)}</p></div></div>
     </Card>
 
+    {/* ritual del mes (nudge) */}
+    {(()=>{const r=ritualMes(finRitual,fijos,MES_ACTUAL);const n=[r.ingreso,r.distribuido,r.fijos,r.revision].filter(Boolean).length;if(n>=4)return null;return <div onClick={()=>ir("plan")} style={{marginTop:12,background:C.goldSoft,border:"1.5px solid "+C.gold,borderRadius:11,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+      <span style={{fontFamily:SANS,fontSize:13,color:C.espresso,fontWeight:600}}>🧾 Ritual del mes: {n}/4</span>
+      <span style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:700}}>Completar ›</span>
+    </div>;})()}
+
     {/* tasa de ahorro */}
     {ing>0&&<div style={{marginTop:12}}><Card pad={16}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon="🐷" label="Tasa de ahorro del mes"/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>meta {metaTasa}%</span></div>
@@ -2129,6 +2240,13 @@ function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,s
       <Bar pct={tasa} color={colTasa} h={10}/>
       <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12.5,color:C.muted}}>{tasa>=metaTasa?"¡Vas por encima de tu meta! 🎯 Págate primero.":"Ahorraste "+money(balance)+". Apunta a ≥"+metaTasa+"% del ingreso."}</p>
     </Card></div>}
+
+    {/* patrimonio (12 meses) */}
+    {(()=>{const hist=[...(finPatrimonio||[])].sort((a,b)=>a.ym.localeCompare(b.ym)).slice(-12);if(hist.length===0)return null;const ult=hist[hist.length-1];const maxT=Math.max(...hist.map(h=>h.total),1);if(num(ult.total)<=0)return null;return <div style={{marginTop:12}}><Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><Mini icon="🏛️" label="Patrimonio"/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>últimos {hist.length} meses</span></div>
+      <p style={{margin:"8px 0 10px",fontFamily:SERIF,fontSize:26}}>{money(ult.total)}</p>
+      <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:76,gap:4}}>{hist.map(h=>{const alt=10+(h.total/maxT)*58;const act=h.ym===MES_ACTUAL;return <div key={h.ym} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><div style={{width:"100%",maxWidth:26,height:h.total>0?alt:3,background:act?C.gold:C.goldSoft,borderRadius:4,transition:"height .4s"}}/><span style={{fontSize:9,color:act?C.espresso:C.muted,fontFamily:SANS,fontWeight:act?700:400}}>{MESES_CORTOS[+h.ym.slice(5)-1]}</span></div>;})}</div>
+    </Card></div>;})()}
 
     {/* cascada del dinero (provisión al final) */}
     <div style={{marginTop:12}}><Card pad={16}>
@@ -2151,8 +2269,8 @@ function FinResumen({transacciones,setTransacciones,fijos,setFijos,presupuesto,s
       {metasActivas.map(m=>{const a=metaAct(m),o=num(m.objetivo);return <div key={m.id} onClick={()=>ir("metas")} style={{background:C.card,borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1.5px solid "+C.border,cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontFamily:SANS,fontSize:13}}><span>{m.prioridad?"#"+m.prioridad+" ":""}{m.nombre}</span><span style={{color:C.muted}}>{Math.round(o>0?a/o*100:0)}%</span></div><Bar pct={o>0?a/o*100:0} color={C.gold} h={7}/></div>;})}
     </div>}
 
-    {/* añadir movimiento */}
-    <div style={{display:"flex",gap:10,margin:"18px 0 18px"}}><button onClick={()=>nuevoMov("ingreso")} style={{flex:1,padding:"12px 0",background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Ingreso</button><button onClick={()=>nuevoMov("gasto")} style={{flex:1,padding:"12px 0",background:C.red,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Gasto</button></div>
+    {/* añadir movimiento + día de pago */}
+    <div style={{display:"flex",gap:10,margin:"18px 0 18px"}}><button onClick={()=>nuevoMov("ingreso")} style={{flex:1,padding:"12px 0",background:C.green,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Ingreso</button><button onClick={()=>nuevoMov("gasto")} style={{flex:1,padding:"12px 0",background:C.red,color:"#fff",border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Gasto</button><button onClick={abrirDiaPago} style={{flex:1,padding:"12px 0",background:C.espresso,color:C.gold,border:"none",borderRadius:11,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>💸 Día de pago</button></div>
 
     {/* gastos fijos */}
     <div style={{marginBottom:20}}>
@@ -2210,7 +2328,7 @@ function FormFijo({fijo,onGuardar,onEliminar}){
 }
 
 /* ═══════════ INVERSIÓN + FONDOS (fusionadas) ═══════════ */
-function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvisiones,setTransacciones}){
+function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvisiones,setTransacciones,finanzasCfg,finPlan,finAportes,setFinAportes,traerTRM}){
   const [editando,setEditando]=useState(null); const [aportar,setAportar]=useState(null);
   const [editFondo,setEditFondo]=useState(null); const [usar,setUsar]=useState(null); const [toast,setToast]=useState("");
   // saldo de fondos asociado a cada inversión (la fiducuenta) — para mostrar inversión = base + fondos
@@ -2221,8 +2339,29 @@ function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvis
   const gan=actual-invertido; const rend=invertido>0?gan/invertido*100:0;
   const guardarInv=i=>{const{_nuevo,...l}=i;setInversiones(p=>p.some(x=>x.id===i.id)?p.map(x=>x.id===i.id?l:x):[...p,l]);setEditando(null);};
   const eliminarInv=async id=>{ if(await pedirConfirm({titulo:"Eliminar inversión",texto:"Se borrará esta inversión."})){ setInversiones(p=>p.filter(i=>i.id!==id)); setEditando(null);} };
-  const aplicarAporte=(id,monto)=>{setInversiones(p=>p.map(x=>x.id===id?{...x,invertido:num(x.invertido)+num(monto),actual:num(x.actual)+num(monto)}:x));setAportar(null);};
+  const aplicarAporte=(id,monto)=>{setInversiones(p=>p.map(x=>x.id===id?{...x,invertido:num(x.invertido)+num(monto),actual:num(x.actual)+num(monto)}:x));setFinAportes&&setFinAportes(p=>[...(p||[]),{id:uid(),fecha:HOY,inversionId:id,monto:num(monto),origen:"manual"}].slice(-500));setAportar(null);};
   const nuevaInv=()=>setEditando({id:uid(),nombre:"",invertido:"",actual:"",_nuevo:true});
+  // plan: TRM, portafolios y drift
+  const reglas={...SEED_FIN_PLAN.reglas,...((finPlan||{}).reglas||{})};
+  const trm=num((finanzasCfg||{}).trm)||4000;
+  const semTRM=trm<reglas.trmVerde?{c:C.green,bg:C.greenSoft,t:"Dólar barato: puedes comprar USD para la maestría"}:trm>reglas.trmStop?{c:C.red,bg:C.redSoft,t:"STOP: no compres más USD (regla del plan)"}:{c:C.gold,bg:C.goldSoft,t:"Zona neutra: sin compras nuevas de USD"};
+  const grupos=[...((finPlan||{}).portafolios||[]).map(p=>({...p,invs:inversiones.filter(i=>i.portafolio===p.id)})),{id:"",nombre:"Otras inversiones",emoji:"📦",fondos:[],invs:inversiones.filter(i=>!i.portafolio)}].filter(g=>g.invs.length>0||g.id!=="");
+  const driftDe=(g,i)=>{ if(!g.id||!i.fondoId) return null; const f=(g.fondos||[]).find(x=>x.id===i.fondoId); if(!f) return null;
+    const totG=g.invs.reduce((a,x)=>a+num(x.actual),0); if(totG<=0) return null;
+    return {target:num(f.target),real:num(i.actual)/totG*100,fondo:f}; };
+  // sugerencia del próximo aporte (solo si hay drift en P2): se corrige aportando, no vendiendo
+  const p2g=grupos.find(g=>g.id==="p2");
+  const sugerencia=(()=>{ if(!p2g) return null; const totP2=p2g.invs.reduce((a,x)=>a+num(x.actual),0); if(totP2<=0) return null;
+    const conDrift=p2g.invs.map(i=>driftDe(p2g,i)).filter(d=>d&&Math.abs(d.real-d.target)>reglas.driftAlertaPp);
+    if(conDrift.length===0) return null;
+    // último aporte mensual (lote de salario) como referencia del próximo
+    const lotes={};(finAportes||[]).filter(a=>a.origen==="salario").forEach(a=>{lotes[a.fecha]=(lotes[a.fecha]||0)+num(a.monto);});
+    const fechas=Object.keys(lotes).sort(); const A=fechas.length?lotes[fechas[fechas.length-1]]:0;
+    const pesos=(p2g.fondos||[]).map(f=>{const inv=p2g.invs.find(i=>i.fondoId===f.id);const act=inv?num(inv.actual):0;
+      return {f,peso:Math.max(0,num(f.target)/100*(totP2+A)-act)};}).filter(x=>x.peso>0);
+    const totPeso=pesos.reduce((a,x)=>a+x.peso,0); if(totPeso<=0) return null;
+    return pesos.map(x=>({nombre:x.f.nombre,pct:Math.round(x.peso/totPeso*100)})).sort((a,b)=>b.pct-a.pct);
+  })();
 
   // fondos / provisiones
   const guardarFondo=p=>{const{_nuevo,...l}=p;setProvisiones(prev=>prev.some(x=>x.id===p.id)?prev.map(x=>x.id===p.id?l:x):[...prev,{...l,saldo:num(l.saldo)}]);setEditFondo(null);};
@@ -2238,11 +2377,36 @@ function InversionFondos({inversiones,setInversiones,metas,provisiones,setProvis
   const apartarTodos=()=>{(provisiones||[]).forEach(p=>{const m=provisionMensual(p);if(m>0)apartar(p,m);});};
   const apartarAnual=()=>{(provisiones||[]).forEach(p=>{const falta=Math.max(0,num(p.montoAnual)-num(p.saldo));if(falta>0)apartar(p,falta);});};
 
+  const cardInv=(i,g)=>{const ga=num(i.actual)-num(i.invertido);const r=num(i.invertido)>0?ga/num(i.invertido)*100:0;const meta=(metas||[]).find(m=>m.inversionId===i.id);const sf=saldoFondosDe(i.id);const d=g?driftDe(g,i):null;const drift=d?d.real-d.target:0;
+    return <div key={i.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:8,border:"1.5px solid "+C.border}}><div onClick={()=>setEditando({...i,_nuevo:false})} style={{cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><span style={{fontFamily:SERIF,fontSize:16}}>{i.nombre}</span><span style={{fontFamily:SANS,fontSize:13,color:ga>=0?C.green:C.red,fontWeight:600}}>{r>=0?"+":""}{r.toFixed(1)}%</span></div><div style={{display:"flex",justifyContent:"space-between",marginTop:8,fontFamily:SANS,fontSize:13,color:C.muted}}><span>Actual {money(i.actual)}</span><span>Invertido {money(i.invertido)}</span></div>
+      {d&&<div style={{display:"flex",alignItems:"center",gap:8,marginTop:9}}><span style={{fontFamily:SANS,fontSize:11.5,color:C.muted,whiteSpace:"nowrap"}}>real {Math.round(d.real)}% · meta {d.target}%</span><div style={{flex:1}}><Bar pct={d.target>0?d.real/d.target*100:0} color={Math.abs(drift)>reglas.driftAlertaPp?(drift>0?C.red:C.blue):C.green} h={7}/></div>{Math.abs(drift)>reglas.driftAlertaPp&&<Chip bg={drift>0?C.redSoft:C.blueSoft} col={drift>0?C.red:C.blue}>{drift>0?"▲ +":"▼ −"}{Math.abs(Math.round(drift))}pp</Chip>}</div>}
+      {meta&&<p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>🎯 {meta.nombre}</p>}{sf>0&&<p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12,color:C.blue,fontWeight:600}}>🏦 Incluye {money(sf)} de fondos provisionados</p>}</div><button onClick={()=>setAportar(i)} style={{width:"100%",marginTop:11,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Aportar dinero</button></div>;};
+
   return <div style={{padding:"10px 18px 20px"}}>
+    {/* ─── TRM (radar cambiario) ─── */}
+    <div style={{background:semTRM.bg,border:"1.5px solid "+semTRM.c,borderRadius:13,padding:"12px 15px",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><span style={{fontFamily:SANS,fontSize:11,letterSpacing:1,textTransform:"uppercase",color:semTRM.c,fontWeight:700}}>TRM {trm<reglas.trmVerde?"🟢":trm>reglas.trmStop?"🔴":"🟡"}</span>
+          <p style={{margin:"3px 0 0",fontFamily:SERIF,fontSize:22,color:semTRM.c}}>{money(trm)}</p></div>
+        <div style={{textAlign:"right"}}><button onClick={traerTRM} style={{background:"none",border:"1.5px solid "+semTRM.c,color:semTRM.c,borderRadius:9,padding:"5px 12px",fontSize:12.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>↻ Actualizar</button>
+          <p style={{margin:"5px 0 0",fontFamily:SANS,fontSize:10.5,color:C.muted}}>{(finanzasCfg||{}).trmFecha===HOY?"hoy":"dato "+((finanzasCfg||{}).trmFecha||"manual")}</p></div>
+      </div>
+      <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12,color:semTRM.c,lineHeight:1.4}}>{semTRM.t}</p>
+    </div>
+
     {/* ─── INVERSIONES ─── */}
     <Card pad={18}><p style={{margin:0,...labelStyle}}>Portafolio total</p><p style={{margin:"6px 0 4px",fontFamily:SERIF,fontSize:30}}>{money(actual)}</p><p style={{margin:0,fontFamily:SANS,fontSize:14,color:gan>=0?C.green:C.red}}>{gan>=0?"▲":"▼"} {money(Math.abs(gan))} ({rend>=0?"+":""}{rend.toFixed(1)}%)</p><p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12,color:C.muted}}>Invertido: {money(invertido)}</p></Card>
     <button onClick={nuevaInv} style={{width:"100%",padding:"12px 0",margin:"14px 0 16px",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Agregar inversión</button>
-    {inversiones.length===0?<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Sin inversiones registradas.</p>:inversiones.map(i=>{const g=num(i.actual)-num(i.invertido);const r=num(i.invertido)>0?g/num(i.invertido)*100:0;const meta=(metas||[]).find(m=>m.inversionId===i.id);const sf=saldoFondosDe(i.id);return <div key={i.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:8,border:"1.5px solid "+C.border}}><div onClick={()=>setEditando({...i,_nuevo:false})} style={{cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><span style={{fontFamily:SERIF,fontSize:16}}>{i.nombre}</span><span style={{fontFamily:SANS,fontSize:13,color:g>=0?C.green:C.red,fontWeight:600}}>{r>=0?"+":""}{r.toFixed(1)}%</span></div><div style={{display:"flex",justifyContent:"space-between",marginTop:8,fontFamily:SANS,fontSize:13,color:C.muted}}><span>Actual {money(i.actual)}</span><span>Invertido {money(i.invertido)}</span></div>{meta&&<p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600}}>🎯 {meta.nombre}</p>}{sf>0&&<p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:12,color:C.blue,fontWeight:600}}>🏦 Incluye {money(sf)} de fondos provisionados</p>}</div><button onClick={()=>setAportar(i)} style={{width:"100%",marginTop:11,padding:"9px 0",background:C.greenSoft,color:C.green,border:"none",borderRadius:9,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Aportar dinero</button></div>;})}
+    {inversiones.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:14}}>Sin inversiones registradas. Vincúlalas al plan en 🧭 Plan.</p>}
+    {grupos.map(g=>{const tot=g.invs.reduce((a,x)=>a+num(x.actual),0);if(g.invs.length===0)return null;return <div key={g.id||"otras"} style={{marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}><p style={{...labelStyle,margin:0}}>{g.emoji} {g.nombre}</p><span style={{fontFamily:SERIF,fontSize:15}}>{money(tot)}</span></div>
+      {g.invs.map(i=>cardInv(i,g))}
+      {g.id==="p2"&&sugerencia&&<div style={{background:C.blueSoft,borderRadius:12,padding:"12px 14px",marginBottom:8}}>
+        <Mini icon="🧭" label="Sugerencia del próximo aporte"/>
+        <p style={{margin:"8px 0 6px",fontFamily:SANS,fontSize:13,color:C.blue,fontWeight:600}}>{sugerencia.map(s=>s.nombre.replace("Renta ","")+" "+s.pct+"%").join(" · ")}</p>
+        <p style={{margin:0,fontFamily:SANS,fontSize:11.5,color:C.blue,lineHeight:1.45}}>Se corrige aportando, no vendiendo (evitas sanciones y retención).</p>
+      </div>}
+    </div>;})}
 
     {/* ─── FONDOS / PROVISIONES ─── */}
     <div style={{height:1,background:C.borderSoft,margin:"22px 0 16px"}}/>
@@ -2361,6 +2525,250 @@ function FormReparto({metas,onAplicar}){
 function FormAbono({onAbonar}){
   const [monto,setMonto]=useState(""); const ok=num(monto)>0;
   return <div><Field label="¿Cuánto vas a abonar?"><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={monto} onChange={e=>setMonto(e.target.value)} autoFocus/></Field><button disabled={!ok} onClick={()=>onAbonar(monto)} style={btnP(ok)}>Abonar</button></div>;
+}
+
+/* ═══════════ PLAN DE INVERSIÓN (UI): FinPlan + Día de pago ═══════════ */
+function FinPlan({finPlan,setFinPlan,inversiones,setInversiones,fijos,finRitual,setFinRitual,abrirDiaPago,aviso}){
+  const [editPlan,setEditPlan]=useState(false);
+  const [vincular,setVincular]=useState(null); // {p,f}
+  const [editHito,setEditHito]=useState(null);
+  const [reglaAbierta,setReglaAbierta]=useState(null);
+  const plan=finPlan||SEED_FIN_PLAN;
+  const invDe=fid=>(inversiones||[]).find(i=>i.fondoId===fid);
+  const sinVincular=(plan.portafolios||[]).flatMap(p=>(p.fondos||[]).filter(f=>!invDe(f.id)).map(f=>({p,f})));
+  const crearTodas=async()=>{ if(!(await pedirConfirm({titulo:"Crear las inversiones del plan",texto:"Se crean "+sinVincular.length+" inversiones en $0, ya vinculadas a los fondos del plan. Luego usa «+ Aportar dinero» o el Día de pago.",ok:"Crear"}))) return;
+    setInversiones(prev=>[...prev,...sinVincular.map(({p,f})=>({id:uid(),nombre:f.nombre+" · "+p.id.toUpperCase(),invertido:0,actual:0,portafolio:p.id,fondoId:f.id}))]);
+    aviso&&aviso(sinVincular.length+" inversiones creadas y vinculadas ✓"); };
+  const vincularA=invId=>{ const {p,f}=vincular; setInversiones(prev=>prev.map(i=>i.id===invId?{...i,portafolio:p.id,fondoId:f.id}:i)); setVincular(null); };
+  const crearYVincular=()=>{ const {p,f}=vincular; setInversiones(prev=>[...prev,{id:uid(),nombre:f.nombre+" · "+p.id.toUpperCase(),invertido:0,actual:0,portafolio:p.id,fondoId:f.id}]); setVincular(null); aviso&&aviso("Inversión creada y vinculada ✓"); };
+  const desvincular=inv=>{ setInversiones(prev=>prev.map(i=>i.id===inv.id?{...i,portafolio:"",fondoId:""}:i)); setVincular(null); };
+  // hitos
+  const guardarHito=h=>{const{_nuevo,...l}=h; setFinPlan(p=>({...p,hitos:(p.hitos||[]).some(x=>x.id===h.id)?p.hitos.map(x=>x.id===h.id?l:x):[...(p.hitos||[]),l]})); setEditHito(null);};
+  const delHito=async id=>{ if(await pedirConfirm({titulo:"Eliminar hito",texto:"Se borrará este recordatorio del plan."})){ setFinPlan(p=>({...p,hitos:(p.hitos||[]).filter(x=>x.id!==id)})); setEditHito(null);} };
+  const hitos=[...(plan.hitos||[])].sort((a,b)=>(a.fecha||"9999").localeCompare(b.fecha||"9999"));
+  // ritual del mes + racha de meses completos
+  const rit=ritualMes(finRitual,fijos,MES_ACTUAL);
+  const nRit=[rit.ingreso,rit.distribuido,rit.fijos,rit.revision].filter(Boolean).length;
+  const toggleRevision=()=>setFinRitual(p=>({...(p||{}),[MES_ACTUAL]:{...((p||{})[MES_ACTUAL]||{}),revision:!rit.revision}}));
+  let rachaR=0;{ const comp=m=>{const r=ritualMes(finRitual,fijos,m);return r.ingreso&&r.distribuido&&r.fijos&&r.revision;}; let ym=MES_ACTUAL; if(!comp(ym)) ym=mesAdj(ym,-1); while(comp(ym)){rachaR++;ym=mesAdj(ym,-1);} }
+
+  return <div style={{padding:"10px 18px 24px"}}>
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      <button onClick={abrirDiaPago} style={{flex:1,padding:"14px 0",background:C.espresso,color:C.gold,border:"none",borderRadius:12,fontSize:15,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>💸 Día de pago</button>
+      <button onClick={()=>setEditPlan(true)} style={{flex:"0 0 auto",padding:"14px 16px",background:"transparent",color:C.espresso,border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>✎ Editar plan</button>
+    </div>
+
+    {/* ritual mensual */}
+    <Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="🧾" label={"Ritual de "+nombreMes(MES_ACTUAL).toLowerCase()}/><Chip bg={rachaR>0?C.goldSoft:C.borderSoft} col={C.espresso}>🔥 {rachaR} mes{rachaR!==1?"es":""}</Chip></div>
+      <div style={{marginTop:10}}>
+        {[["Registré mi ingreso",rit.ingreso,"se marca solo al registrar el salario en Día de pago"],["Distribuí los aportes",rit.distribuido,"se marca solo al aplicar el Día de pago"],["Marqué mis fijos pagados",rit.fijos,"se marca solo cuando todos los fijos del mes están pagados"],["Revisión de 10 min: presupuesto + drift + TRM",rit.revision,"tócalo cuando la hagas"]].map(([l,ok,hint],i)=><div key={l} onClick={i===3?toggleRevision:undefined} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",cursor:i===3?"pointer":"default"}}>
+          <div style={{width:22,height:22,borderRadius:7,flexShrink:0,border:ok?"none":"1.5px solid "+(i===3?C.gold:C.border),background:ok?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{ok&&<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+          <div style={{flex:1}}><p style={{margin:0,fontFamily:SANS,fontSize:13.5,color:ok?C.muted:C.text,textDecoration:ok?"line-through":"none"}}>{l}</p>{!ok&&<p style={{margin:"1px 0 0",fontFamily:SANS,fontSize:11,color:C.muted}}>{hint}</p>}</div>
+        </div>)}
+      </div>
+    </Card>
+
+    {/* portafolios del plan */}
+    {(plan.portafolios||[]).map(p=><div key={p.id} style={{marginTop:14}}><Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><p style={{margin:0,fontFamily:SERIF,fontSize:18}}>{p.emoji} {p.nombre}</p><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>{p.id==="p2"?"stock · DCA":"targets"}</span></div>
+      {(p.fondos||[]).map(f=>{const inv=invDe(f.id);return <div key={f.id} style={{padding:"11px 0",borderBottom:"1px solid "+C.borderSoft}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+          <span style={{fontFamily:SANS,fontSize:14,fontWeight:600,flex:1,minWidth:0}}>{f.nombre}</span>
+          <span style={{fontFamily:SERIF,fontSize:15,color:C.gold,whiteSpace:"nowrap"}}>{f.target}%{f.targetDca!=null?" · "+f.targetDca+"%":""}</span>
+        </div>
+        <p style={{margin:"3px 0 6px",fontFamily:SANS,fontSize:11.5,color:C.muted,lineHeight:1.4}}>Comisión ref. {String(f.comision).replace(".",",")}% · {f.liquidez}</p>
+        {f.alerta&&<p style={{margin:"0 0 6px",fontFamily:SANS,fontSize:11.5,color:C.red,fontWeight:600}}>⚠ {f.alerta}</p>}
+        {inv?<button onClick={()=>setVincular({p,f})} style={{background:C.greenSoft,border:"none",color:C.green,borderRadius:14,padding:"4px 11px",fontSize:11.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>● {inv.nombre}</button>
+        :<button onClick={()=>setVincular({p,f})} style={{background:"transparent",border:"1.5px dashed "+C.gold,color:C.espresso,borderRadius:14,padding:"4px 11px",fontSize:11.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>○ Vincular inversión</button>}
+      </div>;})}
+    </Card></div>)}
+    {sinVincular.length>=4&&<button onClick={crearTodas} style={{width:"100%",padding:"12px 0",marginTop:12,background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>⚡ Crear las inversiones del plan ({sinVincular.length})</button>}
+
+    {/* advertencia clase de participación RV Colombia */}
+    <div style={{marginTop:14,background:C.redSoft,border:"1.5px solid "+C.red,borderRadius:13,padding:"12px 15px"}}>
+      <p style={{margin:0,fontFamily:SANS,fontSize:12.5,color:C.red,lineHeight:1.5}}><b>⚠ Renta Variable Colombia:</b> confirma con tu asesor la clase de participación: Tipo C ≈ 0,70% EA vs Tipo B ≈ 3,05% EA. Si solo te ofrecen Tipo B, considera reforzar Alta Convicción / Digital en su lugar.</p>
+    </div>
+
+    {/* hitos financieros */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"20px 0 8px"}}>
+      <p style={{...labelStyle,margin:0}}>Hitos del plan</p>
+      <button onClick={()=>setEditHito({id:uid(),nombre:"",fecha:"",monto:"",tipo:"otro",_nuevo:true})} style={{background:"none",border:"1.5px solid "+C.gold,color:C.espresso,borderRadius:9,padding:"5px 11px",fontSize:12.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Hito</button>
+    </div>
+    {hitos.map(h=>{const d=h.fecha?diasHasta(h.fecha):null;const col=d==null?C.muted:d<0?C.muted:d<=30?C.red:d<=90?C.gold:C.green;return <div key={h.id} onClick={()=>setEditHito({...h,_nuevo:false})} style={{display:"flex",alignItems:"center",gap:11,background:C.card,borderRadius:12,border:"1.5px solid "+C.border,padding:"11px 14px",marginBottom:8,cursor:"pointer",opacity:d!=null&&d<0?0.6:1}}>
+      <span style={{fontSize:18}}>{HITO_EMOJI[h.tipo]||"📌"}</span>
+      <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:13.5,fontWeight:600}}>{h.nombre}</p><p style={{margin:"1px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted}}>{h.fecha?fechaLarga(h.fecha):"toca configurar la fecha"}{num(h.monto)>0?" · ~"+moneyShort(h.monto):""}</p></div>
+      {d!=null&&<span style={{fontFamily:SERIF,fontSize:15,color:col,whiteSpace:"nowrap"}}>{d<0?"pasó":d===0?"¡hoy!":"en "+d+" d"}</span>}
+    </div>;})}
+
+    {/* reglas de oro */}
+    <p style={{...labelStyle,margin:"20px 0 8px"}}>📜 Reglas de oro</p>
+    {REGLAS_ORO.map((r,i)=>{const op=reglaAbierta===i;return <div key={i} style={{background:C.card,borderRadius:12,border:"1.5px solid "+(op?C.gold:C.border),marginBottom:8,overflow:"hidden"}}>
+      <div onClick={()=>setReglaAbierta(op?null:i)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",cursor:"pointer"}}>
+        <span style={{fontSize:17}}>{r.icon}</span><p style={{flex:1,margin:0,fontFamily:SANS,fontSize:13.5,fontWeight:600}}>{r.titulo}</p><span style={{color:op?C.gold:C.muted,transform:op?"rotate(90deg)":"none",transition:"transform .2s"}}>›</span>
+      </div>
+      {op&&<p style={{margin:0,padding:"0 15px 14px",fontFamily:SANS,fontSize:13,color:C.text,lineHeight:1.6}}>{r.detalle}</p>}
+    </div>;})}
+    <p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:11,color:C.muted,fontStyle:"italic",lineHeight:1.5,textAlign:"center"}}>Plan personal educativo — no es asesoría financiera regulada. Rentabilidad pasada no garantiza futura. Cifras de referencia jul-2026.</p>
+
+    <Sheet open={!!vincular} onClose={()=>setVincular(null)} title={vincular?("Vincular · "+vincular.f.nombre):""}>{vincular&&<div>
+      <p style={{fontFamily:SANS,fontSize:13,color:C.muted,margin:"0 0 12px",lineHeight:1.5}}>Elige la inversión que corresponde a este fondo del plan, o crea una nueva en $0.</p>
+      {(inversiones||[]).map(i=><button key={i.id} onClick={()=>vincularA(i.id)} style={{width:"100%",textAlign:"left",background:i.fondoId===vincular.f.id?C.greenSoft:C.card,border:"1.5px solid "+(i.fondoId===vincular.f.id?C.green:C.border),borderRadius:11,padding:"12px 14px",marginBottom:8,cursor:"pointer",fontFamily:SANS}}>
+        <span style={{fontSize:14,fontWeight:600,color:C.espresso}}>{i.nombre}</span>
+        <span style={{display:"block",fontSize:11.5,color:C.muted,marginTop:2}}>{money(i.actual)}{i.fondoId===vincular.f.id?" · vinculada a este fondo":i.fondoId?" · vinculada a otro fondo":""}</span>
+      </button>)}
+      <button onClick={crearYVincular} style={btnP(true)}>＋ Crear "{vincular.f.nombre+" · "+vincular.p.id.toUpperCase()}"</button>
+      {invDe(vincular.f.id)&&<button onClick={()=>desvincular(invDe(vincular.f.id))} style={{width:"100%",marginTop:10,padding:"10px 0",background:"transparent",color:C.red,border:"none",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>Quitar vínculo actual</button>}
+    </div>}</Sheet>
+    <Sheet open={editPlan} onClose={()=>setEditPlan(false)} title="Editar plan">{editPlan&&<FormPlan plan={plan} onGuardar={p=>{setFinPlan(p);setEditPlan(false);aviso&&aviso("Plan actualizado ✓");}}/>}</Sheet>
+    <Sheet open={!!editHito} onClose={()=>setEditHito(null)} title={editHito?._nuevo?"Nuevo hito":"Editar hito"}>{editHito&&<FormHito hito={editHito} onGuardar={guardarHito} onEliminar={editHito._nuevo?null:()=>delHito(editHito.id)}/>}</Sheet>
+  </div>;
+}
+function FormHito({hito,onGuardar,onEliminar}){
+  const [h,setH]=useState(hito); const set=(k,v)=>setH(p=>({...p,[k]:v})); const ok=h.nombre.trim().length>0;
+  return <div>
+    <Field label="Nombre"><input style={inputStyle} placeholder="Ej. Pago 2 · Maestría" value={h.nombre} onChange={e=>set("nombre",e.target.value)} autoFocus/></Field>
+    <Field label="Fecha"><input style={inputStyle} type="date" value={h.fecha} onChange={e=>set("fecha",e.target.value)}/></Field>
+    <Field label="Monto aproximado (opcional)"><input style={inputStyle} type="number" inputMode="numeric" placeholder="0" value={h.monto} onChange={e=>set("monto",e.target.value)}/></Field>
+    <Field label="Tipo"><select style={{...inputStyle,appearance:"none"}} value={h.tipo} onChange={e=>set("tipo",e.target.value)}>{Object.keys(HITO_EMOJI).map(t=><option key={t} value={t}>{HITO_EMOJI[t]} {t}</option>)}</select></Field>
+    <button disabled={!ok} onClick={()=>onGuardar(h)} style={btnP(ok)}>Guardar hito</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+function FormPlan({plan,onGuardar}){
+  const [pl,setPl]=useState(JSON.parse(JSON.stringify(plan)));
+  const [sec,setSec]=useState("p1"); const tog=id=>setSec(sec===id?null:id);
+  const setFondo=(pi,fi,k,v)=>setPl(p=>({...p,portafolios:p.portafolios.map((po,a)=>a!==pi?po:{...po,fondos:po.fondos.map((f,b)=>b!==fi?f:{...f,[k]:v})})}));
+  const setRegla=(k,v)=>setPl(p=>({...p,reglas:{...p.reglas,[k]:v}}));
+  const setMa=(k,v)=>setPl(p=>({...p,maestria:{...p.maestria,[k]:v}}));
+  const suma=(pi,k)=>pl.portafolios[pi].fondos.reduce((a,f)=>a+num(f[k]),0);
+  const okP1=suma(0,"target")===100, okP2=suma(1,"target")===100, okDca=suma(1,"targetDca")===100;
+  const ok=okP1&&okP2&&okDca;
+  const SumaChip=({v,okS})=><span style={{fontFamily:SANS,fontSize:12,fontWeight:700,color:okS?C.green:C.red}}>{v}% {okS?"✓":"✗"}</span>;
+  const filaT=(pi,fi,f,conDca)=><div key={f.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+    <span style={{flex:1,fontFamily:SANS,fontSize:12.5,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.nombre}</span>
+    <input type="number" inputMode="numeric" value={f.target} onChange={e=>setFondo(pi,fi,"target",num(e.target.value))} style={{...inputStyle,width:62,padding:"7px 8px",fontSize:13,textAlign:"right"}}/>
+    {conDca&&<input type="number" inputMode="numeric" value={f.targetDca} onChange={e=>setFondo(pi,fi,"targetDca",num(e.target.value))} style={{...inputStyle,width:62,padding:"7px 8px",fontSize:13,textAlign:"right"}}/>}
+  </div>;
+  return <div>
+    <DPSec titulo="🎓 P1 · Targets" open={sec==="p1"} onToggle={()=>tog("p1")}>
+      {pl.portafolios[0].fondos.map((f,fi)=>filaT(0,fi,f,false))}
+      <div style={{textAlign:"right"}}>Suma: <SumaChip v={suma(0,"target")} okS={okP1}/></div>
+    </DPSec>
+    <DPSec titulo="🚀 P2 · Targets (stock · DCA)" open={sec==="p2"} onToggle={()=>tog("p2")}>
+      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:6}}><span style={{width:62,textAlign:"center",fontFamily:SANS,fontSize:10.5,color:C.muted}}>stock %</span><span style={{width:62,textAlign:"center",fontFamily:SANS,fontSize:10.5,color:C.muted}}>DCA %</span></div>
+      {pl.portafolios[1].fondos.map((f,fi)=>filaT(1,fi,f,true))}
+      <div style={{textAlign:"right",fontFamily:SANS,fontSize:12}}>Stock: <SumaChip v={suma(1,"target")} okS={okP2}/> · DCA: <SumaChip v={suma(1,"targetDca")} okS={okDca}/></div>
+    </DPSec>
+    <DPSec titulo="⚙️ Reglas del plan" open={sec==="reglas"} onToggle={()=>tog("reglas")}>
+      {[["pctSalario","% del salario a invertir"],["trmVerde","TRM verde (dólar barato)"],["trmStop","TRM stop (no comprar USD)"],["driftAlertaPp","Desvío que alerta (pp)"],["tramosExtra","Tramos para prima/bono"]].map(([k,l])=><Field key={k} label={l}><input type="number" inputMode="numeric" style={inputStyle} value={pl.reglas[k]} onChange={e=>setRegla(k,num(e.target.value))}/></Field>)}
+    </DPSec>
+    <DPSec titulo="🎓 Maestría" open={sec==="maestria"} onToggle={()=>tog("maestria")}>
+      <Field label="Costo total (USD)"><input type="number" inputMode="numeric" style={inputStyle} value={pl.maestria.costoTotalUSD} onChange={e=>setMa("costoTotalUSD",num(e.target.value))}/></Field>
+      <Field label="Cuota semestral (USD)"><input type="number" inputMode="numeric" style={inputStyle} value={pl.maestria.cuotaSemestralUSD} onChange={e=>setMa("cuotaSemestralUSD",num(e.target.value))}/></Field>
+      <Field label="Primer pago"><input type="date" style={inputStyle} value={pl.maestria.primerPago} onChange={e=>setMa("primerPago",e.target.value)}/></Field>
+    </DPSec>
+    {!ok&&<p style={{margin:"4px 0 8px",fontFamily:SANS,fontSize:12,color:C.red,textAlign:"center"}}>Cada grupo de targets debe sumar 100.</p>}
+    <button disabled={!ok} onClick={()=>onGuardar(pl)} style={btnP(ok)}>Guardar plan</button>
+  </div>;
+}
+/* Día de pago: distribuye salario/prima/bono según el plan */
+function FormDiaPago({finPlan,inversiones,finAportes,transacciones,trm,onAplicar,irPlan}){
+  const plan=finPlan||SEED_FIN_PLAN;
+  const reglas={...SEED_FIN_PLAN.reglas,...(plan.reglas||{})};
+  const maestria={...SEED_FIN_PLAN.maestria,...(plan.maestria||{})};
+  const p1=(plan.portafolios||[]).find(p=>p.id==="p1")||{fondos:[]};
+  const p2=(plan.portafolios||[]).find(p=>p.id==="p2")||{fondos:[]};
+  const invDe=fid=>(inversiones||[]).find(i=>i.fondoId===fid);
+  const [origen,setOrigen]=useState("salario");
+  const [monto,setMonto]=useState("");
+  const [pct,setPct]=useState(String(reglas.pctSalario));
+  const [regIngreso,setRegIngreso]=useState(true);
+  const [edits,setEdits]=useState({});
+  const [cuota,setCuota]=useState(null);      // aparte de maestría (prima/bono)
+  const [modoResto,setModoResto]=useState("hoy");
+  const fMas=d=>{const x=new Date();x.setDate(x.getDate()+d);return fechaLocal(x);};
+
+  // salario
+  const aInvertir=round1000(num(monto)*num(pct)/100);
+  const baseSal=repartirPorTargets(aInvertir,p2.fondos,"targetDca");
+  const filasSal=baseSal.map(r=>edits[r.fondoId]!=null?{...r,monto:num(edits[r.fondoId])}:r);
+  const sumaSal=filasSal.reduce((a,r)=>a+r.monto,0);
+  const yaIngreso=(transacciones||[]).some(t=>t.id==="salario-"+MES_ACTUAL);
+
+  // prima / bono (waterfall: 1º maestría → P1, 2º resto → P2 stock)
+  const cuotaSug=round1000(num(maestria.cuotaSemestralUSD)*trm);
+  const cuotaVal=Math.min(num(monto),cuota==null?cuotaSug:num(cuota));
+  const p1Ids=(p1.fondos||[]).map(f=>invDe(f.id)).filter(Boolean).map(i=>i.id);
+  const aportadoP1=(finAportes||[]).filter(a=>(a.origen==="prima"||a.origen==="bono")&&p1Ids.includes(a.inversionId)).reduce((a,x)=>a+num(x.monto),0);
+  const totalSem=Math.max(1,Math.ceil(num(maestria.costoTotalUSD)/Math.max(1,num(maestria.cuotaSemestralUSD))));
+  const semCubiertos=Math.min(totalSem,Math.floor(aportadoP1/Math.max(1,cuotaSug)));
+  const filasP1=repartirPorTargets(cuotaVal,p1.fondos,"target");
+  const resto=Math.max(0,num(monto)-cuotaVal);
+  const nTramos=Math.max(1,num(reglas.tramosExtra));
+  const tramo1=modoResto==="tramos"?round1000(resto/nTramos):resto;
+  const filasP2=repartirPorTargets(tramo1,p2.fondos,"target");
+
+  const filas=origen==="salario"?filasSal:[...filasP1,...filasP2];
+  const filasOk=filas.filter(r=>r.monto>0&&invDe(r.fondoId)).map(r=>({...r,inversionId:invDe(r.fondoId).id}));
+  const sinVinc=filas.filter(r=>r.monto>0&&!invDe(r.fondoId));
+  const ok=num(monto)>0&&filasOk.length>0;
+
+  const aplicar=()=>{ if(!ok) return;
+    const hitosNuevos=[];
+    if(origen!=="salario"&&modoResto==="tramos"&&resto>tramo1){
+      let asignado=tramo1;
+      for(let n=2;n<=nTramos;n++){ const m=n===nTramos?resto-asignado:round1000(resto/nTramos); asignado+=m;
+        if(m>0) hitosNuevos.push({id:uid(),nombre:"Tramo "+n+"/"+nTramos+" de "+origen,fecha:fMas(30*(n-1)),monto:m,tipo:"otro"}); }
+    }
+    onAplicar({origen,filas:filasOk,registrarIngreso:origen==="salario"&&regIngreso,montoIngreso:num(monto),hitosNuevos});
+  };
+
+  const filaR=r=>{const inv=invDe(r.fondoId);return <div key={r.fondoId} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:"1px solid "+C.borderSoft}}>
+    <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:13}}>{r.nombre} <span style={{color:C.muted,fontSize:11.5}}>({r.pct}%)</span></p>{!inv&&<p style={{margin:0,fontFamily:SANS,fontSize:11,color:C.red}}>○ sin vincular — no se aplicará</p>}</div>
+    {origen==="salario"?<input type="number" inputMode="numeric" value={edits[r.fondoId]!=null?edits[r.fondoId]:r.monto} onChange={e=>setEdits(p=>({...p,[r.fondoId]:e.target.value}))} style={{...inputStyle,width:104,padding:"7px 9px",fontSize:13,textAlign:"right"}}/>
+    :<span style={{fontFamily:SERIF,fontSize:14,whiteSpace:"nowrap"}}>{money(r.monto)}</span>}
+  </div>;};
+
+  return <div>
+    <div style={{display:"flex",gap:6,marginBottom:14}}>
+      {[["salario","💼 Salario"],["prima","🎁 Prima"],["bono","💰 Bono"]].map(([id,l])=><button key={id} onClick={()=>{setOrigen(id);setEdits({});}} style={{flex:1,padding:"9px 4px",borderRadius:10,border:"1.5px solid "+(origen===id?C.espresso:C.border),background:origen===id?C.espresso:"transparent",color:origen===id?C.bg:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:origen===id?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>
+    <Field label={origen==="salario"?"¿Cuánto te llegó?":"¿Cuánto recibiste?"}><input style={{...inputStyle,fontSize:22,fontFamily:SERIF}} type="number" inputMode="numeric" placeholder="0" value={monto} onChange={e=>{setMonto(e.target.value);setEdits({});setCuota(null);}} autoFocus/></Field>
+
+    {origen==="salario"&&num(monto)>0&&<div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+        <span style={{fontFamily:SANS,fontSize:13,color:C.muted}}>A invertir:</span>
+        <input type="number" inputMode="numeric" value={pct} onChange={e=>{setPct(e.target.value);setEdits({});}} style={{...inputStyle,width:58,padding:"6px 8px",fontSize:13,textAlign:"right"}}/>
+        <span style={{fontFamily:SANS,fontSize:13,color:C.muted}}>% =</span>
+        <b style={{fontFamily:SERIF,fontSize:17}}>{money(aInvertir)}</b>
+      </div>
+      <p style={{...labelStyle,marginBottom:4}}>Reparto (targets DCA · P2)</p>
+      {filasSal.map(filaR)}
+      <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",fontFamily:SANS,fontSize:13}}><span style={{color:C.muted}}>Suma</span><b style={{color:sumaSal===aInvertir?C.green:C.red}}>{money(sumaSal)}{sumaSal!==aInvertir?" (≠ "+money(aInvertir)+")":" ✓"}</b></div>
+      <label style={{display:"flex",alignItems:"center",gap:9,margin:"8px 0 4px",cursor:"pointer",fontFamily:SANS,fontSize:13.5}}><input type="checkbox" checked={regIngreso} onChange={e=>setRegIngreso(e.target.checked)} style={{width:18,height:18,accentColor:C.gold}}/>Registrar el ingreso en movimientos{yaIngreso?" (ya existe este mes: no se duplica)":""}</label>
+    </div>}
+
+    {origen!=="salario"&&num(monto)>0&&<div>
+      <p style={{...labelStyle,marginBottom:4}}>1º · Aparte para maestría → P1</p>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+        <input type="number" inputMode="numeric" value={cuota==null?cuotaSug:cuota} onChange={e=>setCuota(e.target.value)} style={{...inputStyle,width:130,padding:"8px 10px",fontSize:14,textAlign:"right"}}/>
+        <span style={{fontFamily:SANS,fontSize:11.5,color:C.muted,lineHeight:1.4}}>sugerido: {maestria.cuotaSemestralUSD} USD × TRM {money(trm)} · quedan {Math.max(0,totalSem-semCubiertos)} semestres por cubrir</span>
+      </div>
+      {filasP1.map(filaR)}
+      <p style={{...labelStyle,margin:"14px 0 4px"}}>2º · Resto → P2 ({money(resto)})</p>
+      <div style={{display:"flex",gap:6,marginBottom:8}}>
+        {[["hoy","Invertir todo hoy"],["tramos","En "+nTramos+" tramos"]].map(([id,l])=><button key={id} onClick={()=>setModoResto(id)} style={{flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(modoResto===id?C.gold:C.border),background:modoResto===id?C.goldSoft:"transparent",color:modoResto===id?C.espresso:C.muted,fontSize:12,fontFamily:SANS,fontWeight:modoResto===id?700:500,cursor:"pointer"}}>{l}</button>)}
+      </div>
+      {modoResto==="tramos"&&<p style={{margin:"0 0 6px",fontFamily:SANS,fontSize:11.5,color:C.muted}}>Hoy va el tramo 1 ({money(tramo1)}); los demás quedan como hitos recordatorio (+30/+60 días).</p>}
+      {filasP2.map(filaR)}
+    </div>}
+
+    {sinVinc.length>0&&<div style={{margin:"10px 0",background:C.redSoft,borderRadius:10,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+      <span style={{fontFamily:SANS,fontSize:12,color:C.red}}>{sinVinc.length} fondo{sinVinc.length!==1?"s":""} sin vincular quedará{sinVinc.length!==1?"n":""} fuera</span>
+      <button onClick={irPlan} style={{background:"none",border:"1.5px solid "+C.red,color:C.red,borderRadius:8,padding:"4px 10px",fontSize:11.5,fontWeight:700,fontFamily:SANS,cursor:"pointer",whiteSpace:"nowrap"}}>Ir a vincular</button>
+    </div>}
+    <button disabled={!ok} onClick={aplicar} style={btnP(ok)}>Aplicar aportes{filasOk.length>0?" ("+money(filasOk.reduce((a,r)=>a+r.monto,0))+")":""}</button>
+  </div>;
 }
 
 /* ═══════════ GIMNASIO ═══════════ */
