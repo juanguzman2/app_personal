@@ -130,6 +130,21 @@ const diaHoyNombre=()=>DIAS_SEM[(new Date().getDay()+6)%7];
 const PALETA_BLOQUES=[{bg:"#e8dcc2",fg:"#7a5e2e"},{bg:"#cfe0f0",fg:"#2f4d6b"},{bg:"#e5dfec",fg:"#574668"},{bg:"#dcebd6",fg:"#3a6b35"},{bg:"#f2e1dd",fg:"#a8493a"},{bg:"#fde6c9",fg:"#8a6d2f"},{bg:"#d7e6e3",fg:"#356b63"}];
 const POMO_DEFAULT={trabajo:25,descanso:5,largo:15,ciclos:4};
 
+/* ═══════════ BITÁCORA: ámbitos + sistema de foco ═══════════ */
+// Nota: la spec sugería claves mvo_bitacora_entradas / mvo_bitacora_config; se usan
+// bitacora / bitacoraCfg / bitacoraTimer por la convención camelCase del código.
+const AMBITOS=[
+  {id:"laboral", label:"Laboral", emoji:"💼"},
+  {id:"estudio", label:"Estudio", emoji:"📚"},
+  {id:"personal",label:"Personal",emoji:"🚀"},
+  {id:"gym",     label:"Gym",     emoji:"🏋️"},
+  {id:"ingles",  label:"Inglés",  emoji:"📕"},
+  {id:"otro",    label:"Otro",    emoji:"✨"},
+];
+const AMBITO=id=>AMBITOS.find(a=>a.id===id)||AMBITOS[5];
+const BITACORA_DEFAULTS={presetsMin:[25,45,60,90],metaSemanalHorasFoco:15,umbralAdherencia:0.70,diaMinimoViableMin:25,ambitosFoco:["estudio","personal"]};
+const minAHoras=min=>{const m=Math.round(num(min));const h=Math.floor(m/60),r=m%60;return h>0?h+" h"+(r>0?" "+String(r).padStart(2,"0")+" min":""):m+" min";};
+
 /* ───── SEGUIMIENTO CORPORAL ───── */
 const PERFIL_DEFAULT={edad:"",altura:174,pesoObjetivo:"",sexo:"H"};
 // Pliegues que mide el usuario (mm). Para %grasa se usan 3 (Jackson-Pollock 3: pecho, abdomen, muslo).
@@ -582,6 +597,9 @@ function App(){
   const [dpRueda,setDpRueda]=useState({});
   const [inglesSR,setInglesSR]=useState({});
   const [inglesCustom,setInglesCustom]=useState([]);
+  const [bitacora,setBitacora]=useState([]);
+  const [bitacoraCfg,setBitacoraCfg]=useState({});
+  const [bitacoraTimer,setBitacoraTimer]=useState(null);
   const [lastExport,setLastExport]=useState(null);
   const [ready,setReady]=useState(false);
   const [ajustes,setAjustes]=useState(false);
@@ -603,7 +621,8 @@ function App(){
     setEntrenos(await load("entrenos",[]));
     setLotes(await load("lotes",[]));
     setHorario(await load("horario",{}));
-    setSprints(await load("sprints",[]));
+    // migración idempotente: toda macrotarea sin ámbito queda como laboral
+    setSprints(((await load("sprints",[]))||[]).map(s=>({...s,macros:(s.macros||[]).map(m=>m.ambito?m:{...m,ambito:"laboral"})})));
     setNotas(await load("notas",[]));
     setPomoCfg(await load("pomoCfg",POMO_DEFAULT));
     setSeguimiento(await load("seguimiento",[]));
@@ -620,6 +639,9 @@ function App(){
     setDpRueda(await load("dpRueda",{}));
     setInglesSR(await load("inglesSR",{}));
     setInglesCustom(await load("inglesCustom",[]));
+    setBitacora(await load("bitacora",[]));
+    setBitacoraCfg(await load("bitacoraCfg",{}));
+    setBitacoraTimer(await load("bitacoraTimer",null));
     setLastExport(await load("lastExport",null));
     setReady(true);
     // pedir almacenamiento persistente (protege localStorage de limpiezas del sistema)
@@ -659,12 +681,15 @@ function App(){
   useEffect(()=>{if(ready)save("dpRueda",dpRueda)},[dpRueda,ready]);
   useEffect(()=>{if(ready)save("inglesSR",inglesSR)},[inglesSR,ready]);
   useEffect(()=>{if(ready)save("inglesCustom",inglesCustom)},[inglesCustom,ready]);
+  useEffect(()=>{if(ready)save("bitacora",bitacora)},[bitacora,ready]);
+  useEffect(()=>{if(ready)save("bitacoraCfg",bitacoraCfg)},[bitacoraCfg,ready]);
+  useEffect(()=>{if(ready)save("bitacoraTimer",bitacoraTimer)},[bitacoraTimer,ready]);
   useEffect(()=>{if(ready)save("lastExport",lastExport)},[lastExport,ready]);
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,bitacora,bitacoraCfg,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,bitacora:setBitacora,bitacoraCfg:setBitacoraCfg,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{setConsumo,transacciones,metas,inversiones,lotes,setLotes,horario,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,lastExport,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
@@ -672,7 +697,7 @@ function App(){
     {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR,inglesCustom,setInglesCustom}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg}}/>}
     {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
-    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog,cuentasReg,setCuentasReg}}/>}
+    {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog,cuentasReg,setCuentasReg,bitacora,setBitacora,bitacoraCfg,setBitacoraCfg,bitacoraTimer,setBitacoraTimer}}/>}
     {tab==="desarrollo"&&<DesarrolloPersonal {...{dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizLog,setDpVizLog,dpMetas,setDpMetas,dpRueda,setDpRueda,metas,inversiones}}/>}
     <Nav tab={tab} setTab={setTab}/>
     <Ajustes open={ajustes} onClose={()=>setAjustes(false)} datos={datos} setters={setters} lastExport={lastExport} setLastExport={setLastExport}/>
@@ -2626,12 +2651,16 @@ function progresoSprint(sp){
 
 function Cronograma(props){
   const [vista,setVista]=useState("estudio");
+  const [bitPrefill,setBitPrefill]=useState(null); // registro prellenado desde una tarea de sprint
+  const irBitacora=pre=>{ setBitPrefill(pre); setVista("bitacora"); };
+  const marcarTarea=ref=>props.setSprints(p=>p.map(s=>s.id!==ref.sprintId?s:{...s,macros:(s.macros||[]).map(m=>m.id!==ref.macroId?m:{...m,tareas:(m.tareas||[]).map(t=>t.id!==ref.tareaId?t:{...t,hecho:true,pasos:(t.pasos||[]).map(x=>({...x,hecho:true}))})})}));
   return <div>
     <Header titulo="Cronograma"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"estudio",label:"📚 Estudio"},{id:"trabajo",label:"💼 Trabajo"},{id:"habitos",label:"🎯 Hábitos"}]}/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"estudio",label:"📚 Estudio"},{id:"trabajo",label:"💼 Trabajo"},{id:"habitos",label:"🎯 Hábitos"},{id:"bitacora",label:"📋 Bitácora"}]}/>
     {vista==="estudio"&&<CronoEstudio {...props}/>}
-    {vista==="trabajo"&&<CronoTrabajo {...props}/>}
+    {vista==="trabajo"&&<CronoTrabajo {...props} irBitacora={irBitacora}/>}
     {vista==="habitos"&&<CronoHabitos {...props}/>}
+    {vista==="bitacora"&&<CronoBitacora {...props} prefill={bitPrefill} clearPrefill={()=>setBitPrefill(null)} marcarTarea={marcarTarea}/>}
   </div>;
 }
 
@@ -2971,17 +3000,17 @@ function FormHabito({hab,bloques,onGuardar,onEliminar}){
   </div>;
 }
 
-function CronoTrabajo({sprints,setSprints,notas,setNotas}){
+function CronoTrabajo({sprints,setSprints,notas,setNotas,irBitacora}){
   const [sub,setSub]=useState("sprints");
   return <div style={{padding:"10px 18px 20px"}}>
     <div style={{display:"flex",gap:8,marginBottom:14}}>
       {[["sprints","🗂️ Sprints"],["notas","📝 Notas"]].map(([id,l])=><button key={id} onClick={()=>setSub(id)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid "+(sub===id?C.gold:C.border),background:sub===id?C.gold:"transparent",color:sub===id?C.espresso:C.muted,fontSize:13.5,fontFamily:SANS,fontWeight:sub===id?700:500,cursor:"pointer"}}>{l}</button>)}
     </div>
-    {sub==="sprints"?<Sprints sprints={sprints} setSprints={setSprints}/>:<Notas notas={notas} setNotas={setNotas}/>}
+    {sub==="sprints"?<Sprints sprints={sprints} setSprints={setSprints} irBitacora={irBitacora}/>:<Notas notas={notas} setNotas={setNotas}/>}
   </div>;
 }
 
-function Sprints({sprints,setSprints}){
+function Sprints({sprints,setSprints,irBitacora}){
   const [abierto,setAbierto]=useState(null);
   const [editSprint,setEditSprint]=useState(null);
   const nuevo=()=>setEditSprint({id:uid(),nombre:"",fecha:HOY,macros:[],_nuevo:true});
@@ -3002,7 +3031,7 @@ function Sprints({sprints,setSprints}){
         <div style={{marginTop:12}}><Bar pct={pr.pct} color={pr.pct===100&&pr.tot>0?C.green:C.gold} h={10}/></div>
         <p style={{margin:"6px 0 0",textAlign:"right",fontFamily:SANS,fontSize:12,fontWeight:700,color:pr.pct===100&&pr.tot>0?C.green:C.espresso}}>{pr.pct}%</p>
       </div>
-      {open&&<div style={{padding:"0 16px 16px"}}><SprintDetalle sprint={sp} upd={fn=>upd(sp.id,fn)}/></div>}
+      {open&&<div style={{padding:"0 16px 16px"}}><SprintDetalle sprint={sp} upd={fn=>upd(sp.id,fn)} onRegistrar={irBitacora?(macro,tarea)=>irBitacora({descripcion:tarea.titulo,ambito:macro.ambito==="personal"?"personal":"laboral",tareaRef:{sprintId:sp.id,macroId:macro.id,tareaId:tarea.id}}):null}/></div>}
     </div>;})}
     <Sheet open={!!editSprint} onClose={()=>setEditSprint(null)} title={editSprint?._nuevo?"Nuevo sprint":"Editar sprint"}>{editSprint&&<FormSprint sprint={editSprint} onGuardar={guardarSprint} onEliminar={editSprint._nuevo?null:()=>eliminarSprint(editSprint.id)}/>}</Sheet>
   </div>;
@@ -3017,33 +3046,48 @@ function FormSprint({sprint,onGuardar,onEliminar}){
   </div>;
 }
 
-function SprintDetalle({sprint,upd}){
+function SprintDetalle({sprint,upd,onRegistrar}){
   const [nuevaMacro,setNuevaMacro]=useState("");
-  const addMacro=()=>{ const t=nuevaMacro.trim(); if(!t) return; upd(s=>({...s,macros:[...(s.macros||[]),{id:uid(),titulo:t,tareas:[]}]})); setNuevaMacro(""); };
+  const [nuevoAmbito,setNuevoAmbito]=useState("laboral");
+  const [filtro,setFiltro]=useState("todas"); // solo visual: no altera contadores del sprint
+  const addMacro=()=>{ const t=nuevaMacro.trim(); if(!t) return; upd(s=>({...s,macros:[...(s.macros||[]),{id:uid(),titulo:t,ambito:nuevoAmbito,tareas:[]}]})); setNuevaMacro(""); };
   const delMacro=async id=>{ if(await pedirConfirm({titulo:"Eliminar macrotarea",texto:"Se borrará con sus tareas."})) upd(s=>({...s,macros:s.macros.filter(m=>m.id!==id)})); };
   const updMacro=(mid,fn)=>upd(s=>({...s,macros:s.macros.map(m=>m.id===mid?fn(m):m)}));
+  const macros=sprint.macros||[];
+  const visibles=macros.filter(m=>filtro==="todas"||(m.ambito||"laboral")===filtro);
   return <div style={{borderTop:"1px solid "+C.borderSoft,paddingTop:12}}>
-    {(sprint.macros||[]).map(m=><MacroTarea key={m.id} macro={m} upd={fn=>updMacro(m.id,fn)} onDel={()=>delMacro(m.id)}/>)}
-    <div style={{display:"flex",gap:7,marginTop:6}}>
+    {macros.length>0&&<div style={{display:"flex",gap:6,marginBottom:10}}>
+      {[["todas","Todas"],["laboral","💼 Laborales"],["personal","🚀 Personales"]].map(([id,l])=><button key={id} onClick={e=>{e.stopPropagation();setFiltro(id);}} style={{flex:1,padding:"7px 4px",borderRadius:9,border:"1.5px solid "+(filtro===id?C.espresso:C.border),background:filtro===id?C.espresso:"transparent",color:filtro===id?C.bg:C.muted,fontSize:12,fontFamily:SANS,fontWeight:filtro===id?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>}
+    {visibles.length===0&&macros.length>0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:12.5,margin:"4px 0 10px"}}>No hay macrotareas {filtro==="laboral"?"laborales":"personales"} en este sprint.</p>}
+    {visibles.map(m=><MacroTarea key={m.id} macro={m} upd={fn=>updMacro(m.id,fn)} onDel={()=>delMacro(m.id)} onRegistrar={onRegistrar?t=>onRegistrar(m,t):null}/>)}
+    <div style={{display:"flex",gap:6,marginTop:10}}>
+      {[["laboral","💼 Laboral"],["personal","🚀 Personal"]].map(([id,l])=><button key={id} onClick={()=>setNuevoAmbito(id)} style={{flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(nuevoAmbito===id?C.gold:C.border),background:nuevoAmbito===id?C.goldSoft:"transparent",color:nuevoAmbito===id?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:nuevoAmbito===id?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>
+    <div style={{display:"flex",gap:7,marginTop:8}}>
       <input style={{...inputStyle,flex:1,padding:"9px 11px",fontSize:13.5}} placeholder="+ Nueva macrotarea" value={nuevaMacro} onChange={e=>setNuevaMacro(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addMacro();}}/>
       <button onClick={addMacro} style={{background:C.espresso,color:C.bg,border:"none",borderRadius:9,padding:"0 16px",fontSize:18,cursor:"pointer"}}>+</button>
     </div>
   </div>;
 }
 
-function MacroTarea({macro,upd,onDel}){
+function MacroTarea({macro,upd,onDel,onRegistrar}){
   const [nuevaTarea,setNuevaTarea]=useState("");
   const addTarea=()=>{ const t=nuevaTarea.trim(); if(!t) return; upd(m=>({...m,tareas:[...(m.tareas||[]),{id:uid(),titulo:t,hecho:false,pasos:[]}]})); setNuevaTarea(""); };
   const delTarea=async id=>{ if(await pedirConfirm({titulo:"Eliminar tarea",texto:"Se borrará esta tarea y sus pasos."})) upd(m=>({...m,tareas:m.tareas.filter(t=>t.id!==id)})); };
   const updTarea=(tid,fn)=>upd(m=>({...m,tareas:m.tareas.map(t=>t.id===tid?fn(t):t)}));
   const tareas=macro.tareas||[];
   const done=tareas.filter(t=>(t.pasos||[]).length?t.pasos.every(p=>p.hecho):t.hecho).length;
+  const amb=macro.ambito==="personal"?"personal":"laboral";
+  const toggleAmbito=()=>upd(m=>({...m,ambito:amb==="personal"?"laboral":"personal"}));
   return <div style={{background:C.bg,borderRadius:11,padding:12,marginBottom:10,border:"1px solid "+C.borderSoft}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-      <span style={{fontFamily:SANS,fontSize:14.5,fontWeight:700,color:C.espresso}}>📂 {macro.titulo}</span>
-      <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontFamily:SANS,fontSize:11.5,color:C.muted}}>{done}/{tareas.length}</span><button onClick={onDel} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>×</button></div>
+      <span style={{fontFamily:SANS,fontSize:14.5,fontWeight:700,color:C.espresso,flex:1,minWidth:0}}>📂{AMBITO(amb).emoji} {macro.titulo}</span>
+      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+        <button onClick={toggleAmbito} title="Cambiar ámbito" style={{background:C.borderSoft,border:"none",borderRadius:14,padding:"3px 9px",fontSize:11,fontFamily:SANS,color:C.muted,cursor:"pointer"}}>{amb==="personal"?"🚀→💼":"💼→🚀"}</button>
+        <span style={{fontFamily:SANS,fontSize:11.5,color:C.muted}}>{done}/{tareas.length}</span><button onClick={onDel} style={{background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>×</button></div>
     </div>
-    {tareas.map(t=><Tarea key={t.id} tarea={t} upd={fn=>updTarea(t.id,fn)} onDel={()=>delTarea(t.id)}/>)}
+    {tareas.map(t=><Tarea key={t.id} tarea={t} upd={fn=>updTarea(t.id,fn)} onDel={()=>delTarea(t.id)} onRegistrar={onRegistrar?()=>onRegistrar(t):null}/>)}
     <div style={{display:"flex",gap:6,marginTop:tareas.length?6:0}}>
       <input style={{...inputStyle,flex:1,padding:"8px 10px",fontSize:13}} placeholder="+ Tarea" value={nuevaTarea} onChange={e=>setNuevaTarea(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTarea();}}/>
       <button onClick={addTarea} style={{background:C.goldSoft,color:C.espresso,border:"none",borderRadius:8,padding:"0 14px",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
@@ -3051,7 +3095,7 @@ function MacroTarea({macro,upd,onDel}){
   </div>;
 }
 
-function Tarea({tarea,upd,onDel}){
+function Tarea({tarea,upd,onDel,onRegistrar}){
   const [open,setOpen]=useState(false);
   const [nuevoPaso,setNuevoPaso]=useState("");
   const pasos=tarea.pasos||[];
@@ -3065,6 +3109,7 @@ function Tarea({tarea,upd,onDel}){
     <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 4px"}}>
       <button onClick={toggleTarea} style={{flexShrink:0,width:22,height:22,borderRadius:6,border:"1.5px solid "+(completa?C.green:C.border),background:completa?C.green:"transparent",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{completa?"✓":""}</button>
       <span onClick={()=>pasos.length&&setOpen(o=>!o)} style={{flex:1,fontFamily:SANS,fontSize:14,color:completa?C.muted:C.espresso,textDecoration:completa?"line-through":"none",cursor:pasos.length?"pointer":"default"}}>{tarea.titulo}{pasos.length>0&&<span style={{marginLeft:6,fontSize:11,color:C.muted}}>({doneP}/{pasos.length}) {open?"▲":"▼"}</span>}</span>
+      {onRegistrar&&!completa&&<button onClick={onRegistrar} title="Registrar en Bitácora" style={{background:"none",border:"none",color:C.gold,fontSize:14,cursor:"pointer",padding:"0 2px"}}>▶</button>}
       <button onClick={onDel} style={{background:"none",border:"none",color:C.muted,fontSize:15,cursor:"pointer"}}>×</button>
     </div>
     {(open||pasos.length===0)&&<div style={{paddingLeft:30}}>
@@ -3103,6 +3148,230 @@ function FormNota({nota,onGuardar,onEliminar}){
     <Field label="Título"><input style={inputStyle} placeholder="Ej. Comando útil de git" value={n.titulo} onChange={e=>set("titulo",e.target.value)} autoFocus/></Field>
     <Field label="Contenido"><textarea style={{...inputStyle,minHeight:160,resize:"vertical"}} placeholder="Escribe aquí…" value={n.texto} onChange={e=>set("texto",e.target.value)}/></Field>
     <button disabled={!ok} onClick={()=>onGuardar(n)} style={btnP(!!ok)}>Guardar nota</button>{onEliminar&&btnDel(onEliminar)}
+  </div>;
+}
+
+/* ---------- BITÁCORA: registro de lo ejecutado + métricas de foco ---------- */
+// Los Sprints planifican; la Bitácora registra lo ejecutado.
+function etiquetaDia(f){
+  if(f===HOY) return "Hoy";
+  const d=new Date(); d.setDate(d.getDate()-1);
+  if(f===fechaLocal(d)) return "Ayer";
+  const x=new Date(f+"T12:00");
+  return x.toLocaleDateString("es-CO",{weekday:"short",day:"numeric",month:"short"});
+}
+function CronoBitacora({bitacora,setBitacora,bitacoraCfg,setBitacoraCfg,bitacoraTimer,setBitacoraTimer,prefill,clearPrefill,marcarTarea}){
+  const cfg={...BITACORA_DEFAULTS,...(bitacoraCfg||{})};
+  // registro rápido
+  const [desc,setDesc]=useState("");
+  const [amb,setAmb]=useState("estudio");
+  const [dur,setDur]=useState(45);
+  const [durLibre,setDurLibre]=useState("");
+  const [foco,setFoco]=useState(0);           // 0 = sin registrar
+  const [dist,setDist]=useState("");          // "" = sin registrar
+  const [tareaRef,setTareaRef]=useState(null);
+  const [preguntaTarea,setPreguntaTarea]=useState(null);
+  const [toast,setToast]=useState("");
+  const [verDias,setVerDias]=useState(7);
+  const [editMeta,setEditMeta]=useState(false);
+  const [metaTmp,setMetaTmp]=useState("");
+  // modo enfoque (temporizador)
+  const t=bitacoraTimer;
+  const [enfoque,setEnfoque]=useState(false);
+  const [tDur,setTDur]=useState(45); const [tDurLibre,setTDurLibre]=useState("");
+  const [tAmb,setTAmb]=useState("estudio"); const [tDesc,setTDesc]=useState("");
+  const [ahora,setAhora]=useState(Date.now());
+  useEffect(()=>{ if(t&&t.estado==="corriendo"){ setAhora(Date.now()); const iv=setInterval(()=>setAhora(Date.now()),1000); return ()=>clearInterval(iv); } },[t&&t.estado]);
+  const restanteMs=!t?0:(t.estado==="pausado"?num(t.pausadoRestanteMs):Math.max(0,num(t.inicioTs)+num(t.duracionMin)*60000-ahora));
+
+  // prellenado desde una tarea de sprint
+  useEffect(()=>{ if(prefill){ setDesc(prefill.descripcion||""); setAmb(prefill.ambito||"estudio"); if(prefill.duracionMin){setDur(null);setDurLibre(String(prefill.duracionMin));} setTareaRef(prefill.tareaRef||null); clearPrefill&&clearPrefill(); try{window.scrollTo({top:0,behavior:"smooth"});}catch(e){} } },[prefill]);
+
+  const durFinal=num(durLibre)>0?num(durLibre):num(dur);
+  const ok=desc.trim().length>0&&durFinal>0;
+  const aviso=m=>{setToast(m);setTimeout(()=>setToast(""),2200);};
+  const guardar=()=>{ if(!ok) return;
+    const ent={id:uid(),fecha:HOY,duracionMin:Math.round(durFinal),ambito:amb,descripcion:desc.trim(),foco:foco>0?foco:null,distracciones:dist===""?null:Math.max(0,num(dist)),tareaRef:tareaRef||null,creadoEn:new Date().toISOString()};
+    setBitacora(p=>[ent,...(p||[])]);
+    if(tareaRef) setPreguntaTarea(tareaRef);
+    setDesc(""); setFoco(0); setDist(""); setDurLibre(""); setTareaRef(null);
+    aviso("Actividad guardada ✓");
+  };
+  const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar actividad",texto:"Se borrará esta entrada de la bitácora."})) setBitacora(p=>(p||[]).filter(e=>e.id!==id)); };
+
+  // agrupación por día (desc)
+  const entradas=[...(bitacora||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha)||(b.creadoEn||"").localeCompare(a.creadoEn||""));
+  const dias=[...new Set(entradas.map(e=>e.fecha))];
+  const diasVisibles=dias.slice(0,verDias);
+  const esFoco=e=>cfg.ambitosFoco.includes(e.ambito);
+
+  // métricas de la semana en curso (lun–dom, hora local)
+  const semana=semanaLunDom();
+  const enSemana=entradas.filter(e=>semana.includes(e.fecha));
+  const focoMin=enSemana.filter(esFoco).reduce((a,e)=>a+num(e.duracionMin),0);
+  const metaMin=Math.max(1,num(cfg.metaSemanalHorasFoco))*60;
+  const adh=focoMin/metaMin;
+  const porAmbito=AMBITOS.map(a=>({a,min:enSemana.filter(e=>e.ambito===a.id).reduce((x,e)=>x+num(e.duracionMin),0)})).filter(x=>x.min>0).sort((a,b)=>b.min-a.min);
+  const maxAmb=Math.max(...porAmbito.map(x=>x.min),1);
+  const conFoco=enSemana.filter(e=>e.foco!=null&&e.foco>0);
+  const focoProm=conFoco.length?conFoco.reduce((a,e)=>a+e.foco,0)/conFoco.length:null;
+  const conDist=enSemana.filter(e=>e.distracciones!=null);
+  const distProm=conDist.length?conDist.reduce((a,e)=>a+num(e.distracciones),0)/conDist.length:null;
+  // racha: días consecutivos con ≥ día mínimo viable en ámbitos de foco (hoy cuenta si ya llegó)
+  const minFocoDia=f=>entradas.filter(e=>e.fecha===f&&esFoco(e)).reduce((a,e)=>a+num(e.duracionMin),0);
+  let racha=0;{ const d=new Date(); if(minFocoDia(fechaLocal(d))<cfg.diaMinimoViableMin) d.setDate(d.getDate()-1); while(minFocoDia(fechaLocal(d))>=cfg.diaMinimoViableMin){ racha++; d.setDate(d.getDate()-1); } }
+  // alerta de descarga: 2 semanas completas anteriores con adherencia < umbral (solo si ya usabas la bitácora)
+  const lunKey=fechaLocal(lunesDe());
+  const semAnt=n=>{ const d=lunesDe(); d.setDate(d.getDate()-7*n); return semanaLunDom(d); };
+  const focoSem=sem=>entradas.filter(e=>sem.includes(e.fecha)&&esFoco(e)).reduce((a,e)=>a+num(e.duracionMin),0);
+  const s1=semAnt(1),s2=semAnt(2);
+  const alertaCond=entradas.some(e=>e.fecha<=s2[6])&&focoSem(s1)<metaMin*cfg.umbralAdherencia&&focoSem(s2)<metaMin*cfg.umbralAdherencia;
+  const alertaVisible=alertaCond&&(!cfg.alertaDescartada||cfg.alertaDescartada<lunKey);
+  const descartarAlerta=()=>setBitacoraCfg(p=>({...(p||{}),alertaDescartada:lunKey}));
+  const guardarMeta=()=>{ const v=num(metaTmp); if(v>0) setBitacoraCfg(p=>({...(p||{}),metaSemanalHorasFoco:v})); setEditMeta(false); };
+
+  // temporizador: empezar / pausar / terminar
+  const empezar=()=>{ const d=num(tDurLibre)>0?num(tDurLibre):num(tDur); if(d<=0) return;
+    setBitacoraTimer({estado:"corriendo",inicioTs:Date.now(),duracionMin:Math.round(d),pausadoRestanteMs:null,ambito:tAmb,descripcion:tDesc.trim()});
+    setTDurLibre(""); setTDesc("");
+  };
+  const pausar=()=>setBitacoraTimer(p=>({...p,estado:"pausado",pausadoRestanteMs:restanteMs}));
+  const reanudar=()=>setBitacoraTimer(p=>({...p,estado:"corriendo",inicioTs:Date.now()-(num(p.duracionMin)*60000-num(p.pausadoRestanteMs)),pausadoRestanteMs:null}));
+  const terminarBloque=()=>{ if(!t) return;
+    const trans=Math.max(1,Math.round((num(t.duracionMin)*60000-restanteMs)/60000));
+    setDesc(t.descripcion||""); setAmb(t.ambito||"estudio"); setDur(null); setDurLibre(String(trans)); setFoco(0); setDist("");
+    setBitacoraTimer(null); setEnfoque(false);
+    try{ navigator.vibrate&&navigator.vibrate(200); }catch(e){}
+    aviso("Bloque de "+trans+" min listo — completa y guarda 👇");
+  };
+  const cancelarBloque=async()=>{ if(await pedirConfirm({titulo:"Cancelar bloque",texto:"El tiempo transcurrido no se registrará.",ok:"Cancelar bloque"})){ setBitacoraTimer(null); setEnfoque(false);} };
+  // un timer vencido (incluso al reabrir la app) se trata como terminado
+  useEffect(()=>{ if(t&&t.estado==="corriendo"&&restanteMs<=0) terminarBloque(); },[t,restanteMs]);
+
+  const chip=(act)=>({padding:"8px 12px",borderRadius:18,border:"1.5px solid "+(act?C.gold:C.border),background:act?C.goldSoft:"transparent",color:act?C.espresso:C.muted,fontSize:12.5,fontFamily:SANS,fontWeight:act?700:500,cursor:"pointer",whiteSpace:"nowrap"});
+
+  return <div style={{padding:"10px 18px 24px"}}>
+    {/* resumen semanal */}
+    <Card pad={16}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="📊" label="Resumen semanal"/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>lun–dom</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",margin:"10px 0 6px"}}>
+        <span style={{fontFamily:SERIF,fontSize:22}}>{minAHoras(focoMin)}{editMeta
+          ?<span style={{fontFamily:SANS,fontSize:13}}> / <input autoFocus type="number" inputMode="numeric" value={metaTmp} onChange={e=>setMetaTmp(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")guardarMeta();}} onBlur={guardarMeta} style={{...inputStyle,width:58,padding:"4px 7px",fontSize:13,display:"inline-block"}}/> h</span>
+          :<span onClick={()=>{setMetaTmp(String(cfg.metaSemanalHorasFoco));setEditMeta(true);}} style={{fontFamily:SANS,fontSize:13,color:C.muted,cursor:"pointer",borderBottom:"1px dashed "+C.gold}}> / {cfg.metaSemanalHorasFoco} h ✎</span>}
+        </span>
+        <span style={{fontFamily:SANS,fontSize:13,fontWeight:700,color:adh>=cfg.umbralAdherencia?C.green:adh>=cfg.umbralAdherencia*0.6?C.gold:C.red}}>{Math.round(adh*100)}%</span>
+      </div>
+      <Bar pct={adh*100} color={adh>=cfg.umbralAdherencia?C.green:C.gold} h={10}/>
+      <p style={{margin:"5px 0 0",fontFamily:SANS,fontSize:11,color:C.muted}}>Foco profundo = {cfg.ambitosFoco.map(a=>AMBITO(a).label.toLowerCase()).join(" + ")}</p>
+      {porAmbito.length>0&&<div style={{marginTop:12}}>
+        {porAmbito.map(({a,min})=><div key={a.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+          <span style={{fontSize:13,width:20,textAlign:"center"}}>{a.emoji}</span>
+          <div style={{flex:1}}><Bar pct={min/maxAmb*100} color={cfg.ambitosFoco.includes(a.id)?C.green:C.gold} h={7}/></div>
+          <span style={{fontFamily:SANS,fontSize:11.5,color:C.muted,whiteSpace:"nowrap",minWidth:56,textAlign:"right"}}>{minAHoras(min)}</span>
+        </div>)}
+      </div>}
+      <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
+        <Chip bg={C.goldSoft} col={C.espresso}>🔥 {racha} día{racha!==1?"s":""}</Chip>
+        {focoProm!=null&&<Chip bg={C.purpleSoft} col={C.purple}>⭐ {focoProm.toFixed(1)} foco</Chip>}
+        {distProm!=null&&<Chip bg={C.redSoft} col={C.red}>🚧 {distProm.toFixed(1)} distr./sesión</Chip>}
+      </div>
+      {alertaVisible&&<div style={{marginTop:12,background:C.redSoft,borderRadius:11,padding:"11px 13px",display:"flex",gap:9,alignItems:"flex-start"}}>
+        <span style={{fontSize:16}}>🪫</span>
+        <p style={{flex:1,margin:0,fontFamily:SANS,fontSize:12,color:C.red,lineHeight:1.45}}>Dos semanas bajo el {Math.round(cfg.umbralAdherencia*100)}%. Considera una semana de descarga: vuelve al día mínimo viable ({cfg.diaMinimoViableMin} min) y no subas la intensidad.</p>
+        <button onClick={descartarAlerta} style={{background:"none",border:"none",color:C.red,fontSize:15,cursor:"pointer",padding:0}}>×</button>
+      </div>}
+    </Card>
+
+    {/* modo enfoque */}
+    {!t&&!enfoque&&<button onClick={()=>setEnfoque(true)} style={{width:"100%",padding:"13px 0",margin:"12px 0 0",background:C.espresso,color:C.gold,border:"none",borderRadius:12,fontSize:15,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>▶ Iniciar bloque</button>}
+    {!t&&enfoque&&<div style={{marginTop:12}}><Card pad={16} bd={C.gold}>
+      <Mini icon="⏱️" label="Nuevo bloque de enfoque"/>
+      <div style={{display:"flex",gap:6,margin:"12px 0 8px",flexWrap:"wrap"}}>
+        {cfg.presetsMin.map(p=><button key={p} onClick={()=>{setTDur(p);setTDurLibre("");}} style={chip(num(tDurLibre)<=0&&tDur===p)}>{p} min</button>)}
+        <input type="number" inputMode="numeric" placeholder="otro" value={tDurLibre} onChange={e=>setTDurLibre(e.target.value)} style={{...inputStyle,width:70,padding:"7px 9px",fontSize:13}}/>
+      </div>
+      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,marginBottom:8}}>
+        {AMBITOS.map(a=><button key={a.id} onClick={()=>setTAmb(a.id)} style={chip(tAmb===a.id)}>{a.emoji} {a.label}</button>)}
+      </div>
+      <input style={{...inputStyle,marginBottom:10}} placeholder="¿En qué vas a trabajar? (opcional)" value={tDesc} onChange={e=>setTDesc(e.target.value)}/>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setEnfoque(false)} style={{flex:"0 0 auto",padding:"12px 16px",background:"transparent",color:C.muted,border:"1.5px solid "+C.border,borderRadius:11,fontSize:13.5,fontFamily:SANS,cursor:"pointer"}}>Cerrar</button>
+        <button onClick={empezar} style={{flex:1,padding:"12px 0",background:C.espresso,color:C.gold,border:"none",borderRadius:11,fontSize:14.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>Empezar</button>
+      </div>
+    </Card></div>}
+    {t&&!enfoque&&<div onClick={()=>setEnfoque(true)} style={{marginTop:12,background:C.espresso,borderRadius:13,padding:"12px 16px",display:"flex",alignItems:"center",gap:11,cursor:"pointer"}}>
+      <span style={{fontSize:17}}>⏳</span>
+      <span style={{flex:1,fontFamily:SERIF,fontSize:18,color:C.gold}}>{fmtMMSS(restanteMs/1000)}</span>
+      <span style={{fontFamily:SANS,fontSize:12,color:"#d8cdb8"}}>{AMBITO(t.ambito).emoji} {t.estado==="pausado"?"en pausa":"en curso"} · abrir ›</span>
+    </div>}
+    {t&&enfoque&&<div style={{marginTop:12}}><Card pad={20} bd={C.gold}>
+      <div style={{textAlign:"center"}}>
+        <p style={{margin:0,fontFamily:SANS,fontSize:11,letterSpacing:2,textTransform:"uppercase",color:C.muted}}>{AMBITO(t.ambito).emoji} {AMBITO(t.ambito).label}{t.descripcion?" · "+t.descripcion:""}</p>
+        <p style={{margin:"10px 0 4px",fontFamily:SERIF,fontSize:54,lineHeight:1,color:t.estado==="pausado"?C.muted:C.espresso}}>{fmtMMSS(restanteMs/1000)}</p>
+        <p style={{margin:"0 0 14px",fontFamily:SANS,fontSize:11.5,color:C.muted}}>de {t.duracionMin} min{t.estado==="pausado"?" · en pausa":""}</p>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        {t.estado==="corriendo"?<button onClick={pausar} style={{flex:1,padding:"12px 0",background:"transparent",color:C.espresso,border:"1.5px solid "+C.border,borderRadius:11,fontSize:14,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>⏸ Pausar</button>
+        :<button onClick={reanudar} style={{flex:1,padding:"12px 0",background:C.gold,color:C.espresso,border:"none",borderRadius:11,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>▶ Reanudar</button>}
+        <button onClick={terminarBloque} style={{flex:1,padding:"12px 0",background:C.espresso,color:C.gold,border:"none",borderRadius:11,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>✓ Terminar</button>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+        <button onClick={()=>setEnfoque(false)} style={{background:"none",border:"none",color:C.muted,fontSize:12.5,fontFamily:SANS,cursor:"pointer"}}>Minimizar</button>
+        <button onClick={cancelarBloque} style={{background:"none",border:"none",color:C.red,fontSize:12.5,fontFamily:SANS,cursor:"pointer"}}>Cancelar bloque</button>
+      </div>
+    </Card></div>}
+
+    {/* pregunta tras registrar desde una tarea de sprint */}
+    {preguntaTarea&&<div style={{marginTop:12,background:C.greenSoft,borderRadius:11,padding:"11px 13px",display:"flex",alignItems:"center",gap:10}}>
+      <p style={{flex:1,margin:0,fontFamily:SANS,fontSize:13,color:C.green,fontWeight:600}}>¿Marcar la tarea como completada?</p>
+      <button onClick={()=>{marcarTarea&&marcarTarea(preguntaTarea);setPreguntaTarea(null);aviso("Tarea completada ✓");}} style={{background:C.green,color:"#fff",border:"none",borderRadius:9,padding:"7px 16px",fontSize:13,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>Sí</button>
+      <button onClick={()=>setPreguntaTarea(null)} style={{background:"transparent",color:C.muted,border:"1.5px solid "+C.border,borderRadius:9,padding:"7px 14px",fontSize:13,fontFamily:SANS,cursor:"pointer"}}>No</button>
+    </div>}
+
+    {/* registro rápido */}
+    <div style={{marginTop:12}}><Card pad={16}>
+      <Mini icon="✏️" label="Registro rápido"/>
+      {tareaRef&&<p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:11.5,color:C.gold,fontWeight:600}}>🔗 Vinculada a una tarea del sprint</p>}
+      <input style={{...inputStyle,margin:"10px 0 8px"}} placeholder="¿Qué hiciste?" value={desc} onChange={e=>setDesc(e.target.value)}/>
+      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,marginBottom:8}}>
+        {AMBITOS.map(a=><button key={a.id} onClick={()=>setAmb(a.id)} style={chip(amb===a.id)}>{a.emoji} {a.label}</button>)}
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+        {cfg.presetsMin.map(p=><button key={p} onClick={()=>{setDur(p);setDurLibre("");}} style={chip(num(durLibre)<=0&&dur===p)}>{p} min</button>)}
+        <input type="number" inputMode="numeric" placeholder="otro" value={durLibre} onChange={e=>setDurLibre(e.target.value)} style={{...inputStyle,width:70,padding:"7px 9px",fontSize:13}}/>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:2}}>
+          <span style={{fontFamily:SANS,fontSize:11.5,color:C.muted,marginRight:5}}>Foco</span>
+          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setFoco(foco===n?0:n)} style={{background:"none",border:"none",fontSize:21,cursor:"pointer",color:n<=foco?C.gold:C.border,padding:"0 1px",lineHeight:1}}>★</button>)}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:7}}>
+          <span style={{fontFamily:SANS,fontSize:11.5,color:C.muted}}>Distracciones</span>
+          <button onClick={()=>setDist(d=>d===""?"":(num(d)<=0?"":String(num(d)-1)))} style={{width:30,height:30,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:15,cursor:"pointer",lineHeight:1}}>−</button>
+          <span style={{fontFamily:SERIF,fontSize:16,minWidth:18,textAlign:"center",color:dist===""?C.border:C.espresso}}>{dist===""?"–":num(dist)}</span>
+          <button onClick={()=>setDist(d=>d===""?"0":String(num(d)+1))} style={{width:30,height:30,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:15,cursor:"pointer",lineHeight:1}}>+</button>
+        </div>
+      </div>
+      <button disabled={!ok} onClick={guardar} style={{width:"100%",padding:"13px 0",background:ok?C.gold:C.borderSoft,color:ok?C.espresso:C.muted,border:"none",borderRadius:11,fontSize:14.5,fontWeight:700,fontFamily:SANS,cursor:ok?"pointer":"default"}}>Guardar actividad</button>
+    </Card></div>
+
+    {/* lista por día */}
+    {dias.length===0&&<p style={{textAlign:"center",color:C.muted,fontFamily:SANS,fontSize:13.5,margin:"22px 0 0",lineHeight:1.6}}>Aún no registras actividades hoy.<br/>Registra tu primer bloque arriba 👆</p>}
+    {diasVisibles.map(f=>{const del=entradas.filter(e=>e.fecha===f);const tot=del.reduce((a,e)=>a+num(e.duracionMin),0);const focoT=del.filter(esFoco).reduce((a,e)=>a+num(e.duracionMin),0);return <div key={f} style={{marginTop:18}}>
+      <p style={{...labelStyle,marginBottom:7}}>{etiquetaDia(f)}</p>
+      {del.map(e=><div key={e.id} style={{display:"flex",alignItems:"center",gap:10,background:C.card,borderRadius:11,border:"1.5px solid "+C.border,padding:"10px 13px",marginBottom:7}}>
+        <span style={{fontSize:17,flexShrink:0}}>{AMBITO(e.ambito).emoji}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{margin:0,fontFamily:SANS,fontSize:13.5,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.descripcion}{e.tareaRef?" 🔗":""}</p>
+          <p style={{margin:"1px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted}}>{e.duracionMin} min{e.foco?" · "+"★".repeat(e.foco):""}{e.distracciones!=null?" · "+e.distracciones+" distr.":""}</p>
+        </div>
+        <button onClick={()=>eliminar(e.id)} style={{background:"none",border:"none",color:C.muted,fontSize:15,cursor:"pointer",flexShrink:0}}>×</button>
+      </div>)}
+      <p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted,textAlign:"right"}}>Total: {minAHoras(tot)}{focoT>0?" · Foco profundo: "+minAHoras(focoT):""}</p>
+    </div>;})}
+    {dias.length>verDias&&<button onClick={()=>setVerDias(v=>v+7)} style={{width:"100%",padding:"10px 0",marginTop:12,background:"transparent",color:C.gold,border:"1.5px dashed "+C.gold,borderRadius:11,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>Ver más días</button>}
+
+    {toast&&<Toast>{toast}</Toast>}
   </div>;
 }
 

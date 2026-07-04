@@ -57,7 +57,7 @@ Si falta alguno se rompe el respaldo export/import de Ajustes (⚙ en Inicio).
 | Comida | `recetas`, `consumo`, `quemadas`, `limites`, `lotes` (nevera), `lista` (mercado, sub-tab de Comida), `seguimiento` (corporal), `perfil` |
 | Finanzas | `transacciones`, `fijos`, `inversiones`, `metas`, `provisiones`, `presupuesto`, `finanzasCfg` |
 | Gym | `entrenos`, `plantillas` (plan editable) |
-| Cronograma | `horario` (bloques con `gid` multi-día), `sprints`, `notas`, `pomoCfg`, `rutinaHecha`, `habitos`, `habitosLog`, `cuentasReg` (cuentas regresivas) |
+| Cronograma | `horario` (bloques con `gid` multi-día), `sprints` (macrotareas con `ambito` laboral/personal), `notas`, `pomoCfg`, `rutinaHecha`, `habitos`, `habitosLog`, `cuentasReg` (cuentas regresivas), `bitacora` (actividades ejecutadas), `bitacoraCfg` (meta semanal de foco), `bitacoraTimer` (timer en curso; transiente, fuera del respaldo) |
 | Inglés | `inglesSR` (estado SM-2 por tarjeta), `inglesCustom` (palabras propias del usuario) |
 | Crecer | `dpGratitud`, `dpAfirmaciones`, `dpVizLog`, `dpMetas` (12 pasos), `dpRueda` |
 | Meta | `lastExport` (fecha del último respaldo), `guias` (legado sin UI, conservada por compatibilidad) |
@@ -75,7 +75,12 @@ Patrones que se repiten (reúsalos):
 - **Comida:** Recetas (pasos + modo cocina + lotes) · Diario (kcal/macros, balanza semanal) ·
   Seguimiento (peso, pliegues Jackson-Pollock 3 `grasaJP3`, proyección) · Mercado (lista de compras).
 - **Cronograma:** Estudio (calendario semanal de bloques multi-día + pomodoro + avisos) ·
-  Trabajo (sprints/macrotareas/notas) · Hábitos (CRUD, rachas, heatmap 30 días, "refuerza estos", cuentas regresivas).
+  Trabajo (sprints/macrotareas con ámbito 💼/🚀 + filtros, notas; los sprints **planifican**) ·
+  Hábitos (CRUD, rachas, heatmap 30 días, "refuerza estos", cuentas regresivas) ·
+  Bitácora (**registra lo ejecutado**: registro rápido con ámbito/duración/foco/distracciones,
+  resumen semanal lun–dom con foco profundo vs meta editable, barras por ámbito, racha, alerta de
+  descarga <70% × 2 semanas, modo enfoque con timer persistente, ▶ en tareas de sprint → entrada
+  vinculada con `tareaRef` + marcar tarea completada).
 - **Finanzas:** Resumen (balance, tasa de ahorro, cascada fijos→metas→provisión→disponible, fijos,
   presupuesto por categoría, gráfica 6 meses, movimientos) · Inversión (portafolio + fondos/provisiones) · Metas (prioridad, en ruta, USD).
 - **Gym:** Entrenos (plantillas Upper/Lower 5 días, "última vez" con todas las series, toast de PR,
