@@ -655,6 +655,7 @@ function App(){
   const [dpRueda,setDpRueda]=useState({});
   const [inglesSR,setInglesSR]=useState({});
   const [inglesCustom,setInglesCustom]=useState([]);
+  const [inglesSecciones,setInglesSecciones]=useState([]);
   const [bitacora,setBitacora]=useState([]);
   const [bitacoraCfg,setBitacoraCfg]=useState({});
   const [bitacoraTimer,setBitacoraTimer]=useState(null);
@@ -701,6 +702,7 @@ function App(){
     setDpRueda(await load("dpRueda",{}));
     setInglesSR(await load("inglesSR",{}));
     setInglesCustom(await load("inglesCustom",[]));
+    setInglesSecciones(await load("inglesSecciones",[]));
     setBitacora(await load("bitacora",[]));
     setBitacoraCfg(await load("bitacoraCfg",{}));
     setBitacoraTimer(await load("bitacoraTimer",null));
@@ -747,6 +749,7 @@ function App(){
   useEffect(()=>{if(ready)save("dpRueda",dpRueda)},[dpRueda,ready]);
   useEffect(()=>{if(ready)save("inglesSR",inglesSR)},[inglesSR,ready]);
   useEffect(()=>{if(ready)save("inglesCustom",inglesCustom)},[inglesCustom,ready]);
+  useEffect(()=>{if(ready)save("inglesSecciones",inglesSecciones)},[inglesSecciones,ready]);
   useEffect(()=>{if(ready)save("bitacora",bitacora)},[bitacora,ready]);
   useEffect(()=>{if(ready)save("bitacoraCfg",bitacoraCfg)},[bitacoraCfg,ready]);
   useEffect(()=>{if(ready)save("bitacoraTimer",bitacoraTimer)},[bitacoraTimer,ready]);
@@ -754,11 +757,11 @@ function App(){
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,bitacora,bitacoraCfg,finPlan,finAportes,finPatrimonio,finRitual,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,bitacora:setBitacora,bitacoraCfg:setBitacoraCfg,finPlan:setFinPlan,finAportes:setFinAportes,finPatrimonio:setFinPatrimonio,finRitual:setFinRitual,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,inglesSecciones,bitacora,bitacoraCfg,finPlan,finAportes,finPatrimonio,finRitual,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,inglesSecciones:setInglesSecciones,bitacora:setBitacora,bitacoraCfg:setBitacoraCfg,finPlan:setFinPlan,finAportes:setFinAportes,finPatrimonio:setFinPatrimonio,finRitual:setFinRitual,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
-    {tab==="inicio"&&<Inicio {...{setConsumo,transacciones,metas,inversiones,lotes,setLotes,horario,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,lastExport,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
+    {tab==="inicio"&&<Inicio {...{setConsumo,transacciones,metas,inversiones,lotes,setLotes,rutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,inglesSecciones,setInglesSecciones,lastExport,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,lista,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR,inglesCustom,setInglesCustom}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg,finPlan,setFinPlan,finAportes,setFinAportes,finPatrimonio,setFinPatrimonio,finRitual,setFinRitual}}/>}
@@ -826,20 +829,20 @@ function Nav({tab,setTab}){
 }
 
 /* ═══════════ INICIO ═══════════ */
-function Inicio({setConsumo,transacciones,metas,inversiones,lotes,setLotes,horario,rutinaHecha,setRutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,lastExport,setTab,abrirAjustes}){
+function Inicio({setConsumo,transacciones,metas,inversiones,lotes,setLotes,rutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,inglesSecciones,setInglesSecciones,lastExport,setTab,abrirAjustes}){
   const habsHoy=(habitos||[]).filter(h=>!h.bloqueId); // los vinculados a bloque ya salen en la rutina
   const setHabitoHoy=(h,val)=>setHabitosLog&&setHabitosLog(p=>{const d={...((p||{})[HOY]||{})};d[h.id]=val;return {...p,[HOY]:d};});
   const sobras=(lotes||[]).filter(l=>num(l.porcionesRest)>0.001);
   const [toast,setToast]=useState("");
-  const hechasHoy=(rutinaHecha||{})[HOY]||{};
-  const toggleBloque=id=>setRutinaHecha&&setRutinaHecha(p=>{const dia={...((p||{})[HOY]||{})};if(dia[id])delete dia[id];else dia[id]=true;return {...p,[HOY]:dia};});
   const comerLote=(l,p)=>{const real=Math.min(num(p),num(l.porcionesRest));if(real<=0)return;setConsumo&&setConsumo(prev=>[...prev,{id:uid(),fecha:HOY,nombre:l.nombre,porciones:real,kcal:Math.round(num(l.kcal)*real),proteina:Math.round(num(l.proteina)*real),carbos:Math.round(num(l.carbos)*real),grasa:Math.round(num(l.grasa)*real)}]);setLotes&&setLotes(prev=>prev.map(x=>x.id===l.id?{...x,porcionesRest:+(num(x.porcionesRest)-real).toFixed(2)}:x));setToast("Registrado: "+real+" porción"+(real===1?"":"es")+" 🍽️");setTimeout(()=>setToast(""),2200);};
   const delLote=async id=>{ if(await pedirConfirm({titulo:"Quitar de la nevera",texto:"Se quita este plato. No afecta lo ya registrado."})) setLotes&&setLotes(prev=>prev.filter(x=>x.id!==id)); };
   const hora=new Date().getHours();
   const saludo=hora<12?"Buenos días":hora<19?"Buenas tardes":"Buenas noches";
-  const hoyBloques=((horario||{})[diaHoyNombre()]||[]).slice().sort((a,b)=>hhmmToMin(a.desde)-hhmmToMin(b.desde));
-  const ahora=minNow();
-  const bloqueActual=hoyBloques.find(b=>ahora>=hhmmToMin(b.desde)&&ahora<hhmmToMin(b.hasta));
+  // plan de estudio de inglés por tareas (rotación en orden; reinicia al completar las 5)
+  const hechasIng=inglesSecciones||[];
+  const siguienteIng=(SECCIONES_ING.find(s=>!hechasIng.includes(s.id))||{}).id;
+  const toggleSeccion=id=>setInglesSecciones(p=>{const arr=p||[];return arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];});
+  const resetSecciones=()=>setInglesSecciones([]);
   // cuentas regresivas (metas con fecha) vigentes, las más próximas primero
   const cuentasProx=[...(cuentasReg||[])].filter(c=>c.fecha&&diasHasta(c.fecha)>=0).sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||"")).slice(0,3);
   // inglés: tarjetas de repaso vencidas hoy
@@ -895,19 +898,18 @@ function Inicio({setConsumo,transacciones,metas,inversiones,lotes,setLotes,horar
       <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontSize:12,fontFamily:SANS,color:C.muted}}><span>{Math.round(ma/mo*100)}% · {money(ma)}</span><span>Faltan {moneyShort(mo-ma)}</span></div>
     </Card></div>;})()}
 
-    {hoyBloques.length>0&&(()=>{const hechas=hoyBloques.filter(b=>hechasHoy[b.id]).length;const pct=Math.round(hechas/hoyBloques.length*100);const todo=hechas===hoyBloques.length;return <div style={{padding:"0 18px 6px"}}><Card>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="✅" label="Mi rutina de hoy"/><span onClick={()=>setTab("crono")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Editar ›</span></div>
-      <div style={{display:"flex",alignItems:"center",gap:10,margin:"10px 0 12px"}}><div style={{flex:1}}><Bar pct={pct} color={todo?C.green:C.gold} h={9}/></div><span style={{fontFamily:SANS,fontSize:12.5,fontWeight:700,color:todo?C.green:C.muted,whiteSpace:"nowrap"}}>{hechas}/{hoyBloques.length}{todo?" 🎉":""}</span></div>
-      <div>{hoyBloques.map(b=>{const done=!!hechasHoy[b.id];const ahoraB=bloqueActual&&b.id===bloqueActual.id;const c=PALETA_BLOQUES[(b.color||0)%PALETA_BLOQUES.length];return <div key={b.id} onClick={()=>toggleBloque(b.id)} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 8px",borderRadius:9,marginBottom:3,cursor:"pointer",background:ahoraB&&!done?c.bg:"transparent",border:ahoraB&&!done?"1.5px solid "+c.fg:"1.5px solid transparent"}}>
+    {/* plan de estudio de inglés por tareas (rotación en orden) */}
+    <div style={{padding:"0 18px 6px"}}><Card>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="📕" label="Inglés · qué estudiar hoy"/><span onClick={()=>setTab("ingles")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Tarjetas ›</span></div>
+      <div style={{display:"flex",alignItems:"center",gap:10,margin:"10px 0 12px"}}><div style={{flex:1}}><Bar pct={hechasIng.length/SECCIONES_ING.length*100} color={hechasIng.length===SECCIONES_ING.length?C.green:C.gold} h={9}/></div><span style={{fontFamily:SANS,fontSize:12.5,fontWeight:700,color:hechasIng.length===SECCIONES_ING.length?C.green:C.muted,whiteSpace:"nowrap"}}>{hechasIng.length}/{SECCIONES_ING.length}</span></div>
+      <div>{SECCIONES_ING.map(s=>{const done=hechasIng.includes(s.id);const esSig=!done&&s.id===siguienteIng;return <div key={s.id} onClick={()=>toggleSeccion(s.id)} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 10px",borderRadius:9,marginBottom:3,cursor:"pointer",background:esSig?C.goldSoft:"transparent",border:"1.5px solid "+(esSig?C.gold:"transparent")}}>
         <div style={{width:22,height:22,borderRadius:7,flexShrink:0,border:done?"none":"1.5px solid "+C.gold,background:done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{done&&<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
-        <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:done?C.muted:C.text,textDecoration:done?"line-through":"none"}}>{b.act}{ahoraB&&!done&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:c.fg}}>● ahora</span>}</p></div>
-        <span style={{fontFamily:SANS,fontSize:11.5,color:C.muted,whiteSpace:"nowrap"}}>{b.desde}</span>
+        <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SANS,fontSize:14,color:done?C.muted:C.text,textDecoration:done?"line-through":"none"}}>{s.icon} {s.label}{esSig&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:C.gold}}>● sigue</span>}</p>{s.id==="repaso"&&engVencidas>0&&<p style={{margin:"2px 0 0",fontSize:11,color:C.muted,fontFamily:SANS}}>{Math.min(engVencidas,MAX_ESTUDIO_DIA)} tarjeta{Math.min(engVencidas,MAX_ESTUDIO_DIA)!==1?"s":""} para hoy{engVencidas>MAX_ESTUDIO_DIA?" (de "+engVencidas+")":""}</p>}</div>
       </div>;})}</div>
-    </Card></div>;})()}
-    {hoyBloques.length===0&&<div style={{padding:"0 18px 6px"}}><Card onClick={()=>setTab("crono")}>
-      <Mini icon="✅" label="Mi rutina de hoy"/>
-      <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>Aún no tienes bloques para hoy. Arma tu rutina en Cronograma → Estudio y aquí la marcarás cada día. →</p>
-    </Card></div>}
+      {hechasIng.length===SECCIONES_ING.length
+        ? <div style={{marginTop:8}}><p style={{margin:"0 0 8px",textAlign:"center",fontFamily:SERIF,fontSize:15,color:C.green}}>¡Completaste el ciclo! 🎉</p><button onClick={resetSecciones} style={{width:"100%",padding:"11px 0",background:C.green,color:"#fff",border:"none",borderRadius:10,fontSize:13.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>↺ Reiniciar ciclo</button></div>
+        : <div style={{textAlign:"right",marginTop:4}}><span onClick={resetSecciones} style={{fontFamily:SANS,fontSize:11.5,color:C.muted,cursor:"pointer"}}>↺ Reiniciar</span></div>}
+    </Card></div>
 
     {habsHoy.length>0&&(()=>{const hechos=habsHoy.filter(h=>habitoCumplido(h,HOY,habitosLog,rutinaHecha)).length;const pct=Math.round(hechos/habsHoy.length*100);const todo=hechos===habsHoy.length;return <div style={{padding:"0 18px 6px"}}><Card>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="🎯" label="Mis hábitos de hoy"/><span onClick={()=>setTab("crono")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Ver todos ›</span></div>
@@ -918,15 +920,6 @@ function Inicio({setConsumo,transacciones,metas,inversiones,lotes,setLotes,horar
         {h.tipo==="cantidad"&&<div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>setHabitoHoy(h,Math.max(0,num(val)-1))} style={{width:28,height:28,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:16,cursor:"pointer",lineHeight:1}}>−</button><span style={{fontFamily:SANS,fontSize:12.5,color:C.muted,minWidth:54,textAlign:"center"}}>{num(val)}/{h.meta} {h.unidad}</span><button onClick={()=>setHabitoHoy(h,num(val)+1)} style={{width:28,height:28,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:16,cursor:"pointer",lineHeight:1}}>+</button></div>}
       </div>;})}</div>
     </Card></div>;})()}
-
-    {engVencidas>0&&<div style={{padding:"0 18px 6px"}}><Card onClick={()=>setTab("ingles")} bd={C.gold}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><Mini icon="📕" label="Inglés · repaso pendiente"/>
-          <p style={{margin:"7px 0 0",fontFamily:SANS,fontSize:13.5,color:C.text}}><b style={{fontFamily:SERIF,fontSize:19}}>{engVencidas}</b> tarjeta{engVencidas!==1?"s":""} vencida{engVencidas!==1?"s":""} hoy</p>
-        </div>
-        <span style={{fontFamily:SANS,fontSize:13,color:C.gold,fontWeight:700}}>Estudiar ›</span>
-      </div>
-    </Card></div>}
 
     {cuentasProx.length>0&&<div style={{padding:"0 18px 6px"}}><Card>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon="⏳" label="Cuenta regresiva"/><span onClick={()=>setTab("crono")} style={{fontFamily:SANS,fontSize:12,color:C.gold,fontWeight:600,cursor:"pointer"}}>Ver todas ›</span></div>
@@ -1917,6 +1910,15 @@ function Ingles({inglesSR,setInglesSR,inglesCustom,setInglesCustom}){
   </div>;
 }
 const NUEVAS_POR_DIA=15;
+const MAX_ESTUDIO_DIA=20; // tope de tarjetas por día (repasos + nuevas)
+// Plan de estudio de inglés por tareas: se estudian en orden y se reinicia el ciclo al terminar las 5
+const SECCIONES_ING=[
+  {id:"listening",label:"Listening",icon:"🎧"},
+  {id:"reading",  label:"Reading",  icon:"📖"},
+  {id:"writing",  label:"Writing",  icon:"✍️"},
+  {id:"speaking", label:"Speaking", icon:"🗣️"},
+  {id:"repaso",   label:"Repaso general (tarjetas)",icon:"🔁"},
+];
 function EngMazo({tipo,cartasAll,inglesSR,setInglesSR,inglesCustom,setInglesCustom}){
   const [sesion,setSesion]=useState(false);
   const [tema,setTema]=useState("");     // "" = todos los temas
@@ -1925,9 +1927,13 @@ function EngMazo({tipo,cartasAll,inglesSR,setInglesSR,inglesCustom,setInglesCust
   const cartas=cartasAll.filter(c=>c.tipo===tipo);
   const enTema=tema?cartas.filter(c=>c.topic===tema):cartas;
   const estado=c=>inglesSR[c.id];
-  const vencidas=enTema.filter(c=>{const s=estado(c);return s&&s.due&&s.due<=HOY;});
+  // Tope diario (repetición espaciada): máx MAX_ESTUDIO_DIA/día, repasos primero (más atrasados antes)
+  const vencidasAll=enTema.filter(c=>{const s=estado(c);return s&&s.due&&s.due<=HOY;}).sort((a,b)=>((estado(a).due)||"").localeCompare((estado(b).due)||""));
   const nuevasAll=enTema.filter(c=>!estado(c));
-  const nNuevas=Math.min(nuevasAll.length,NUEVAS_POR_DIA+extra);
+  const cupo=MAX_ESTUDIO_DIA+extra;
+  const vencidas=vencidasAll.slice(0,cupo);
+  const nNuevas=Math.min(nuevasAll.length,Math.max(0,cupo-vencidas.length),NUEVAS_POR_DIA+extra);
+  const backlog=vencidasAll.length-vencidas.length; // repasos que quedan para los próximos días
   const aprendidas=enTema.filter(c=>estado(c)).length;
   const cola=[...vencidas,...nuevasAll.slice(0,nNuevas)];
   const MANANA=fechaLocal(new Date(Date.now()+864e5));
@@ -1948,7 +1954,8 @@ function EngMazo({tipo,cartasAll,inglesSR,setInglesSR,inglesCustom,setInglesCust
         <div style={{flex:1,background:vencidas.length>0?C.gold:C.borderSoft,borderRadius:11,padding:"12px 10px",textAlign:"center"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:vencidas.length>0?C.espresso:C.muted}}>{vencidas.length}</p><p style={{margin:"2px 0 0",fontSize:11,color:vencidas.length>0?C.espresso:C.muted,fontFamily:SANS}}>to review</p></div>
         <div style={{flex:1,background:C.greenSoft,borderRadius:11,padding:"12px 10px",textAlign:"center"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:C.green}}>{nNuevas}</p><p style={{margin:"2px 0 0",fontSize:11,color:C.green,fontFamily:SANS}}>new today</p></div>
       </div>
-      {dueManana>0&&<p style={{margin:"8px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Tomorrow: {dueManana} card{dueManana!==1?"s":""} due</p>}
+      {backlog>0&&<p style={{margin:"8px 0 0",fontSize:11.5,color:C.gold,fontFamily:SANS,textAlign:"center",fontWeight:600}}>Daily cap {MAX_ESTUDIO_DIA} · {backlog} more review{backlog!==1?"s":""} spread over the next days</p>}
+      {backlog===0&&dueManana>0&&<p style={{margin:"8px 0 0",fontSize:11.5,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Tomorrow: {dueManana} card{dueManana!==1?"s":""} due</p>}
     </Card>
 
     {/* elegir qué estudiar */}
@@ -1961,7 +1968,7 @@ function EngMazo({tipo,cartasAll,inglesSR,setInglesSR,inglesCustom,setInglesCust
 
     {cola.length>0?<button onClick={()=>setSesion(true)} style={{width:"100%",padding:"15px 0",margin:"12px 0 6px",background:C.espresso,color:C.gold,border:"none",borderRadius:12,fontSize:16,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>▶ Study {cola.length} card{cola.length!==1?"s":""}{tema?" · "+tema.replace(/-/g," "):""}</button>
       :<div style={{margin:"14px 0 6px",textAlign:"center",background:C.greenSoft,borderRadius:12,padding:16}}><p style={{margin:0,fontFamily:SERIF,fontSize:17,color:C.green}}>All caught up! 🎉</p><p style={{margin:"4px 0 0",fontFamily:SANS,fontSize:13,color:C.green}}>No cards due{tema?" in this topic":""} today.</p></div>}
-    {nuevasAll.length>nNuevas&&<button onClick={()=>setExtra(e=>e+15)} style={{width:"100%",padding:"11px 0",margin:"4px 0 0",background:"transparent",color:C.espresso,border:"1.5px dashed "+C.gold,borderRadius:11,fontSize:13.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Add 15 more new cards today ({nuevasAll.length-nNuevas} left)</button>}
+    {(nuevasAll.length>nNuevas||backlog>0)&&<button onClick={()=>setExtra(e=>e+15)} style={{width:"100%",padding:"11px 0",margin:"4px 0 0",background:"transparent",color:C.espresso,border:"1.5px dashed "+C.gold,borderRadius:11,fontSize:13.5,fontWeight:600,fontFamily:SANS,cursor:"pointer"}}>+ Study 15 more today</button>}
 
     {/* palabras propias */}
     {tipo==="vocab"&&<div style={{marginTop:22}}>
@@ -2774,7 +2781,7 @@ function FormDiaPago({finPlan,inversiones,finAportes,transacciones,trm,onAplicar
 /* ═══════════ GIMNASIO ═══════════ */
 function volumen(e){ return e.ejercicios.reduce((a,ej)=>a+ej.sets.reduce((b,s)=>b+num(s.reps)*num(s.peso),0),0); }
 function seriesSemana(entrenos){
-  const dias=ultimos7(); const c={}; MUSCULOS.forEach(m=>c[m]=0);
+  const dias=semanaLunDom(); const c={}; MUSCULOS.forEach(m=>c[m]=0);
   entrenos.filter(e=>dias.includes(e.fecha)).forEach(e=>e.ejercicios.forEach(ej=>{
     const m=musculoDe(ej); const hechas=ej.sets.filter(s=>num(s.reps)>0).length;
     c[m]=(c[m]||0)+(hechas||0);
@@ -2820,7 +2827,7 @@ function GymEntrenos({entrenos,setEntrenos,plantillas}){
   const eliminar=async id=>{ if(await pedirConfirm({titulo:"Eliminar entreno",texto:"Se borrará este entreno y sus series."})){ setEntrenos(p=>p.filter(x=>x.id!==id)); setVer(null);} };
   const elegir=dia=>{ setEligiendo(false); setEditando(entrenoDesdePlantilla(dia,plantillas)); };
   const ordenados=[...entrenos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  const dias=ultimos7();
+  const dias=semanaLunDom(); // lunes a domingo de la semana en curso
   const semVol=dias.map(f=>({f,vol:entrenos.filter(e=>e.fecha===f).reduce((a,e)=>a+volumen(e),0)}));
   const maxVol=Math.max(...semVol.map(s=>s.vol),1);
   const entSem=entrenos.filter(e=>dias.includes(e.fecha)).length;
@@ -2838,7 +2845,7 @@ function GymEntrenos({entrenos,setEntrenos,plantillas}){
     </Card></div>
 
     {/* volumen total kg */}
-    <div style={{padding:"14px 18px 0"}}><p style={{...labelStyle,marginBottom:8}}>Volumen total (kg) · 7 días</p><Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:96,gap:6}}>{semVol.map(s=>{const h=s.vol/maxVol*78;const esHoy=s.f===HOY;return <div key={s.f} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><div style={{width:"100%",maxWidth:28,height:Math.max(3,h),background:s.vol>0?(esHoy?C.purple:C.purpleSoft):C.borderSoft,borderRadius:5}}/><span style={{fontSize:11,color:esHoy?C.espresso:C.muted,fontFamily:SANS,fontWeight:esHoy?700:400}}>{DIA_CORTO(s.f)}</span></div>;})}</div><p style={{margin:"10px 0 0",fontSize:12,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Volumen = repeticiones × peso</p></Card></div>
+    <div style={{padding:"14px 18px 0"}}><p style={{...labelStyle,marginBottom:8}}>Volumen total (kg) · esta semana</p><Card pad={16}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:96,gap:6}}>{semVol.map(s=>{const h=s.vol/maxVol*78;const esHoy=s.f===HOY;return <div key={s.f} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><div style={{width:"100%",maxWidth:28,height:Math.max(3,h),background:s.vol>0?(esHoy?C.purple:C.purpleSoft):C.borderSoft,borderRadius:5}}/><span style={{fontSize:11,color:esHoy?C.espresso:C.muted,fontFamily:SANS,fontWeight:esHoy?700:400}}>{DIA_CORTO(s.f)}</span></div>;})}</div><p style={{margin:"10px 0 0",fontSize:12,color:C.muted,fontFamily:SANS,textAlign:"center"}}>Volumen = repeticiones × peso</p></Card></div>
 
     <div style={{padding:"18px 18px 20px"}}>
       <p style={{...labelStyle,marginBottom:8}}>Historial</p>

@@ -60,7 +60,7 @@ Si falta alguno se rompe el respaldo export/import de Ajustes (⚙ en Inicio).
 | Finanzas | `transacciones`, `fijos`, `inversiones` (con `portafolio`/`fondoId` opcionales), `metas`, `provisiones`, `presupuesto`, `finanzasCfg` (con `trmAuto`/`trmFecha`), `finPlan` (portafolios P1/P2, maestría, reglas, hitos; seed `SEED_FIN_PLAN`), `finAportes` (log, máx. 500), `finPatrimonio` (snapshot mensual, máx. 24), `finRitual` (checklist mensual) |
 | Gym | `entrenos`, `plantillas` (plan editable) |
 | Cronograma | `horario` (bloques con `gid` multi-día), `sprints` (macrotareas con `ambito` laboral/personal), `notas`, `pomoCfg`, `rutinaHecha`, `habitos`, `habitosLog`, `cuentasReg` (cuentas regresivas), `bitacora` (actividades ejecutadas), `bitacoraCfg` (meta semanal de foco), `bitacoraTimer` (timer en curso; transiente, fuera del respaldo) |
-| Inglés | `inglesSR` (estado SM-2 por tarjeta), `inglesCustom` (palabras propias del usuario) |
+| Inglés | `inglesSR` (estado SM-2 por tarjeta), `inglesCustom` (palabras propias del usuario), `inglesSecciones` (plan de estudio por tareas en Inicio: qué secciones del ciclo ya hiciste) |
 | Crecer | `dpGratitud`, `dpAfirmaciones`, `dpVizLog`, `dpMetas` (12 pasos), `dpRueda` |
 | Meta | `lastExport` (fecha del último respaldo), `guias` (legado sin UI, conservada por compatibilidad) |
 
@@ -71,9 +71,10 @@ Patrones que se repiten (reúsalos):
 
 ## 5. Secciones (resumen de comportamiento)
 
-- **Inicio:** héroe (Asta/Black Clover, `FRASES`), efectivo + mes, meta financiera más próxima, rutina de hoy
-  (bloques marcables), hábitos de hoy, repaso de inglés pendiente, cuentas regresivas, nevera (lotes),
-  aviso de respaldo si >30 días. Ajustes (⚙) = export/import JSON.
+- **Inicio:** héroe (Asta/Black Clover, `FRASES`), efectivo + mes, meta financiera más próxima,
+  **plan de estudio de inglés por tareas** (5 secciones listening→reading→writing→speaking→repaso,
+  marca "sigue" la próxima, checklist + reiniciar ciclo; entidad `inglesSecciones`), hábitos de hoy,
+  cuentas regresivas, nevera (lotes), aviso de respaldo si >30 días. Ajustes (⚙) = export/import JSON.
 - **Comida:** Recetas (pasos + modo cocina + lotes) · Diario (kcal/macros, balanza semanal) ·
   Seguimiento (peso, pliegues Jackson-Pollock 3 `grasaJP3`, proyección) · Mercado (lista de compras).
 - **Cronograma:** Estudio (calendario semanal de bloques multi-día + pomodoro + avisos) ·
@@ -92,10 +93,12 @@ Patrones que se repiten (reúsalos):
   vinculación fondo↔inversión, hitos countdown, reglas de oro) · Metas (prioridad, en ruta, USD).
   El día de pago crea la transacción de ingreso con id determinístico `salario-YYYY-MM` (no duplica).
 - **Gym:** Entrenos (plantillas Upper/Lower 5 días, "última vez" con todas las series, toast de PR,
-  series/músculo vs MEV-MAV) · Plan (editable, restaurable) · Progreso (1RM est./peso/volumen por ejercicio).
-- **Inglés (todo en inglés):** mazos IELTS Vocabulary (548+) y Grammar (46) con SM-2; 15 nuevas/día
-  (+15 opcionales), filtro por tema (select o tap en "Progress by topic"), "Tomorrow: N due",
-  **My words**: el usuario agrega sus propias palabras (`inglesCustom`) → 2 tarjetas c/u.
+  series/músculo y volumen **de la semana en curso lun–dom** vía `semanaLunDom()`) ·
+  Plan (editable, restaurable) · Progreso (1RM est./peso/volumen por ejercicio).
+- **Inglés (todo en inglés):** mazos IELTS Vocabulary (548+) y Grammar (46) con SM-2; **tope
+  `MAX_ESTUDIO_DIA`=20 tarjetas/día por mazo** (repasos más atrasados primero, nuevas llenan el resto
+  hasta `NUEVAS_POR_DIA`=15), botón "+ Study 15 more" sube el cupo, aviso de backlog; filtro por tema
+  (select o tap en "Progress by topic"), **My words** (`inglesCustom`) → 2 tarjetas c/u.
 - **Crecer (Desarrollo Personal, Brian Tracy/Seminario Fénix):** Teoría (acordeón estático `TEORIA_BT`) ·
   Práctica (gratitud + afirmaciones + visualización guiada con log) · Metas (12 pasos, 7 `AREAS_VIDA`,
   Propósito Mayor, Rueda de la Vida) · Mi Año (estático `MI_ANO`).
