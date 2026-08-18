@@ -2871,15 +2871,19 @@ function ControlCrono(){
 function ControlAudio({reps,setReps}){
   const ref=React.useRef(null);
   const [cur,setCur]=useState(1); const [dur,setDur]=useState(0); const [playing,setPlaying]=useState(false);
-  const onEnded=()=>{ const el=ref.current; if(!el) return; if(reps===0){ el.currentTime=0; el.play(); return; } if(cur<reps){ setCur(c=>c+1); el.currentTime=0; el.play(); } else { setCur(1); setPlaying(false); } };
-  const totalMin=dur>0?Math.round(dur*(reps===0?1:reps)/60):0;
+  const rep=Math.max(1,num(reps)||1);
+  const onEnded=()=>{ const el=ref.current; if(!el) return; if(cur<rep){ setCur(c=>c+1); el.currentTime=0; el.play(); } else { setCur(1); setPlaying(false); } };
+  const totSeg=dur>0?Math.round(dur*rep):0;
+  const totalTxt=totSeg<=0?"":totSeg<90?totSeg+" s":Math.round(totSeg/60)+" min";
   return <div>
     <audio ref={ref} src="./audio_meditacion.mp3" controls preload="metadata" onLoadedMetadata={e=>setDur(e.target.duration)} onEnded={onEnded} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} style={{width:"100%",marginBottom:10}}/>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+    <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:8}}>
       <span style={{fontFamily:SANS,fontSize:12,color:C.muted}}>Repeticiones:</span>
-      {[1,2,3,0].map(n=><button key={n} onClick={()=>{setReps(n);setCur(1);}} style={{padding:"6px 13px",borderRadius:18,border:"1.5px solid "+((reps===n)?C.gold:C.border),background:(reps===n)?C.goldSoft:"transparent",color:C.espresso,fontSize:13,fontFamily:SANS,fontWeight:(reps===n)?700:500,cursor:"pointer"}}>{n===0?"∞":n}</button>)}
+      <button onClick={()=>{setReps(Math.max(1,rep-1));setCur(1);}} style={{width:30,height:30,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:17,cursor:"pointer",lineHeight:1}}>−</button>
+      <input type="number" inputMode="numeric" min="1" value={reps} onChange={e=>{setReps(e.target.value===""?"":Math.max(1,Math.round(num(e.target.value))||1));setCur(1);}} onBlur={e=>{if(e.target.value==="")setReps(1);}} style={{...inputStyle,width:66,padding:"7px 8px",fontSize:15,textAlign:"center"}}/>
+      <button onClick={()=>{setReps(rep+1);setCur(1);}} style={{width:30,height:30,borderRadius:"50%",border:"1.5px solid "+C.border,background:C.card,color:C.espresso,fontSize:17,cursor:"pointer",lineHeight:1}}>+</button>
     </div>
-    <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>{reps===0?"En bucle continuo":"Repetición "+cur+" de "+reps}{totalMin>0?" · "+(reps===0?"~"+totalMin+" min por vuelta":"≈ "+totalMin+" min en total"):""}</p>
+    <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>Repetición {cur} de {rep}{totalTxt?" · ≈ "+totalTxt+" en total":""}</p>
   </div>;
 }
 
