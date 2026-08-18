@@ -58,7 +58,7 @@ Si falta alguno se rompe el respaldo export/import de Ajustes (⚙ en Inicio).
 |---|---|
 | Comida | `recetas`, `consumo`, `quemadas`, `limites`, `lotes` (nevera), `lista` (mercado, sub-tab de Comida), `seguimiento` (corporal), `perfil` |
 | Finanzas | `transacciones`, `fijos`, `inversiones` (con `portafolio`/`fondoId` opcionales), `metas`, `provisiones`, `presupuesto`, `finanzasCfg` (con `trmAuto`/`trmFecha`), `finPlan` (portafolios P1/P2, maestría, reglas, hitos; seed `SEED_FIN_PLAN`), `finAportes` (log, máx. 500), `finPatrimonio` (snapshot mensual, máx. 24), `finRitual` (checklist mensual) |
-| Gym | `entrenos`, `plantillas` (plan editable) |
+| Gym | `entrenos`, `plantillas` (plan editable), `controlLog` (rutina de control por día: kegel/meditacion/startstop/notas), `controlCfg` (inicio del programa + repeticiones de audio) |
 | Cronograma | `horario` (bloques con `gid` multi-día), `sprints` (macrotareas con `ambito` laboral/personal), `notas`, `pomoCfg`, `rutinaHecha`, `habitos`, `habitosLog`, `cuentasReg` (cuentas regresivas), `bitacora` (actividades ejecutadas), `bitacoraCfg` (meta semanal de foco), `bitacoraTimer` (timer en curso; transiente, fuera del respaldo) |
 | Inglés | `inglesSR` (estado SM-2 por tarjeta), `inglesCustom` (palabras propias del usuario), `inglesSecciones` (plan de estudio por tareas en Inicio: qué secciones del ciclo ya hiciste) |
 | Crecer | `dpGratitud`, `dpAfirmaciones`, `dpVizLog`, `dpMetas` (12 pasos), `dpRueda` |
@@ -94,7 +94,12 @@ Patrones que se repiten (reúsalos):
   El día de pago crea la transacción de ingreso con id determinístico `salario-YYYY-MM` (no duplica).
 - **Gym:** Entrenos (plantillas Upper/Lower 5 días, "última vez" con todas las series, toast de PR,
   series/músculo y volumen **de la semana en curso lun–dom** vía `semanaLunDom()`) ·
-  Plan (editable, restaurable) · Progreso (1RM est./peso/volumen por ejercicio).
+  Plan (editable, restaurable) · Progreso (1RM est./peso/volumen por ejercicio) ·
+  **Control (módulo personal privado):** rutina L–V (kegel/meditación/start-stop), sub-tabs Hoy/Guía/Progreso;
+  temporizador de intervalos (`ControlIntervalo`), cronómetro + pausa (`ControlCrono`), reproductor
+  `audio_meditacion.mp3` con repeticiones (`ControlAudio`, duración real dinámica); progresión por semana
+  (`semanaDePrograma`), tracking con racha/calendario 5 semanas, nota de seguridad. Entidades
+  `controlLog`/`controlCfg`. El .mp3 está en `ASSETS` del SW (por eso `mvo-v27`).
 - **Inglés (todo en inglés):** mazos IELTS Vocabulary (548+) y Grammar (46) con SM-2; **tope
   `MAX_ESTUDIO_DIA`=20 tarjetas/día por mazo** (repasos más atrasados primero, nuevas llenan el resto
   hasta `NUEVAS_POR_DIA`=15), botón "+ Study 15 more" sube el cupo, aviso de backlog; filtro por tema

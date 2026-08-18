@@ -644,6 +644,8 @@ function App(){
   const [seguimiento,setSeguimiento]=useState([]);
   const [perfil,setPerfil]=useState(PERFIL_DEFAULT);
   const [plantillas,setPlantillas]=useState(PLANTILLAS);
+  const [controlLog,setControlLog]=useState({});
+  const [controlCfg,setControlCfg]=useState({});
   const [rutinaHecha,setRutinaHecha]=useState({});
   const [habitos,setHabitos]=useState([]);
   const [habitosLog,setHabitosLog]=useState({});
@@ -691,6 +693,8 @@ function App(){
     setSeguimiento(await load("seguimiento",[]));
     setPerfil(await load("perfil",PERFIL_DEFAULT));
     setPlantillas(await load("plantillas",PLANTILLAS));
+    setControlLog(await load("controlLog",{}));
+    setControlCfg(await load("controlCfg",{}));
     setRutinaHecha(await load("rutinaHecha",{}));
     setHabitos(await load("habitos",[]));
     setHabitosLog(await load("habitosLog",{}));
@@ -738,6 +742,8 @@ function App(){
   useEffect(()=>{if(ready)save("seguimiento",seguimiento)},[seguimiento,ready]);
   useEffect(()=>{if(ready)save("perfil",perfil)},[perfil,ready]);
   useEffect(()=>{if(ready)save("plantillas",plantillas)},[plantillas,ready]);
+  useEffect(()=>{if(ready)save("controlLog",controlLog)},[controlLog,ready]);
+  useEffect(()=>{if(ready)save("controlCfg",controlCfg)},[controlCfg,ready]);
   useEffect(()=>{if(ready)save("rutinaHecha",rutinaHecha)},[rutinaHecha,ready]);
   useEffect(()=>{if(ready)save("habitos",habitos)},[habitos,ready]);
   useEffect(()=>{if(ready)save("habitosLog",habitosLog)},[habitosLog,ready]);
@@ -757,15 +763,15 @@ function App(){
 
   if(!ready) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:SERIF}}>Cargando…</div>;
 
-  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,inglesSecciones,bitacora,bitacoraCfg,finPlan,finAportes,finPatrimonio,finRitual,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
-  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,inglesSecciones:setInglesSecciones,bitacora:setBitacora,bitacoraCfg:setBitacoraCfg,finPlan:setFinPlan,finAportes:setFinAportes,finPatrimonio:setFinPatrimonio,finRitual:setFinRitual,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
+  const datos={recetas,lista,consumo,quemadas,limites,guias,transacciones,fijos,inversiones,metas,entrenos,lotes,horario,sprints,notas,pomoCfg,seguimiento,perfil,provisiones,presupuesto,finanzasCfg,plantillas,controlLog,controlCfg,rutinaHecha,habitos,habitosLog,cuentasReg,inglesSR,inglesCustom,inglesSecciones,bitacora,bitacoraCfg,finPlan,finAportes,finPatrimonio,finRitual,dpGratitud,dpAfirmaciones,dpVizLog,dpMetas,dpRueda};
+  const setters={recetas:setRecetas,lista:setLista,consumo:setConsumo,quemadas:setQuemadas,limites:setLimites,guias:setGuias,transacciones:setTransacciones,fijos:setFijos,inversiones:setInversiones,metas:setMetas,entrenos:setEntrenos,lotes:setLotes,horario:setHorario,sprints:setSprints,notas:setNotas,pomoCfg:setPomoCfg,seguimiento:setSeguimiento,perfil:setPerfil,provisiones:setProvisiones,presupuesto:setPresupuesto,finanzasCfg:setFinanzasCfg,plantillas:setPlantillas,controlLog:setControlLog,controlCfg:setControlCfg,rutinaHecha:setRutinaHecha,habitos:setHabitos,habitosLog:setHabitosLog,cuentasReg:setCuentasReg,inglesSR:setInglesSR,inglesCustom:setInglesCustom,inglesSecciones:setInglesSecciones,bitacora:setBitacora,bitacoraCfg:setBitacoraCfg,finPlan:setFinPlan,finAportes:setFinAportes,finPatrimonio:setFinPatrimonio,finRitual:setFinRitual,dpGratitud:setDpGratitud,dpAfirmaciones:setDpAfirmaciones,dpVizLog:setDpVizLog,dpMetas:setDpMetas,dpRueda:setDpRueda};
 
   return <div style={{background:C.bg,minHeight:"100vh",color:C.text,paddingBottom:78}}>
     {tab==="inicio"&&<Inicio {...{setConsumo,transacciones,metas,inversiones,lotes,setLotes,rutinaHecha,habitos,habitosLog,setHabitosLog,cuentasReg,inglesSR,inglesSecciones,setInglesSecciones,lastExport,setTab,abrirAjustes:()=>setAjustes(true)}}/>}
     {tab==="comida"&&<Comida {...{recetas,setRecetas,lista,setLista,consumo,setConsumo,quemadas,setQuemadas,limites,setLimites,lotes,setLotes,seguimiento,setSeguimiento,perfil,setPerfil}}/>}
     {tab==="ingles"&&<Ingles {...{inglesSR,setInglesSR,inglesCustom,setInglesCustom}}/>}
     {tab==="finanzas"&&<Finanzas {...{transacciones,setTransacciones,fijos,setFijos,inversiones,setInversiones,metas,setMetas,provisiones,setProvisiones,presupuesto,setPresupuesto,finanzasCfg,setFinanzasCfg,finPlan,setFinPlan,finAportes,setFinAportes,finPatrimonio,setFinPatrimonio,finRitual,setFinRitual}}/>}
-    {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas}}/>}
+    {tab==="gym"&&<Gym {...{entrenos,setEntrenos,plantillas,setPlantillas,controlLog,setControlLog,controlCfg,setControlCfg}}/>}
     {tab==="crono"&&<Cronograma {...{horario,setHorario,sprints,setSprints,notas,setNotas,pomoCfg,setPomoCfg,rutinaHecha,setRutinaHecha,habitos,setHabitos,habitosLog,setHabitosLog,cuentasReg,setCuentasReg,bitacora,setBitacora,bitacoraCfg,setBitacoraCfg,bitacoraTimer,setBitacoraTimer}}/>}
     {tab==="desarrollo"&&<DesarrolloPersonal {...{dpGratitud,setDpGratitud,dpAfirmaciones,setDpAfirmaciones,dpVizLog,setDpVizLog,dpMetas,setDpMetas,dpRueda,setDpRueda,metas,inversiones}}/>}
     <Nav tab={tab} setTab={setTab}/>
@@ -2796,14 +2802,240 @@ function entrenoDesdePlantilla(dia,plantillas){
   return base;
 }
 
+/* ═══════════ CONTROL Y BIENESTAR (rutina personal, sobria y privada) ═══════════ */
+const CONTROL_KEGEL=[
+  {n:1,nombre:"Contracción lenta",como:"Contrae y relaja, sostenido",series:"10 reps",contrae:5,relaja:5,reps:10,usaProg:true,timer:true},
+  {n:2,nombre:"Contracciones rápidas",como:"Aprieta 1 s y suelta de inmediato",series:"20 reps",contrae:1,relaja:1,reps:20,timer:true},
+  {n:3,nombre:"Elevador ★",como:"Sube la fuerza 30% → 60% → 100% y baja lento",series:"5 reps",contrae:6,relaja:6,reps:5,timer:true},
+  {n:4,nombre:"Resistencia ★",como:"Contracción moderada 30 s, respirando normal",series:"3 series",contrae:30,relaja:15,reps:3,timer:true},
+  {n:5,nombre:"Puente + Kegel",como:"Cadera arriba, contrae el suelo pélvico",series:"10 reps",contrae:5,relaja:5,reps:10,timer:true},
+  {n:6,nombre:"Funcional",como:"Contrae antes de toser, reír o hacer esfuerzo",series:"Durante el día",timer:false},
+];
+const CONTROL_PROG=[{desde:1,label:"Semana 1–2",seg:"5",segN:5},{desde:3,label:"Semana 3–4",seg:"8",segN:8},{desde:5,label:"Semana 5–6",seg:"10",segN:10},{desde:7,label:"Semana 7+",seg:"10–15",segN:12}];
+const CONTROL_FASES=[
+  {desde:1,label:"Semana 1–2",txt:"Solo, a mano seca. Fase de aprendizaje: reconocer el punto de no retorno."},
+  {desde:3,label:"Semana 3–4",txt:"Solo, con lubricante. Sube el estímulo, más parecido al real."},
+  {desde:5,label:"Semana 5–6",txt:"En pareja, sin penetración. Usa una señal para indicar la pausa."},
+  {desde:7,label:"Semana 7+",txt:"Con penetración. Empieza con la pareja arriba o de lado; empujes cortos y superficiales en los momentos altos."},
+];
+const CONTROL_FRASES=["Respiro lento y mi cuerpo se calma.","Tengo tiempo. No hay ninguna prisa.","Controlo mi ritmo con tranquilidad.","Mi cuerpo sabe esperar y disfrutar.","Reconozco mis sensaciones y las dejo pasar como olas.","Cada respiración me devuelve el control.","El placer no es una carrera.","Estoy presente, tranquilo y seguro.","Suelto la tensión de mi cuerpo con cada exhalación.","Confío en mi cuerpo.","Puedo detenerme y respirar cuando quiera.","La calma es mi estado natural.","Disfruto sin exigirme nada.","Cada día tengo más control y más confianza."];
+const CONTROL_GUIA=[
+  {icon:"📋",titulo:"Resumen y reglas de oro",cuerpo:"Frecuencia: lunes a viernes. Sábado y domingo: descanso total.\nDuración total: ~25–30 min (se puede partir en dos momentos del día).\nOrden: Bloque 1 Kegel → Bloque 2 Meditación → Bloque 3 Start-stop.\n\nReglas de oro:\n• Constancia por encima de intensidad.\n• La exhalación siempre más larga que la inhalación.\n• La contracción de freno es moderada y sostenida, nunca un apretón brusco.\n• No saltar fases del start-stop.\n• Un «fallo» no es un fallo, es entrenamiento.\n• Mínimo 8 semanas para ver resultados sólidos."},
+  {icon:"🌬️",titulo:"Respiración",cuerpo:"Entrenamiento diario (meditación) — 4-7-8:\nInhala por la nariz 4 s · retén 7 s · exhala por la boca, lento, 8 s. 4–6 ciclos.\n\nEl momento (sexo / pausas del start-stop) — 4-6:\nInhala 4 s · exhala lento 6 s · sin retención. 3–5 respiraciones por pausa.\n\nRegla de fondo: inhalación por nariz, exhalación larga y suave, hombros y vientre sueltos. La exhalación larga activa el «freno» del sistema nervioso."},
+  {icon:"💪",titulo:"Kegel — cómo saber si va bien",cuerpo:"Prioriza los ejercicios 3 (Elevador) y 4 (Resistencia), los más relevantes para el control. Respira normal, no aprietes glúteos ni abdomen.\n\nBien hecho: el pene hace un pequeño movimiento hacia arriba, los testículos se elevan ligeramente, la sensación es de «meter» hacia adentro el ano y la base del pene. No debe sentirse tensión importante en piernas, abdomen o glúteos.\n\nErrores a evitar: aguantar la respiración, apretar glúteos o abdomen, hacerlos mientras orinas (solo sirve una vez para identificar el músculo), entrenar todos los días con mucha intensidad (respeta el descanso de fin de semana)."},
+  {icon:"⏸️",titulo:"Start-stop — el freno",cuerpo:"Respiración durante el momento: inhalar 4 s / exhalar 6 s, sin retención. 3–5 respiraciones en cada pausa.\n\nCiclo:\n1. Estimúlate a ritmo tranquilo, atento a las sensaciones.\n2. Al subir la excitación (aún lejos del punto de no retorno) → redirige la atención a otra zona (plantas de los pies, el aire en el vientre, la espalda apoyada) + respira 4-6. Freno suave.\n3. Si sigues subiendo → detente por completo + contrae el suelo pélvico moderado y sostenido + exhala largo + atención a los pies. Freno fuerte.\n4. Espera 20–30 s a que baje.\n5. Retoma. 3 paradas y en la 4ª te permites terminar (o no, si entrenas retención pura).\n\nRegla clave: la contracción para frenar es MODERADA y SOSTENIDA (como la de resistencia). Evita el apretón fuerte y espasmódico en el punto de no retorno: ese acompaña la eyaculación en vez de frenarla. «Freno firme y constante», no «apretón brusco».\n\nFreno de emergencia (squeeze): si al parar la excitación aún se dispara, aplica presión firme unos segundos justo debajo del glande hasta que baje la urgencia."},
+  {icon:"🧘",titulo:"Meditación — pasos y frases",cuerpo:"1. Postura cómoda, ojos cerrados, lugar tranquilo. Al despertar o antes de dormir funciona mejor.\n2. Antes del audio: 4 ciclos de respiración 4-7-8.\n3. Reproduce el audio con las repeticiones elegidas.\n4. Durante el audio: respira lento, deja que cada frase caiga en una exhalación. No analices, solo escucha y deja pasar.\n5. Si la mente se distrae, vuelve suave a la respiración y la voz. Distraerse es normal, no es fallar.\n6. Cierra con 1–2 min de silencio.\n\nFrase ancla principal (para el momento sexual, en las pausas): «Tengo tiempo, no hay prisa.»\nFrase de respaldo: «Cada respiración me devuelve el control.»\nÚsala una vez, lento, al detener y contraer. No la repitas en bucle acelerado."},
+];
+const CONTROL_SEGURIDAD="Si aparece dolor, tensión persistente en la zona pélvica, o el control empeora en vez de mejorar, pausa los ejercicios de suelo pélvico unos días y considera consultarlo con un profesional. El suelo pélvico puede sobrecargarse y a veces necesita el enfoque opuesto. Los resultados sólidos requieren un mínimo de 8 semanas de constancia.";
+const semanaDePrograma=inicio=>{ if(!inicio) return 1; const d=Math.floor((new Date(HOY)-new Date(inicio))/864e5); return Math.max(1,Math.floor(d/7)+1); };
+const nivelPor=(arr,sem)=>[...arr].reverse().find(x=>sem>=x.desde)||arr[0];
+
+// Temporizador de intervalos (contrae X / relaja Y por N series). Se remonta al cambiar de ejercicio (key).
+function ControlIntervalo({contrae,relaja,reps}){
+  const [st,setSt]=useState({fase:"contrae",seg:contrae,serie:1,run:false,fin:false});
+  useEffect(()=>{ if(!st.run||st.fin) return; const t=setInterval(()=>setSt(p=>{
+    if(p.seg>1) return {...p,seg:p.seg-1};
+    if(p.fase==="contrae") return {...p,fase:"relaja",seg:relaja};
+    if(p.serie>=reps) return {...p,run:false,fin:true,seg:0};
+    return {...p,serie:p.serie+1,fase:"contrae",seg:contrae};
+  }),1000); return ()=>clearInterval(t); },[st.run,st.fin]);
+  useEffect(()=>{ if(st.run){try{beep(1);navigator.vibrate&&navigator.vibrate(120);}catch(e){}} },[st.fase,st.serie]);
+  useEffect(()=>{ if(st.fin){try{beep(2);navigator.vibrate&&navigator.vibrate([120,80,120]);}catch(e){}} },[st.fin]);
+  const reset=()=>setSt({fase:"contrae",seg:contrae,serie:1,run:false,fin:false});
+  const col=st.fin?C.green:st.fase==="contrae"?C.espresso:C.muted;
+  return <div style={{background:C.bg,borderRadius:12,border:"1.5px solid "+C.border,padding:"14px",textAlign:"center"}}>
+    <p style={{margin:0,fontFamily:SANS,fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.muted}}>{st.fin?"Terminado":st.fase==="contrae"?"Contrae":"Relaja"} · serie {Math.min(st.serie,reps)}/{reps}</p>
+    <p style={{margin:"6px 0 10px",fontFamily:SERIF,fontSize:46,lineHeight:1,color:col}}>{st.fin?"✓":st.seg}</p>
+    <div style={{display:"flex",gap:8}}>
+      {!st.fin&&<button onClick={()=>setSt(p=>({...p,run:!p.run}))} style={{flex:1,padding:"10px 0",background:st.run?"transparent":C.espresso,color:st.run?C.espresso:C.gold,border:st.run?"1.5px solid "+C.border:"none",borderRadius:10,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>{st.run?"⏸ Pausar":"▶ Iniciar"}</button>}
+      <button onClick={reset} style={{flex:st.fin?1:"0 0 auto",padding:"10px 16px",background:st.fin?C.green:"transparent",color:st.fin?"#fff":C.muted,border:st.fin?"none":"1.5px solid "+C.border,borderRadius:10,fontSize:13.5,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>↺ {st.fin?"Otra vez":"Reiniciar"}</button>
+    </div>
+  </div>;
+}
+// Cronómetro libre + pausa de 20–30 s para el start-stop
+function ControlCrono(){
+  const [run,setRun]=useState(false); const [seg,setSeg]=useState(0); const [pausa,setPausa]=useState(0);
+  useEffect(()=>{ if(!run) return; const t=setInterval(()=>setSeg(s=>s+1),1000); return ()=>clearInterval(t); },[run]);
+  useEffect(()=>{ if(pausa<=0) return; const t=setInterval(()=>setPausa(p=>{ if(p<=1){try{beep(2);navigator.vibrate&&navigator.vibrate([120,80,120]);}catch(e){} return 0;} return p-1; }),1000); return ()=>clearInterval(t); },[pausa>0]);
+  return <div style={{background:C.bg,borderRadius:12,border:"1.5px solid "+C.border,padding:"14px",textAlign:"center"}}>
+    <p style={{margin:0,fontFamily:SANS,fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.muted}}>Tiempo activo</p>
+    <p style={{margin:"6px 0 10px",fontFamily:SERIF,fontSize:40,lineHeight:1}}>{fmtMMSS(seg)}</p>
+    <div style={{display:"flex",gap:8,marginBottom:8}}>
+      <button onClick={()=>setRun(r=>!r)} style={{flex:1,padding:"10px 0",background:run?"transparent":C.espresso,color:run?C.espresso:C.gold,border:run?"1.5px solid "+C.border:"none",borderRadius:10,fontSize:14,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>{run?"⏸ Pausar":"▶ Iniciar"}</button>
+      <button onClick={()=>{setRun(false);setSeg(0);}} style={{flex:"0 0 auto",padding:"10px 16px",background:"transparent",color:C.muted,border:"1.5px solid "+C.border,borderRadius:10,fontSize:13.5,fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>↺</button>
+    </div>
+    <button onClick={()=>setPausa(pausa>0?0:25)} style={{width:"100%",padding:"10px 0",background:pausa>0?C.gold:C.borderSoft,color:C.espresso,border:"none",borderRadius:10,fontSize:13.5,fontWeight:700,fontFamily:SANS,cursor:"pointer"}}>{pausa>0?"Pausa (respira 4-6): "+pausa+" s":"⏱ Pausa de 25 s"}</button>
+  </div>;
+}
+// Reproductor del audio de meditación con repeticiones
+function ControlAudio({reps,setReps}){
+  const ref=React.useRef(null);
+  const [cur,setCur]=useState(1); const [dur,setDur]=useState(0); const [playing,setPlaying]=useState(false);
+  const onEnded=()=>{ const el=ref.current; if(!el) return; if(reps===0){ el.currentTime=0; el.play(); return; } if(cur<reps){ setCur(c=>c+1); el.currentTime=0; el.play(); } else { setCur(1); setPlaying(false); } };
+  const totalMin=dur>0?Math.round(dur*(reps===0?1:reps)/60):0;
+  return <div>
+    <audio ref={ref} src="./audio_meditacion.mp3" controls preload="metadata" onLoadedMetadata={e=>setDur(e.target.duration)} onEnded={onEnded} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} style={{width:"100%",marginBottom:10}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+      <span style={{fontFamily:SANS,fontSize:12,color:C.muted}}>Repeticiones:</span>
+      {[1,2,3,0].map(n=><button key={n} onClick={()=>{setReps(n);setCur(1);}} style={{padding:"6px 13px",borderRadius:18,border:"1.5px solid "+((reps===n)?C.gold:C.border),background:(reps===n)?C.goldSoft:"transparent",color:C.espresso,fontSize:13,fontFamily:SANS,fontWeight:(reps===n)?700:500,cursor:"pointer"}}>{n===0?"∞":n}</button>)}
+    </div>
+    <p style={{margin:0,fontFamily:SANS,fontSize:12,color:C.muted}}>{reps===0?"En bucle continuo":"Repetición "+cur+" de "+reps}{totalMin>0?" · "+(reps===0?"~"+totalMin+" min por vuelta":"≈ "+totalMin+" min en total"):""}</p>
+  </div>;
+}
+
+function GymControl({controlLog,setControlLog,controlCfg,setControlCfg}){
+  const [sub,setSub]=useState("hoy");
+  const [bloque,setBloque]=useState(null);      // bloque expandido en Hoy
+  const [ejSel,setEjSel]=useState(CONTROL_KEGEL[3]); // ejercicio de kegel cargado en el timer (default Resistencia)
+  const [guia,setGuia]=useState(null);
+  useEffect(()=>{ if(!controlCfg.inicio) setControlCfg(p=>({...p,inicio:HOY})); },[]);
+  const inicio=controlCfg.inicio||HOY;
+  const sem=semanaDePrograma(inicio);
+  const prog=nivelPor(CONTROL_PROG,sem);
+  const faseSS=nivelPor(CONTROL_FASES,sem);
+  const reps=controlCfg.audioReps??1;
+  const setReps=v=>setControlCfg(p=>({...p,audioReps:v}));
+  const diaNombre=diaHoyNombre();
+  const finde=diaNombre==="Sábado"||diaNombre==="Domingo";
+  const hoyLog=(controlLog||{})[HOY]||{};
+  const toggle=k=>setControlLog(p=>{const d={...((p||{})[HOY]||{})};d[k]=!d[k];return {...p,[HOY]:d};});
+  const setNotas=v=>setControlLog(p=>({...p,[HOY]:{...((p||{})[HOY]||{}),notas:v}}));
+  const completoHoy=hoyLog.kegel&&hoyLog.meditacion&&hoyLog.startstop;
+  const totalCompletos=Object.values(controlLog||{}).filter(d=>d&&d.kegel&&d.meditacion&&d.startstop).length;
+  const racha=(()=>{ let n=0; const d=new Date();
+    for(let i=0;i<420;i++){ const dow=d.getDay(); const f=fechaLocal(d);
+      if(dow===0||dow===6){ d.setDate(d.getDate()-1); continue; }
+      const l=(controlLog||{})[f]; const comp=l&&l.kegel&&l.meditacion&&l.startstop;
+      if(comp){ n++; d.setDate(d.getDate()-1); }
+      else if(f===HOY){ d.setDate(d.getDate()-1); } else break;
+    } return n; })();
+  // ejercicio para el timer: la contracción lenta usa el tiempo de la semana
+  const ejTimer={...ejSel,contrae:ejSel.usaProg?prog.segN:ejSel.contrae};
+
+  const marcarBox=k=>finde?null:<button onClick={e=>{e.stopPropagation();toggle(k);}} style={{display:"flex",alignItems:"center",gap:7,background:"none",border:"none",cursor:"pointer",padding:0}}>
+    <span style={{width:20,height:20,borderRadius:6,flexShrink:0,border:hoyLog[k]?"none":"1.5px solid "+C.gold,background:hoyLog[k]?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{hoyLog[k]&&<svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</span>
+    <span style={{fontFamily:SANS,fontSize:11.5,color:hoyLog[k]?C.green:C.muted,fontWeight:600}}>{hoyLog[k]?"Hecho":"Marcar"}</span>
+  </button>;
+
+  const bloqueCard=(id,icon,titulo,dur,contenido,checkKey)=>{const op=bloque===id;return <div style={{background:C.card,borderRadius:14,border:"1.5px solid "+(hoyLog[checkKey]?C.green:op?C.gold:C.border),marginBottom:10,overflow:"hidden"}}>
+    <div onClick={()=>setBloque(op?null:id)} style={{display:"flex",alignItems:"center",gap:11,padding:"14px 15px",cursor:"pointer"}}>
+      <span style={{fontSize:20}}>{icon}</span>
+      <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontFamily:SERIF,fontSize:16}}>{titulo}</p><p style={{margin:"1px 0 0",fontFamily:SANS,fontSize:11.5,color:C.muted}}>{dur}</p></div>
+      {marcarBox(checkKey)}
+      <span style={{color:op?C.gold:C.muted,fontSize:16,fontWeight:700,transform:op?"rotate(90deg)":"none",transition:"transform .2s"}}>›</span>
+    </div>
+    {op&&<div style={{padding:"0 15px 16px"}}>{contenido}</div>}
+  </div>;};
+
+  return <div style={{padding:"10px 18px 24px"}}>
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      {[["hoy","Hoy"],["guia","Guía"],["progreso","Progreso"]].map(([id,l])=><button key={id} onClick={()=>setSub(id)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid "+(sub===id?C.gold:C.border),background:sub===id?C.gold:"transparent",color:sub===id?C.espresso:C.muted,fontSize:13.5,fontFamily:SANS,fontWeight:sub===id?700:500,cursor:"pointer"}}>{l}</button>)}
+    </div>
+
+    {sub==="hoy"&&<div>
+      {/* estado del día */}
+      <Card pad={16}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><Mini icon={finde?"🌙":"🗓️"} label={finde?"Fin de semana · descanso":"Día de rutina"}/><span style={{fontFamily:SANS,fontSize:11,color:C.muted}}>Semana {sem}</span></div>
+        {finde
+          ?<p style={{margin:"10px 0 0",fontFamily:SANS,fontSize:13,color:C.muted,lineHeight:1.5}}>Hoy toca descanso total del suelo pélvico. Puedes consultar la guía; la rutina vuelve el lunes.</p>
+          :<div style={{display:"flex",gap:10,marginTop:12}}>
+            <div style={{flex:1,background:C.borderSoft,borderRadius:10,padding:"9px 11px"}}><p style={{margin:0,fontFamily:SANS,fontSize:10.5,color:C.muted,textTransform:"uppercase",letterSpacing:.4}}>Contracción</p><p style={{margin:"2px 0 0",fontFamily:SERIF,fontSize:17}}>{prog.seg} s</p></div>
+            <div style={{flex:1,background:C.borderSoft,borderRadius:10,padding:"9px 11px"}}><p style={{margin:0,fontFamily:SANS,fontSize:10.5,color:C.muted,textTransform:"uppercase",letterSpacing:.4}}>Start-stop</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:12.5,lineHeight:1.3}}>{faseSS.label.replace("Semana ","Sem ")}</p></div>
+          </div>}
+        {!finde&&<div style={{display:"flex",alignItems:"center",gap:10,margin:"12px 0 0"}}><div style={{flex:1}}><Bar pct={[hoyLog.kegel,hoyLog.meditacion,hoyLog.startstop].filter(Boolean).length/3*100} color={completoHoy?C.green:C.gold} h={9}/></div><span style={{fontFamily:SANS,fontSize:12.5,fontWeight:700,color:completoHoy?C.green:C.muted,whiteSpace:"nowrap"}}>{[hoyLog.kegel,hoyLog.meditacion,hoyLog.startstop].filter(Boolean).length}/3{completoHoy?" 🎉":""}</span></div>}
+      </Card>
+
+      <div style={{height:12}}/>
+      {/* BLOQUE 1 — KEGEL */}
+      {bloqueCard("kegel","💪","Bloque 1 · Kegel","8–10 min · prioriza 3 y 4",<div>
+        <div style={{overflowX:"auto",margin:"6px 0 12px"}}><table style={{width:"100%",borderCollapse:"collapse",fontFamily:SANS,fontSize:12.5}}><tbody>
+          {CONTROL_KEGEL.map(k=><tr key={k.n} style={{borderBottom:"1px solid "+C.borderSoft}}>
+            <td style={{padding:"7px 6px 7px 0",verticalAlign:"top"}}><b>{k.n}. {k.nombre}</b><div style={{color:C.muted,marginTop:2}}>{k.como}</div></td>
+            <td style={{padding:"7px 0",verticalAlign:"top",textAlign:"right",whiteSpace:"nowrap",color:C.gold,fontWeight:600}}>{k.series}</td>
+          </tr>)}
+        </tbody></table></div>
+        <p style={{...labelStyle,marginBottom:6}}>Temporizador de intervalos</p>
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:6,marginBottom:8}}>
+          {CONTROL_KEGEL.filter(k=>k.timer).map(k=><button key={k.n} onClick={()=>setEjSel(k)} style={{whiteSpace:"nowrap",padding:"7px 12px",borderRadius:18,border:"1.5px solid "+(ejSel.n===k.n?C.gold:C.border),background:ejSel.n===k.n?C.goldSoft:"transparent",color:C.espresso,fontSize:12.5,fontFamily:SANS,fontWeight:ejSel.n===k.n?700:500,cursor:"pointer"}}>{k.n}. {k.nombre.replace(" ★","")}</button>)}
+        </div>
+        <ControlIntervalo key={ejTimer.n+"-"+ejTimer.contrae} contrae={ejTimer.contrae} relaja={ejTimer.relaja} reps={ejTimer.reps}/>
+        <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:11,color:C.muted,lineHeight:1.4}}>La contracción lenta usa el tiempo de tu semana ({prog.seg} s). Respira normal, no aprietes glúteos ni abdomen.</p>
+      </div>,"kegel")}
+
+      {/* BLOQUE 2 — MEDITACIÓN */}
+      {bloqueCard("medit","🧘","Bloque 2 · Meditación","audio guiado · elige repeticiones",<div>
+        <p style={{margin:"6px 0 12px",fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.6}}>Antes de iniciar: 4 ciclos de respiración 4-7-8. Deja que cada frase caiga en una exhalación; si te distraes, vuelve suave a la voz.</p>
+        <ControlAudio reps={reps} setReps={setReps}/>
+        <p style={{...labelStyle,margin:"14px 0 6px"}}>Frases del audio</p>
+        <div style={{background:C.bg,borderRadius:10,border:"1.5px solid "+C.border,padding:"10px 13px"}}>{CONTROL_FRASES.map((f,i)=><p key={i} style={{margin:i?"6px 0 0":0,fontFamily:SERIF,fontSize:13.5,fontStyle:"italic",color:C.text,lineHeight:1.4}}>{f}</p>)}</div>
+      </div>,"meditacion")}
+
+      {/* BLOQUE 3 — START-STOP */}
+      {bloqueCard("ss","⏸️","Bloque 3 · Start-stop","10–15 min",<div>
+        <p style={{margin:"6px 0 4px",fontFamily:SANS,fontSize:11,color:C.gold,fontWeight:700,textTransform:"uppercase",letterSpacing:.4}}>{faseSS.label}</p>
+        <p style={{margin:"0 0 12px",fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.5}}>{faseSS.txt}</p>
+        <div style={{background:C.bg,borderRadius:10,border:"1.5px solid "+C.border,padding:"12px 14px",marginBottom:12}}>
+          {["Estimúlate a ritmo tranquilo, atento a las sensaciones.","Al subir la excitación → redirige la atención (pies, vientre, espalda) + respira 4-6. Freno suave.","Si sigues subiendo → detente, contrae moderado y sostenido, exhala largo, atención a los pies. Freno fuerte.","Espera 20–30 s a que baje.","Retoma. 3 paradas; en la 4ª te permites terminar (o no)."].map((s,i)=><p key={i} style={{margin:i?"7px 0 0":0,fontFamily:SANS,fontSize:12.5,lineHeight:1.45,display:"flex",gap:8}}><b style={{color:C.gold}}>{i+1}</b><span>{s}</span></p>)}
+        </div>
+        <ControlCrono/>
+        <p style={{margin:"8px 0 0",fontFamily:SANS,fontSize:11,color:C.muted,lineHeight:1.4}}>Freno = contracción moderada y sostenida, nunca un apretón brusco. Squeeze de emergencia: presión firme bajo el glande hasta que baje.</p>
+      </div>,"startstop")}
+
+      {/* notas + seguridad */}
+      {!finde&&<div style={{marginTop:6}}>
+        <p style={{...labelStyle,margin:"8px 0 6px"}}>Notas de hoy</p>
+        <textarea value={hoyLog.notas||""} onChange={e=>setNotas(e.target.value)} placeholder="Sensaciones, avances, en qué frenaste…" style={{...inputStyle,minHeight:60,resize:"vertical"}}/>
+      </div>}
+      <div style={{marginTop:14,background:C.redSoft,borderRadius:12,padding:"12px 14px"}}><p style={{margin:0,fontFamily:SANS,fontSize:11.5,color:C.red,lineHeight:1.5}}>⚠ {CONTROL_SEGURIDAD}</p></div>
+    </div>}
+
+    {sub==="guia"&&<div>
+      <p style={{margin:"0 0 12px",fontFamily:SANS,fontSize:12.5,color:C.muted,lineHeight:1.5}}>Referencia del protocolo. Toca cada sección para abrirla.</p>
+      {CONTROL_GUIA.map((g,i)=>{const op=guia===i;return <div key={i} style={{background:C.card,borderRadius:12,border:"1.5px solid "+(op?C.gold:C.border),marginBottom:9,overflow:"hidden"}}>
+        <div onClick={()=>setGuia(op?null:i)} style={{display:"flex",alignItems:"center",gap:11,padding:"13px 15px",cursor:"pointer"}}>
+          <span style={{fontSize:18}}>{g.icon}</span><p style={{flex:1,margin:0,fontFamily:SERIF,fontSize:15.5}}>{g.titulo}</p><span style={{color:op?C.gold:C.muted,fontWeight:700,transform:op?"rotate(90deg)":"none",transition:"transform .2s"}}>›</span>
+        </div>
+        {op&&<p style={{margin:0,padding:"0 15px 15px",fontFamily:SANS,fontSize:13,color:C.text,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{g.cuerpo}</p>}
+      </div>;})}
+      <div style={{marginTop:6,background:C.redSoft,borderRadius:12,padding:"13px 15px"}}><p style={{margin:0,fontFamily:SANS,fontSize:12.5,color:C.red,lineHeight:1.55}}><b>Nota de seguridad. </b>{CONTROL_SEGURIDAD}</p></div>
+      <p style={{margin:"12px 0 0",fontFamily:SANS,fontSize:11,color:C.muted,textAlign:"center"}}>Empezaste el {fechaLarga(inicio)} · vas por la semana {sem}.</p>
+    </div>}
+
+    {sub==="progreso"&&<div>
+      <div style={{display:"flex",gap:10,marginBottom:16}}>
+        <div style={{flex:1,background:C.card,borderRadius:13,border:"1.5px solid "+C.border,padding:"12px 13px"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:C.gold}}>🔥 {racha}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:11,color:C.muted}}>días seguidos (L–V)</p></div>
+        <div style={{flex:1,background:C.card,borderRadius:13,border:"1.5px solid "+C.border,padding:"12px 13px"}}><p style={{margin:0,fontFamily:SERIF,fontSize:24,color:C.green}}>✓ {totalCompletos}</p><p style={{margin:"2px 0 0",fontFamily:SANS,fontSize:11,color:C.muted}}>días completos</p></div>
+      </div>
+      <p style={{...labelStyle,marginBottom:8}}>Últimas 5 semanas</p>
+      <Card pad={14}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5}}>
+          {["L","M","M","J","V","S","D"].map((d,i)=><div key={i} style={{textAlign:"center",fontFamily:SANS,fontSize:9.5,color:C.muted}}>{d}</div>)}
+          {(()=>{const cells=[];const hoyD=new Date();const dow=(hoyD.getDay()+6)%7;const finLun=new Date(hoyD);finLun.setDate(hoyD.getDate()-dow); // lunes de esta semana
+            const ini=new Date(finLun);ini.setDate(finLun.getDate()-28); // 5 semanas
+            for(let i=0;i<35;i++){const d=new Date(ini);d.setDate(ini.getDate()+i);const f=fechaLocal(d);const wd=d.getDay();const fin=wd===0||wd===6;const l=(controlLog||{})[f];const n=l?[l.kegel,l.meditacion,l.startstop].filter(Boolean).length:0;const fut=f>HOY;
+              const bg=fin?C.borderSoft:fut?"#f4efe6":n===3?C.green:n>0?C.gold:C.redSoft;const esHoy=f===HOY;
+              cells.push(<div key={f} title={f+(n?" · "+n+"/3":"")} style={{aspectRatio:"1",borderRadius:5,background:bg,opacity:fin?.5:1,outline:esHoy?"1.5px solid "+C.espresso:"none"}}/>);}
+            return cells;})()}
+        </div>
+        <div style={{display:"flex",gap:12,marginTop:11,justifyContent:"center",flexWrap:"wrap"}}>
+          {[["Completo",C.green],["Parcial",C.gold],["Sin hacer",C.redSoft],["Descanso",C.borderSoft]].map(([l,c])=><span key={l} style={{display:"flex",alignItems:"center",gap:5,fontFamily:SANS,fontSize:10.5,color:C.muted}}><span style={{width:11,height:11,borderRadius:3,background:c}}/>{l}</span>)}
+        </div>
+      </Card>
+      {/* notas recientes */}
+      {(()=>{const conNotas=Object.entries(controlLog||{}).filter(([f,l])=>l&&l.notas&&l.notas.trim()).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,8);if(conNotas.length===0)return null;return <div style={{marginTop:18}}><p style={{...labelStyle,marginBottom:8}}>Notas recientes</p>{conNotas.map(([f,l])=><div key={f} style={{background:C.card,borderRadius:11,border:"1.5px solid "+C.border,padding:"10px 13px",marginBottom:7}}><p style={{margin:0,fontFamily:SANS,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:.4}}>{fechaLarga(f)}</p><p style={{margin:"3px 0 0",fontFamily:SANS,fontSize:13,lineHeight:1.5}}>{l.notas}</p></div>)}</div>;})()}
+    </div>}
+  </div>;
+}
+
 function Gym(props){
   const [vista,setVista]=useState("entrenos");
   return <div>
     <Header titulo="Gimnasio"/>
-    <Segmented value={vista} onChange={setVista} options={[{id:"entrenos",label:"🏋️ Entrenos"},{id:"plan",label:"📋 Plan"},{id:"progreso",label:"📈 Progreso"}]}/>
+    <Segmented value={vista} onChange={setVista} options={[{id:"entrenos",label:"🏋️ Entrenos"},{id:"plan",label:"📋 Plan"},{id:"progreso",label:"📈 Progreso"},{id:"control",label:"🧘 Control"}]}/>
     {vista==="entrenos"&&<GymEntrenos {...props}/>}
     {vista==="plan"&&<GymPlan plantillas={props.plantillas} setPlantillas={props.setPlantillas}/>}
     {vista==="progreso"&&<GymProgreso {...props}/>}
+    {vista==="control"&&<GymControl controlLog={props.controlLog} setControlLog={props.setControlLog} controlCfg={props.controlCfg} setControlCfg={props.setControlCfg}/>}
   </div>;
 }
 
