@@ -2649,29 +2649,46 @@ function FormHito({hito,onGuardar,onEliminar}){
 }
 function FormPlan({plan,onGuardar}){
   const [pl,setPl]=useState(JSON.parse(JSON.stringify(plan)));
-  const [sec,setSec]=useState("p1"); const tog=id=>setSec(sec===id?null:id);
+  const [sec,setSec]=useState((plan.portafolios&&plan.portafolios[0]&&plan.portafolios[0].id)||"reglas");
+  const tog=id=>setSec(sec===id?null:id);
+  const setPort=(pi,k,v)=>setPl(p=>({...p,portafolios:p.portafolios.map((po,a)=>a!==pi?po:{...po,[k]:v})}));
   const setFondo=(pi,fi,k,v)=>setPl(p=>({...p,portafolios:p.portafolios.map((po,a)=>a!==pi?po:{...po,fondos:po.fondos.map((f,b)=>b!==fi?f:{...f,[k]:v})})}));
+  const addFondo=pi=>setPl(p=>({...p,portafolios:p.portafolios.map((po,a)=>a!==pi?po:{...po,fondos:[...po.fondos,{id:uid(),nombre:"",target:0,...(po.id==="p2"?{targetDca:0}:{}),comision:0,liquidez:""}]})}));
+  const delFondo=async(pi,fi)=>{ if(await pedirConfirm({titulo:"Quitar fondo",texto:"Se quita del plan. Si tenías una inversión vinculada, seguirá existiendo pero sin fondo del plan."})) setPl(p=>({...p,portafolios:p.portafolios.map((po,a)=>a!==pi?po:{...po,fondos:po.fondos.filter((_,b)=>b!==fi)})})); };
   const setRegla=(k,v)=>setPl(p=>({...p,reglas:{...p.reglas,[k]:v}}));
   const setMa=(k,v)=>setPl(p=>({...p,maestria:{...p.maestria,[k]:v}}));
-  const suma=(pi,k)=>pl.portafolios[pi].fondos.reduce((a,f)=>a+num(f[k]),0);
-  const okP1=suma(0,"target")===100, okP2=suma(1,"target")===100, okDca=suma(1,"targetDca")===100;
-  const ok=okP1&&okP2&&okDca;
-  const SumaChip=({v,okS})=><span style={{fontFamily:SANS,fontSize:12,fontWeight:700,color:okS?C.green:C.red}}>{v}% {okS?"✓":"✗"}</span>;
-  const filaT=(pi,fi,f,conDca)=><div key={f.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-    <span style={{flex:1,fontFamily:SANS,fontSize:12.5,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.nombre}</span>
-    <input type="number" inputMode="numeric" value={f.target} onChange={e=>setFondo(pi,fi,"target",num(e.target.value))} style={{...inputStyle,width:62,padding:"7px 8px",fontSize:13,textAlign:"right"}}/>
-    {conDca&&<input type="number" inputMode="numeric" value={f.targetDca} onChange={e=>setFondo(pi,fi,"targetDca",num(e.target.value))} style={{...inputStyle,width:62,padding:"7px 8px",fontSize:13,textAlign:"right"}}/>}
-  </div>;
+  const sumaT=pi=>pl.portafolios[pi].fondos.reduce((a,f)=>a+num(f.target),0);
+  const sumaD=pi=>pl.portafolios[pi].fondos.reduce((a,f)=>a+num(f.targetDca),0);
+  const okPort=(po,pi)=>(po.fondos.length===0||sumaT(pi)===100)&&(po.id!=="p2"||po.fondos.length===0||sumaD(pi)===100);
+  const ok=pl.portafolios.every(okPort);
+  const SumaChip=({v,okS})=><span style={{fontFamily:SANS,fontSize:11.5,fontWeight:700,color:okS?C.green:C.red}}>{v}% {okS?"✓":"✗"}</span>;
   return <div>
-    <DPSec titulo="🎓 P1 · Targets" open={sec==="p1"} onToggle={()=>tog("p1")}>
-      {pl.portafolios[0].fondos.map((f,fi)=>filaT(0,fi,f,false))}
-      <div style={{textAlign:"right"}}>Suma: <SumaChip v={suma(0,"target")} okS={okP1}/></div>
-    </DPSec>
-    <DPSec titulo="🚀 P2 · Targets (stock · DCA)" open={sec==="p2"} onToggle={()=>tog("p2")}>
-      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:6}}><span style={{width:62,textAlign:"center",fontFamily:SANS,fontSize:10.5,color:C.muted}}>stock %</span><span style={{width:62,textAlign:"center",fontFamily:SANS,fontSize:10.5,color:C.muted}}>DCA %</span></div>
-      {pl.portafolios[1].fondos.map((f,fi)=>filaT(1,fi,f,true))}
-      <div style={{textAlign:"right",fontFamily:SANS,fontSize:12}}>Stock: <SumaChip v={suma(1,"target")} okS={okP2}/> · DCA: <SumaChip v={suma(1,"targetDca")} okS={okDca}/></div>
-    </DPSec>
+    <p style={{margin:"0 0 12px",fontFamily:SANS,fontSize:12,color:C.muted,lineHeight:1.5}}>Renombra portafolios y fondos, agrega o quita productos y ajusta sus targets. Cada portafolio debe sumar 100% (P2 también en DCA).</p>
+    {pl.portafolios.map((po,pi)=>{const dca=po.id==="p2";return <DPSec key={po.id} titulo={(po.emoji||"")+" "+(po.nombre||"Portafolio")} open={sec===po.id} onToggle={()=>tog(po.id)}>
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        <input value={po.emoji||""} onChange={e=>setPort(pi,"emoji",e.target.value)} placeholder="🎯" style={{...inputStyle,width:52,textAlign:"center",padding:"9px 6px"}}/>
+        <input value={po.nombre||""} onChange={e=>setPort(pi,"nombre",e.target.value)} placeholder="Nombre del portafolio" style={{...inputStyle,flex:1}}/>
+      </div>
+      {dca&&<div style={{display:"flex",justifyContent:"flex-start",gap:8,margin:"0 0 4px 0"}}><span style={{width:56,textAlign:"center",fontFamily:SANS,fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:.3}}>stock%</span><span style={{width:56,textAlign:"center",fontFamily:SANS,fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:.3}}>DCA%</span></div>}
+      {po.fondos.map((f,fi)=><div key={f.id} style={{background:C.bg,borderRadius:11,border:"1.5px solid "+C.border,padding:"10px 11px",marginBottom:8}}>
+        <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:8}}>
+          <input value={f.nombre} onChange={e=>setFondo(pi,fi,"nombre",e.target.value)} placeholder="Nombre del fondo / producto" style={{...inputStyle,flex:1,padding:"8px 10px",fontSize:13.5}}/>
+          <button onClick={()=>delFondo(pi,fi)} title="Quitar fondo" style={{background:"none",border:"none",color:C.muted,fontSize:19,cursor:"pointer",padding:"0 3px",lineHeight:1}}>×</button>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <input type="number" inputMode="numeric" value={f.target} onChange={e=>setFondo(pi,fi,"target",num(e.target.value))} style={{...inputStyle,width:56,padding:"7px 6px",fontSize:13,textAlign:"center"}}/>
+          {dca&&<input type="number" inputMode="numeric" value={f.targetDca} onChange={e=>setFondo(pi,fi,"targetDca",num(e.target.value))} style={{...inputStyle,width:56,padding:"7px 6px",fontSize:13,textAlign:"center"}}/>}
+          <input value={f.liquidez||""} onChange={e=>setFondo(pi,fi,"liquidez",e.target.value)} placeholder="Nota / liquidez" style={{...inputStyle,flex:1,padding:"7px 9px",fontSize:12}}/>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginTop:7}}>
+          <span style={{fontFamily:SANS,fontSize:11,color:C.muted,whiteSpace:"nowrap"}}>Comisión %</span>
+          <input type="number" inputMode="decimal" value={f.comision} onChange={e=>setFondo(pi,fi,"comision",num(e.target.value))} style={{...inputStyle,width:66,padding:"6px 8px",fontSize:12.5,textAlign:"center"}}/>
+          <input value={f.alerta||""} onChange={e=>setFondo(pi,fi,"alerta",e.target.value)} placeholder="⚠ Alerta (opcional)" style={{...inputStyle,flex:1,padding:"6px 9px",fontSize:11.5}}/>
+        </div>
+      </div>)}
+      <button onClick={()=>addFondo(pi)} style={{width:"100%",padding:"9px 0",background:"transparent",border:"1.5px dashed "+C.gold,color:C.espresso,borderRadius:10,fontSize:13,fontWeight:600,fontFamily:SANS,cursor:"pointer",marginBottom:8}}>+ Agregar fondo</button>
+      <div style={{textAlign:"right",fontFamily:SANS,fontSize:12,color:C.muted}}>Suma target: <SumaChip v={sumaT(pi)} okS={po.fondos.length===0||sumaT(pi)===100}/>{dca?<span> · DCA: <SumaChip v={sumaD(pi)} okS={po.fondos.length===0||sumaD(pi)===100}/></span>:null}</div>
+    </DPSec>;})}
     <DPSec titulo="⚙️ Reglas del plan" open={sec==="reglas"} onToggle={()=>tog("reglas")}>
       {[["pctSalario","% del salario a invertir"],["trmVerde","TRM verde (dólar barato)"],["trmStop","TRM stop (no comprar USD)"],["driftAlertaPp","Desvío que alerta (pp)"],["tramosExtra","Tramos para prima/bono"]].map(([k,l])=><Field key={k} label={l}><input type="number" inputMode="numeric" style={inputStyle} value={pl.reglas[k]} onChange={e=>setRegla(k,num(e.target.value))}/></Field>)}
     </DPSec>
@@ -2680,7 +2697,7 @@ function FormPlan({plan,onGuardar}){
       <Field label="Cuota semestral (USD)"><input type="number" inputMode="numeric" style={inputStyle} value={pl.maestria.cuotaSemestralUSD} onChange={e=>setMa("cuotaSemestralUSD",num(e.target.value))}/></Field>
       <Field label="Primer pago"><input type="date" style={inputStyle} value={pl.maestria.primerPago} onChange={e=>setMa("primerPago",e.target.value)}/></Field>
     </DPSec>
-    {!ok&&<p style={{margin:"4px 0 8px",fontFamily:SANS,fontSize:12,color:C.red,textAlign:"center"}}>Cada grupo de targets debe sumar 100.</p>}
+    {!ok&&<p style={{margin:"4px 0 8px",fontFamily:SANS,fontSize:12,color:C.red,textAlign:"center"}}>Cada portafolio con fondos debe sumar 100% (P2 también en DCA).</p>}
     <button disabled={!ok} onClick={()=>onGuardar(pl)} style={btnP(ok)}>Guardar plan</button>
   </div>;
 }
